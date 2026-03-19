@@ -558,11 +558,12 @@ MAIN_HTML = r"""
                     result=await fetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text})}).then(r=>r.json());
                     removeLoading(loadId);
+                    const disParticipants = result.participants || [];
                     addMessage('System',`DISCUSSION: ${text}`,'system-msg');
-                    for(const e of result.discussion_log) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
-                    addMessage('Summary',result.summary,'judge-msg','CONCLUSION');
-                    let disRounds = result.discussion_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary)}</div></div>`, text, `Participants: ${result.participants.join(', ')}`);
+                    for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
+                    addMessage('Summary',result.summary||result.error,'judge-msg','CONCLUSION');
+                    let disRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary||result.error||'')}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);
                 } else if(currentMode==='best'){
                     result=await fetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({question:text})}).then(r=>r.json());
@@ -590,11 +591,12 @@ MAIN_HTML = r"""
                         result=await fetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
                             body:JSON.stringify({topic:prompt,personas:sel})}).then(r=>r.json());
                         removeLoading(loadId);
-                        addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${result.participants.join(', ')}`,'system-msg');
-                        for(const e of result.discussion_log) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
-                        addMessage('Synthesis',result.synthesis,'judge-msg','CONCLUSION');
-                        let pdsRounds = result.discussion_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis)}</div></div>`, text, `Participants: ${result.participants.join(', ')}`);
+                        const pdsParticipants = result.participants || [];
+                        addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${pdsParticipants.join(', ')}`,'system-msg');
+                        for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
+                        addMessage('Synthesis',result.synthesis||result.error,'judge-msg','CONCLUSION');
+                        let pdsRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||result.error||'')}</div></div>`, text, `Participants: ${pdsParticipants.join(', ')}`);
                     }
                 }
             }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
