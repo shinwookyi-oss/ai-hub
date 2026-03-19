@@ -41,8 +41,9 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("logged_in"):
-            if request.is_json:
-                return jsonify({"error": "Login required"}), 401
+            # Return JSON for API routes (includes file upload which uses multipart)
+            if request.path.startswith("/api/") or request.is_json:
+                return jsonify({"success": False, "error": "Session expired. Please refresh and login again."}), 401
             return redirect(url_for("login_page"))
         return f(*args, **kwargs)
     return decorated
