@@ -369,12 +369,12 @@ MAIN_HTML = r"""
                 </div>
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
-                    <span id="fileLabel">Drop file or Browse (TXT, PDF, CSV, DOCX...)</span>
+                    <span id="fileLabel">Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)</span>
                     <span class="file-name hidden" id="fileName"></span>
                     <span class="file-size hidden" id="fileSize"></span>
-                    <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕</button>
+                    <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕ Clear</button>
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse</button>
-                    <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx" style="display:none">
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx" style="display:none" multiple>
                 </div>
                 <div class="url-bar" id="urlBar">
                     <span>🌐</span>
@@ -405,7 +405,8 @@ MAIN_HTML = r"""
     </div>
     <script>
         let currentMode='chat', currentProvider='chatgpt', currentPersona='',
-            uploadedFileContent='', uploadedFileName='';
+            uploadedFileContent='', uploadedFileName='',
+            uploadedFiles=[];  // array of {name, content, size, chars}
         const personas = PERSONA_DATA;
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
@@ -499,10 +500,15 @@ MAIN_HTML = r"""
 
         // File upload
         const fileInput=document.getElementById('fileInput'), fileBar=document.getElementById('fileBar');
-        fileInput.addEventListener('change',async e=>{const f=e.target.files[0];if(f)await uploadFile(f);});
+        fileInput.addEventListener('change',async e=>{for(const f of e.target.files) await uploadFile(f);});
         fileBar.addEventListener('dragover',e=>{e.preventDefault();fileBar.classList.add('dragover');});
         fileBar.addEventListener('dragleave',()=>{fileBar.classList.remove('dragover');});
-        fileBar.addEventListener('drop',async e=>{e.preventDefault();fileBar.classList.remove('dragover');if(e.dataTransfer.files[0])await uploadFile(e.dataTransfer.files[0]);});
+        fileBar.addEventListener('drop',async e=>{
+            e.preventDefault();fileBar.classList.remove('dragover');
+            if(e.dataTransfer.files.length) {
+                for(const f of e.dataTransfer.files) await uploadFile(f);
+            }
+        });
 
         async function uploadFile(file) {
             const fd=new FormData(); fd.append('file',file);
@@ -519,21 +525,31 @@ MAIN_HTML = r"""
                 }
                 const r = await resp.json();
                 if(r.success){
-                    uploadedFileContent=r.content; uploadedFileName=r.filename;
+                    // Add to uploadedFiles array
+                    uploadedFiles.push({name: r.filename, content: r.content, size: r.size, chars: r.char_count});
+                    // Combine all file contents
+                    uploadedFileContent = uploadedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+                    uploadedFileName = uploadedFiles.map(f=>f.name).join(', ');
                     const kb=(r.size/1024).toFixed(1);
                     document.getElementById('fileLabel').classList.add('hidden');
-                    document.getElementById('fileName').textContent=r.filename;
+                    document.getElementById('fileName').textContent = uploadedFiles.length > 1
+                        ? `${uploadedFiles.length}개 파일 (송: ${uploadedFileName})`
+                        : r.filename;
                     document.getElementById('fileName').classList.remove('hidden');
-                    document.getElementById('fileSize').textContent=kb+' KB';
+                    document.getElementById('fileSize').textContent = uploadedFiles.length > 1
+                        ? `여러 파일`
+                        : `${kb} KB`;
                     document.getElementById('fileSize').classList.remove('hidden');
                     document.getElementById('removeFileBtn').classList.remove('hidden');
                     fileBar.classList.add('has-file');
-                    addMessage('System',`File: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()} chars)`,'system-msg');
+                    addMessage('System',`📄 업로드: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()}자)${
+                        uploadedFiles.length > 1 ? ` — 역대 업로드 ${uploadedFiles.length}개` : ''
+                    }`,'system-msg');
                 }else{addMessage('Error',r.error||'Upload failed','error-msg');}
             }catch(e){addMessage('Error','업로드 오류: '+e.message,'error-msg');}
         }
         function removeFile(){
-            uploadedFileContent='';uploadedFileName='';
+            uploadedFileContent='';uploadedFileName='';uploadedFiles=[];
             document.getElementById('fileLabel').classList.remove('hidden');
             document.getElementById('fileName').classList.add('hidden');
             document.getElementById('fileSize').classList.add('hidden');
