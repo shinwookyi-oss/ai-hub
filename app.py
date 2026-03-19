@@ -577,7 +577,13 @@ MAIN_HTML = r"""
             let prompt=text;
             if(uploadedFileContent) {
                 const q = text || '이 파일의 내용을 분석하고 요약해 주세요.';
-                prompt = `아래는 업로드된 파일 "${uploadedFileName}"의 내용입니다. 이 내용을 바탕으로 사용자의 질문에 답하거나 분석해 주세요.\n\n--- 파일 내용 시작 ---\n${uploadedFileContent}\n--- 파일 내용 끝 ---\n\n사용자 질문: ${q}`;
+                // Limit content per query to avoid timeout (full content stored locally)
+                const maxChars = 15000;
+                const chunk = uploadedFileContent.slice(0, maxChars);
+                const truncNote = uploadedFileContent.length > maxChars
+                    ? `\n\n[⚠️ 파일이 길어 처음 ${maxChars.toLocaleString()}자만 전송됨. 총 ${uploadedFileContent.length.toLocaleString()}자]`
+                    : '';
+                prompt = `아래는 업로드된 파일 "${uploadedFileName}"의 내용입니다. 이 내용을 바탕으로 사용자의 질문에 답하거나 분석해 주세요.\n\n--- 파일 내용 시작 ---\n${chunk}${truncNote}\n--- 파일 내용 끝 ---\n\n사용자 질문: ${q}`;
             }
             input.value=''; document.getElementById('sendBtn').disabled=true;
             addMessage('You',text,'user-msg');
