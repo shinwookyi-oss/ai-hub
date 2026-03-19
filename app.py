@@ -159,6 +159,9 @@ MAIN_HTML = r"""
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -327,6 +330,29 @@ MAIN_HTML = r"""
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .hidden { display: none !important; }
+        /* ── Markdown rendering ── */
+        .md-body h1,.md-body h2,.md-body h3{color:var(--accent2);margin:10px 0 6px;}
+        .md-body h1{font-size:18px;} .md-body h2{font-size:16px;} .md-body h3{font-size:14px;}
+        .md-body p{margin:6px 0;line-height:1.6;font-size:13px;}
+        .md-body ul,.md-body ol{padding-left:20px;margin:6px 0;font-size:13px;}
+        .md-body li{margin:3px 0;line-height:1.5;}
+        .md-body strong{color:var(--text);font-weight:600;}
+        .md-body em{color:var(--text2);font-style:italic;}
+        .md-body code{background:#1e1e3a;padding:2px 6px;border-radius:4px;font-size:12px;color:#f8c555;font-family:monospace;}
+        .md-body pre{background:#1e1e3a;padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;}
+        .md-body pre code{padding:0;font-size:12px;}
+        .md-body table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12px;}
+        .md-body th{background:#1a1a2e;color:var(--accent2);padding:8px 10px;border:1px solid var(--border);text-align:left;}
+        .md-body td{padding:6px 10px;border:1px solid var(--border);color:var(--text);}
+        .md-body tr:nth-child(even){background:#12121a;}
+        .md-body blockquote{border-left:3px solid var(--accent);padding:6px 12px;color:var(--text2);margin:8px 0;background:#1a1a2e;}
+        .md-body hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
+        .md-body a{color:var(--accent2);text-decoration:underline;}
+        /* ── Mermaid ── */
+        .mermaid{background:#1a1a2e;padding:16px;border-radius:10px;margin:10px 0;text-align:center;}
+        /* ── Chart ── */
+        .chart-container{background:#12121a;border:1px solid var(--border);border-radius:10px;padding:16px;margin:10px 0;}
+        .chart-container canvas{max-height:350px;}
     </style>
 </head>
 <body>
@@ -394,6 +420,7 @@ MAIN_HTML = r"""
                     <span class="output-panel-badge" id="outputBadge">✓ Ready</span>
                 </div>
                 <div style="display:flex;gap:6px;">
+                    <button class="output-action-btn" id="vizBtn" onclick="visualize()">📊 Visualize</button>
                     <button class="output-action-btn" onclick="copyOutput()">Copy</button>
                     <button class="output-action-btn" onclick="clearOutput()">Clear</button>
                 </div>
@@ -461,6 +488,27 @@ MAIN_HTML = r"""
             m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${escapeHtml(b)}</div>`;
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
         }
+        // Initialize mermaid with dark theme
+        mermaid.initialize({startOnLoad:false, theme:'dark', securityLevel:'loose'});
+        let chartInstance = null;
+
+        function renderMarkdown(text) {
+            if(typeof marked === 'undefined') return `<pre>${escapeHtml(text)}</pre>`;
+            // Configure marked
+            marked.setOptions({breaks:true, gfm:true});
+            return `<div class="md-body">${marked.parse(text)}</div>`;
+        }
+        async function renderMermaid(container) {
+            const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid');
+            for(const block of blocks) {
+                const code = block.textContent;
+                const div = document.createElement('div');
+                div.className = 'mermaid';
+                div.textContent = code;
+                block.closest('pre') ? block.closest('pre').replaceWith(div) : block.replaceWith(div);
+            }
+            try { await mermaid.run({nodes: container.querySelectorAll('.mermaid')}); } catch(e) {}
+        }
         function showDoc(html, query='', footer='') {
             const ts = new Date().toLocaleTimeString();
             outputArea.innerHTML = `
@@ -468,18 +516,80 @@ MAIN_HTML = r"""
                 ${html}
                 <div class="doc-footer"><span>${ts}</span><span>${escapeHtml(footer)}</span></div>`;
             outputArea.scrollTop = 0;
-            const badge = document.getElementById('outputBadge');
-            badge.style.display = 'inline-flex';
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+            renderMermaid(outputArea);
+        }
+        function showDocMarkdown(text, query='', footer='') {
+            showDoc(renderMarkdown(text), query, footer);
         }
         function clearOutput() {
             outputArea.innerHTML = '<div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">Result will appear here</p></div>';
             document.getElementById('outputBadge').style.display = 'none';
+            if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
         }
         function copyOutput() {
             navigator.clipboard.writeText(outputArea.innerText).then(() => {
                 const b = document.querySelector('.output-action-btn');
                 b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 1500);
             });
+        }
+        async function visualize() {
+            const btn = document.getElementById('vizBtn');
+            const currentText = outputArea.innerText;
+            const fileCtx = uploadedFileContent ? uploadedFileContent.slice(0,8000) : '';
+            const context = fileCtx || currentText.slice(0, 8000);
+            if(!context.trim()) { addMessage('Error','먼저 파일을 업로드하거나 AI 응답이 있어야 합니다.','error-msg'); return; }
+            btn.textContent = '⏳ Analyzing...'; btn.disabled = true;
+            try {
+                const resp = await fetch('/api/visualize', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({context})
+                });
+                const ct = resp.headers.get('content-type') || '';
+                if(!ct.includes('application/json')) { addMessage('Error','세션 만료 또는 서버 오류. 새로고침 후 다시 시도해주세요.','error-msg'); return; }
+                const r = await resp.json();
+                if(r.success && r.chart_data) {
+                    renderChart(r.chart_data, r.title || '📊 Data Visualization');
+                } else if(r.diagram) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<div class="doc-sec-title">🗺️ ${r.title||'Diagram'}</div><div class="mermaid">${r.diagram}</div>`;
+                    outputArea.prepend(div);
+                    renderMermaid(outputArea);
+                } else {
+                    addMessage('Error', r.error || 'Visualization failed', 'error-msg');
+                }
+            } catch(e) { addMessage('Error', 'Viz error: '+e.message, 'error-msg'); }
+            btn.textContent = '📊 Visualize'; btn.disabled = false;
+        }
+        function renderChart(data, title) {
+            if(chartInstance) chartInstance.destroy();
+            const container = document.createElement('div');
+            container.className = 'chart-container';
+            container.innerHTML = `<div class="doc-sec-title">${title}</div><canvas id="vizChart"></canvas>`;
+            outputArea.prepend(container);
+            const ctx = document.getElementById('vizChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: data.type || 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets.map((ds,i) => ({
+                        ...ds,
+                        backgroundColor: ds.backgroundColor || ['#6c5ce7','#74b9ff','#00cec9','#fd79a8','#fdcb6e','#55efc4'][i%6],
+                        borderColor: ds.borderColor || 'transparent',
+                        borderWidth: 1
+                    }))
+                },
+                options: {
+                    responsive:true, plugins:{legend:{labels:{color:'#e0e0f0'}},
+                    title:{display:!!data.title, text:data.title, color:'#e0e0f0'}},
+                    scales: data.type==='pie'||data.type==='doughnut' ? {} : {
+                        x:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}},
+                        y:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}}
+                    }
+                }
+            });
+            outputArea.scrollTop = 0;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
         }
         function addCompareCards(results) {
             const m=document.createElement('div');m.className='message';
@@ -865,6 +975,53 @@ def api_upload():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+
+
+@app.route("/api/visualize", methods=["POST"])
+@login_required
+def api_visualize():
+    """Ask AI to analyze context and return Chart.js data or Mermaid diagram"""
+    try:
+        context = request.json.get("context", "").strip()
+        if not context:
+            return jsonify({"success": False, "error": "No context provided"})
+
+        prompt = f"""다음 데이터/내용을 분석하고, 가장 적합한 시각화를 선택하세요.
+
+데이터:
+{context[:6000]}
+
+다음 중 하나의 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+
+1. 숫자 데이터 → Chart.js 차트:
+{{"type": "chart", "title": "제목", "chart_data": {{"type": "bar"|"line"|"pie"|"doughnut", "labels": [...], "datasets": [{{"label": "...", "data": [...]}}]}}}}
+
+2. 프로세스/관계 → Mermaid 다이어그램:
+{{"type": "diagram", "title": "제목", "diagram": "flowchart TD\\n  A --> B"}}
+
+JSON만 반환하세요."""
+
+        from openai import OpenAI
+        client = OpenAI(api_key=hub.openai_api_key)
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            response_format={"type": "json_object"}
+        )
+        import json as _json
+        result = _json.loads(resp.choices[0].message.content)
+
+        if result.get("type") == "chart":
+            return jsonify({"success": True, "title": result.get("title", "Chart"),
+                            "chart_data": result["chart_data"]})
+        elif result.get("type") == "diagram":
+            return jsonify({"success": True, "title": result.get("title", "Diagram"),
+                            "diagram": result["diagram"]})
+        else:
+            return jsonify({"success": False, "error": "예상치 못한 응답 형식"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/api/fetch_url", methods=["POST"])
