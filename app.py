@@ -607,6 +607,16 @@ MAIN_HTML = r"""
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;}
         function removeLoading(id){document.getElementById(id)?.remove();}
         function escapeHtml(t){if(!t)return'';const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+        async function safeFetch(url, options) {
+            const resp = await fetch(url, options);
+            const ct = resp.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                if (resp.status === 401) throw new Error('세션 만료 — 페이지를 새로고침하고 다시 로그인해주세요.');
+                if (resp.status >= 500) throw new Error(`서버 오류 (${resp.status}) — 잠시 후 다시 시도해주세요.`);
+                throw new Error(`응답 오류 (${resp.status}) — 새로고침 후 다시 시도해주세요.`);
+            }
+            return resp.json();
+        }
 
         // File upload
         const fileInput=document.getElementById('fileInput'), fileBar=document.getElementById('fileBar');
@@ -729,8 +739,8 @@ MAIN_HTML = r"""
             try {
                 let result;
                 if(currentMode==='chat'){
-                    result=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({prompt,provider:currentProvider,persona:currentPersona})}).then(r=>r.json());
+                    result=await safeFetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({prompt,provider:currentProvider,persona:currentPersona})});
                     removeLoading(loadId);
                     if(result.success) {
                         addMessage(result.provider,result.content,'',result.model,result.elapsed_seconds+'s');
@@ -739,14 +749,14 @@ MAIN_HTML = r"""
                     }
                     else addMessage('Error',result.error,'error-msg');
                 } else if(currentMode==='compare'){
-                    result=await fetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({prompt})}).then(r=>r.json());
+                    result=await safeFetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({prompt})});
                     removeLoading(loadId); addCompareCards(result.results);
                     let docCards = result.results.map(r => `<div class="doc-provider"><div class="doc-provider-name"><span class="dot ${r.success?'':'off'}"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s · ${r.model}</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
                     showDoc(`<div class="doc-sec-title">🔄 All AI Responses</div>${docCards}`, text, 'Compare All');
                 } else if(currentMode==='debate'){
-                    result=await fetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({topic:text})}).then(r=>r.json());
+                    result=await safeFetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text})});
                     removeLoading(loadId);
                     addMessage('System',`DEBATE: ${text}\n${result.for_name} vs ${result.against_name}`,'system-msg');
                     for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
@@ -754,8 +764,8 @@ MAIN_HTML = r"""
                     let debRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
                     showDoc(`<div class="doc-sec-title">⚔️ Debate Log</div>${debRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict — ${escapeHtml(result.judge)}</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
                 } else if(currentMode==='discuss'){
-                    result=await fetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({topic:text})}).then(r=>r.json());
+                    result=await safeFetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text})});
                     removeLoading(loadId);
                     const disParticipants = result.participants || [];
                     addMessage('System',`DISCUSSION: ${text}`,'system-msg');
@@ -764,8 +774,8 @@ MAIN_HTML = r"""
                     let disRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
                     showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary||result.error||'')}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);
                 } else if(currentMode==='best'){
-                    result=await fetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({question:text})}).then(r=>r.json());
+                    result=await safeFetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({question:text})});
                     removeLoading(loadId);
                     addMessage('System',`Finding Best: ${text}`,'system-msg');
                     addCompareCards(result.answers);
@@ -775,8 +785,8 @@ MAIN_HTML = r"""
                     showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(result.winner)}</div></div>`, text, `Votes: ${JSON.stringify(result.votes)}`);
                 } else if(currentMode==='persona_debate'){
                     const p1=document.getElementById('personaFor').value, p2=document.getElementById('personaAgainst').value;
-                    result=await fetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({topic:text,persona_for:p1,persona_against:p2})}).then(r=>r.json());
+                    result=await safeFetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text,persona_for:p1,persona_against:p2})});
                     removeLoading(loadId);
                     addMessage('System',`${result.for_name} vs ${result.against_name}: ${text}`,'system-msg');
                     for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
@@ -787,8 +797,8 @@ MAIN_HTML = r"""
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
                     else{
-                        result=await fetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
-                            body:JSON.stringify({topic:prompt,personas:sel})}).then(r=>r.json());
+                        result=await safeFetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel})});
                         removeLoading(loadId);
                         const pdsParticipants = result.participants || [];
                         addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${pdsParticipants.join(', ')}`,'system-msg');
