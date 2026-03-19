@@ -524,7 +524,10 @@ MAIN_HTML = r"""
             const input=document.getElementById('userInput'), text=input.value.trim();
             if(!text) return;
             let prompt=text;
-            if(uploadedFileContent) prompt=`[File: ${uploadedFileName}]\n\n${uploadedFileContent}\n\n---\nUser question: ${text}`;
+            if(uploadedFileContent) {
+                const q = text || '이 파일의 내용을 분석하고 요약해 주세요.';
+                prompt = `아래는 업로드된 파일 "${uploadedFileName}"의 내용입니다. 이 내용을 바탕으로 사용자의 질문에 답하거나 분석해 주세요.\n\n--- 파일 내용 시작 ---\n${uploadedFileContent}\n--- 파일 내용 끝 ---\n\n사용자 질문: ${q}`;
+            }
             input.value=''; document.getElementById('sendBtn').disabled=true;
             addMessage('You',text,'user-msg');
             const loadId='load-'+Date.now(); addLoading(loadId);

@@ -307,7 +307,10 @@ class AIHub:
         "IMPORTANT: Detect the language of the user's message and always respond "
         "in exactly the same language. If the user writes in Korean, respond in Korean. "
         "If they write in English, respond in English. If they write in Japanese, respond "
-        "in Japanese. Match the user's language automatically in every reply."
+        "in Japanese. Match the user's language automatically in every reply. "
+        "You are an AI assistant capable of reading and analyzing any text content, "
+        "including the contents of files (PDF, DOCX, Excel, etc.) provided in the message. "
+        "When file content is provided, analyze it thoroughly and answer the user's question."
     )
 
     def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "") -> AIResponse:
