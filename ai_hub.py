@@ -39,7 +39,7 @@ class AIResponse:
 class AIHub:
     """Unified AI Hub - All AIs in one interface"""
 
-    PROVIDERS = ["chatgpt", "gemini", "azure"]
+    PROVIDERS = ["chatgpt", "gemini", "azure", "claude", "grok"]
 
     def __init__(
         self,
@@ -47,22 +47,30 @@ class AIHub:
         gemini_api_key: Optional[str] = None,
         azure_api_key: Optional[str] = None,
         azure_endpoint: Optional[str] = None,
+        claude_api_key: Optional[str] = None,
+        grok_api_key: Optional[str] = None,
         chatgpt_model: str = "gpt-4o-mini",
         gemini_model: str = "gemini-2.5-flash",
         azure_model: str = "gpt-4o-mini",
         azure_api_version: str = "2024-10-21",
+        claude_model: str = "claude-sonnet-4-20250514",
+        grok_model: str = "grok-3-mini-fast",
     ):
         # API 키 로드 (인자 > 환경변수)
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         self.azure_api_key = azure_api_key or os.getenv("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.claude_api_key = claude_api_key or os.getenv("CLAUDE_API_KEY")
+        self.grok_api_key = grok_api_key or os.getenv("GROK_API_KEY")
 
         # 모델 설정
         self.chatgpt_model = chatgpt_model
         self.gemini_model = gemini_model
         self.azure_model = azure_model
         self.azure_api_version = azure_api_version
+        self.claude_model = claude_model
+        self.grok_model = grok_model
 
         # Chat history
         self._history: dict[str, list] = {p: [] for p in self.PROVIDERS}
@@ -71,6 +79,8 @@ class AIHub:
         self._openai_client = None
         self._azure_client = None
         self._gemini_model_obj = None
+        self._claude_client = None
+        self._grok_client = None
 
     # ──────────────────────────── Availability Check ────────────────────────────
 
@@ -83,6 +93,10 @@ class AIHub:
             providers.append("gemini")
         if self.azure_api_key and self.azure_endpoint:
             providers.append("azure")
+        if self.claude_api_key:
+            providers.append("claude")
+        if self.grok_api_key:
+            providers.append("grok")
         return providers
 
     def status(self) -> dict:
@@ -91,6 +105,8 @@ class AIHub:
             "chatgpt": "Ready" if self.openai_api_key else "No API Key",
             "gemini": "Ready" if self.gemini_api_key else "No API Key",
             "azure": "Ready" if (self.azure_api_key and self.azure_endpoint) else "No Key/Endpoint",
+            "claude": "Ready" if self.claude_api_key else "No API Key",
+            "grok": "Ready" if self.grok_api_key else "No API Key",
         }
 
     # ──────────────────────────── Individual AI Calls ────────────────────────────
@@ -208,6 +224,82 @@ class AIHub:
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
+    def _get_claude_client(self):
+        if self._claude_client is None:
+            import anthropic
+            self._claude_client = anthropic.Anthropic(api_key=self.claude_api_key)
+        return self._claude_client
+
+    def _get_grok_client(self):
+        if self._grok_client is None:
+            from openai import OpenAI
+            self._grok_client = OpenAI(
+                api_key=self.grok_api_key,
+                base_url="https://api.x.ai/v1",
+            )
+        return self._grok_client
+
+    def _ask_claude(self, prompt: str, system_prompt: str = "") -> AIResponse:
+        """Ask Claude (Anthropic)"""
+        import time
+        start = time.time()
+        try:
+            client = self._get_claude_client()
+            kwargs = {
+                "model": self.claude_model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            if system_prompt:
+                kwargs["system"] = system_prompt
+            response = client.messages.create(**kwargs)
+            content = response.content[0].text
+            self._history["claude"].append({"role": "user", "content": prompt})
+            self._history["claude"].append({"role": "assistant", "content": content})
+            return AIResponse(
+                provider="Claude",
+                model=self.claude_model,
+                content=content,
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+        except Exception as e:
+            return AIResponse(
+                provider="Claude", model=self.claude_model,
+                content="", success=False, error=str(e),
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+
+    def _ask_grok(self, prompt: str, system_prompt: str = "") -> AIResponse:
+        """Ask Grok (xAI)"""
+        import time
+        start = time.time()
+        try:
+            client = self._get_grok_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["grok"])
+            messages.append({"role": "user", "content": prompt})
+            response = client.chat.completions.create(
+                model=self.grok_model,
+                messages=messages,
+            )
+            content = response.choices[0].message.content
+            self._history["grok"].append({"role": "user", "content": prompt})
+            self._history["grok"].append({"role": "assistant", "content": content})
+            return AIResponse(
+                provider="Grok",
+                model=self.grok_model,
+                content=content,
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+        except Exception as e:
+            return AIResponse(
+                provider="Grok", model=self.grok_model,
+                content="", success=False, error=str(e),
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+
     # ──────────────────────────── Unified Interface ────────────────────────────
 
     def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "") -> AIResponse:
@@ -219,6 +311,10 @@ class AIHub:
             return self._ask_gemini(prompt, system_prompt)
         elif provider == "azure":
             return self._ask_azure(prompt, system_prompt)
+        elif provider == "claude":
+            return self._ask_claude(prompt, system_prompt)
+        elif provider == "grok":
+            return self._ask_grok(prompt, system_prompt)
         else:
             return AIResponse(
                 provider=provider, model="unknown",
