@@ -166,33 +166,35 @@ MAIN_HTML = r"""
             --accent: #6c5ce7; --accent2: #a29bfe; --green: #00d2a0;
             --orange: #fdcb6e; --red: #ff6b6b; --blue: #74b9ff;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .header {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border-bottom: 1px solid var(--border);
-            padding: 14px 24px;
+            padding: 12px 20px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: space-between;
         }
         .header h1 {
-            font-size: 20px; font-weight: 700;
+            font-size: 19px; font-weight: 700;
             background: linear-gradient(135deg, var(--accent2), var(--blue));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .header-right { display: flex; gap: 16px; align-items: center; }
-        .status-dots { display: flex; gap: 12px; }
-        .status-dot { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-        .status-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-        .status-dot .dot.off { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        .header-right { display: flex; gap: 14px; align-items: center; }
+        .status-dots { display: flex; gap: 10px; }
+        .status-dot { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+        .status-dot .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-dot .dot.off { background: var(--red); box-shadow: 0 0 6px var(--red); }
         .logout-btn {
-            padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
+            padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
             background: var(--surface2); color: var(--text2); font-size: 12px;
             text-decoration: none; transition: all 0.2s;
         }
         .logout-btn:hover { border-color: var(--red); color: var(--red); }
-        .container { display: grid; grid-template-columns: 250px 1fr; height: calc(100vh - 53px); }
+        /* 3-column layout */
+        .container { display: flex; flex: 1; overflow: hidden; }
         .sidebar {
+            width: 220px; min-width: 220px; flex-shrink: 0;
             background: var(--surface); border-right: 1px solid var(--border);
-            padding: 14px; overflow-y: auto;
+            padding: 12px; overflow-y: auto;
         }
         .sidebar h3 {
             font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
@@ -216,8 +218,41 @@ MAIN_HTML = r"""
         }
         .persona-chip:hover { border-color: var(--accent); }
         .persona-chip.selected { border-color: var(--green); background: #1a3a2a; color: var(--green); }
-        .main { display: flex; flex-direction: column; height: 100%; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 20px; }
+        .main-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); }
+        .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        /* Output panel */
+        .output-panel { display: flex; flex-direction: column; width: 42%; min-width: 320px; background: #0d0d14; }
+        .output-panel-header {
+            padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+            background: var(--surface); display: flex; align-items: center; justify-content: space-between;
+        }
+        .output-panel-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .output-panel-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--green); color: var(--green); background: #0a2a1a; display: none; }
+        .output-action-btn { padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text2); font-size: 11px; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; }
+        .output-action-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+        .output-area { flex: 1; overflow-y: auto; padding: 22px; }
+        /* Doc formatting */
+        .doc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text2); text-align: center; gap: 10px; }
+        .doc-empty .ei { font-size: 36px; opacity: 0.25; }
+        .doc-query { background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 18px; }
+        .doc-sec-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent2); margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+        .doc-provider { margin-bottom: 14px; }
+        .doc-provider-name { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+        .doc-provider-name .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; }
+        .doc-provider-name .ti { font-size: 10px; color: var(--text2); font-weight: 400; }
+        .doc-answer { font-size: 13px; line-height: 1.75; color: #c0c0d8; white-space: pre-wrap; word-break: break-word; }
+        .doc-divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+        .doc-round { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; margin-bottom: 8px; }
+        .doc-round-meta { font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+        .doc-round-speaker { font-size: 12px; font-weight: 600; color: var(--accent2); margin-bottom: 4px; }
+        .doc-round-text { font-size: 13px; line-height: 1.6; color: #c0c0d8; }
+        .doc-verdict { background: #2a1a08; border: 1px solid var(--orange); border-radius: 8px; padding: 12px; margin-top: 12px; }
+        .doc-verdict-label { font-size: 10px; color: var(--orange); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .doc-verdict-text { font-size: 13px; line-height: 1.6; color: #e8d0b0; }
+        .doc-winner { background: #0a2a1a; border: 1px solid var(--green); border-radius: 8px; padding: 10px 13px; margin-top: 10px; }
+        .doc-winner-label { font-size: 10px; color: var(--green); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .doc-winner-text { font-size: 13px; color: #a0f0c0; }
+        .doc-footer { font-size: 10px; color: var(--text2); margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
         .message { margin-bottom: 16px; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .msg-header {
@@ -289,7 +324,7 @@ MAIN_HTML = r"""
 </head>
 <body>
     <div class="header">
-        <h1>AI Hub</h1>
+        <h1>⚡ AI Hub</h1>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
             <a href="/logout" class="logout-btn">Logout</a>
@@ -314,7 +349,7 @@ MAIN_HTML = r"""
             <h3>Persona</h3>
             <div class="persona-grid" id="personaGrid"></div>
         </div>
-        <div class="main">
+        <div class="main-panel">
             <div class="chat-area" id="chatArea"></div>
             <div class="input-area">
                 <div class="persona-selectors hidden" id="personaSelectors">
@@ -340,12 +375,28 @@ MAIN_HTML = r"""
                 </div>
             </div>
         </div>
+        <div class="output-panel">
+            <div class="output-panel-header">
+                <div class="output-panel-title">
+                    📄 Result Document
+                    <span class="output-panel-badge" id="outputBadge">✓ Ready</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button class="output-action-btn" onclick="copyOutput()">Copy</button>
+                    <button class="output-action-btn" onclick="clearOutput()">Clear</button>
+                </div>
+            </div>
+            <div class="output-area" id="outputArea">
+                <div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">AI 분석 결과가<br>여기에 문서화됩니다</p></div>
+            </div>
+        </div>
     </div>
     <script>
         let currentMode='chat', currentProvider='chatgpt', currentPersona='',
             uploadedFileContent='', uploadedFileName='';
         const personas = PERSONA_DATA;
         const chatArea = document.getElementById('chatArea');
+        const outputArea = document.getElementById('outputArea');
 
         function initStatus() {
             const status = AI_STATUS;
@@ -396,6 +447,26 @@ MAIN_HTML = r"""
             let tH=time?`<span class="time">${time}</span>`:'';
             m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${escapeHtml(b)}</div>`;
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
+        }
+        function showDoc(html, query='', footer='') {
+            const ts = new Date().toLocaleTimeString();
+            outputArea.innerHTML = `
+                ${query ? `<div class="doc-query">${escapeHtml(query)}</div>` : ''}
+                ${html}
+                <div class="doc-footer"><span>${ts}</span><span>${escapeHtml(footer)}</span></div>`;
+            outputArea.scrollTop = 0;
+            const badge = document.getElementById('outputBadge');
+            badge.style.display = 'inline-flex';
+        }
+        function clearOutput() {
+            outputArea.innerHTML = '<div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">Result will appear here</p></div>';
+            document.getElementById('outputBadge').style.display = 'none';
+        }
+        function copyOutput() {
+            navigator.clipboard.writeText(outputArea.innerText).then(() => {
+                const b = document.querySelector('.output-action-btn');
+                b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 1500);
+            });
         }
         function addCompareCards(results) {
             const m=document.createElement('div');m.className='message';
@@ -462,12 +533,18 @@ MAIN_HTML = r"""
                     result=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({prompt,provider:currentProvider,persona:currentPersona})}).then(r=>r.json());
                     removeLoading(loadId);
-                    if(result.success) addMessage(result.provider,result.content,'',result.model,result.elapsed_seconds+'s');
+                    if(result.success) {
+                        addMessage(result.provider,result.content,'',result.model,result.elapsed_seconds+'s');
+                        const persona_label = currentPersona ? `Persona: ${currentPersona}` : result.provider;
+                        showDoc(`<div class="doc-sec-title">💬 Response</div><div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(result.provider)} <span class="ti">${result.elapsed_seconds}s · ${result.model}</span></div><div class="doc-answer">${escapeHtml(result.content)}</div></div>`, text, persona_label);
+                    }
                     else addMessage('Error',result.error,'error-msg');
                 } else if(currentMode==='compare'){
                     result=await fetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({prompt})}).then(r=>r.json());
                     removeLoading(loadId); addCompareCards(result.results);
+                    let docCards = result.results.map(r => `<div class="doc-provider"><div class="doc-provider-name"><span class="dot ${r.success?'':'off'}"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s · ${r.model}</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
+                    showDoc(`<div class="doc-sec-title">🔄 All AI Responses</div>${docCards}`, text, 'Compare All');
                 } else if(currentMode==='debate'){
                     result=await fetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text})}).then(r=>r.json());
@@ -475,6 +552,8 @@ MAIN_HTML = r"""
                     addMessage('System',`DEBATE: ${text}\n${result.for_name} vs ${result.against_name}`,'system-msg');
                     for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
                     addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                    let debRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">⚔️ Debate Log</div>${debRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict — ${escapeHtml(result.judge)}</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
                 } else if(currentMode==='discuss'){
                     result=await fetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text})}).then(r=>r.json());
@@ -482,6 +561,8 @@ MAIN_HTML = r"""
                     addMessage('System',`DISCUSSION: ${text}`,'system-msg');
                     for(const e of result.discussion_log) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
                     addMessage('Summary',result.summary,'judge-msg','CONCLUSION');
+                    let disRounds = result.discussion_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary)}</div></div>`, text, `Participants: ${result.participants.join(', ')}`);
                 } else if(currentMode==='best'){
                     result=await fetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({question:text})}).then(r=>r.json());
@@ -490,6 +571,8 @@ MAIN_HTML = r"""
                     addCompareCards(result.answers);
                     for(const e of result.evaluations) addMessage(`${e.evaluator}`,e.evaluation,'','EVAL');
                     addMessage('Winner',`${result.winner}\nVotes: ${JSON.stringify(result.votes)}`,'judge-msg','WINNER');
+                    let bestCards = result.answers.map(r=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
+                    showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(result.winner)}</div></div>`, text, `Votes: ${JSON.stringify(result.votes)}`);
                 } else if(currentMode==='persona_debate'){
                     const p1=document.getElementById('personaFor').value, p2=document.getElementById('personaAgainst').value;
                     result=await fetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -498,6 +581,8 @@ MAIN_HTML = r"""
                     addMessage('System',`${result.for_name} vs ${result.against_name}: ${text}`,'system-msg');
                     for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
                     addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                    let pdRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">🎭 Persona Debate</div>${pdRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
                 } else if(currentMode==='persona_discuss'){
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
@@ -508,6 +593,8 @@ MAIN_HTML = r"""
                         addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${result.participants.join(', ')}`,'system-msg');
                         for(const e of result.discussion_log) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
                         addMessage('Synthesis',result.synthesis,'judge-msg','CONCLUSION');
+                        let pdsRounds = result.discussion_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis)}</div></div>`, text, `Participants: ${result.participants.join(', ')}`);
                     }
                 }
             }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
