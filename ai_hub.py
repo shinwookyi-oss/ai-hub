@@ -302,19 +302,31 @@ class AIHub:
 
     # ──────────────────────────── Unified Interface ────────────────────────────
 
+    # Language instruction always prepended
+    _LANG_INSTRUCTION = (
+        "IMPORTANT: Detect the language of the user's message and always respond "
+        "in exactly the same language. If the user writes in Korean, respond in Korean. "
+        "If they write in English, respond in English. If they write in Japanese, respond "
+        "in Japanese. Match the user's language automatically in every reply."
+    )
+
     def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "") -> AIResponse:
-        """Ask a specific AI provider"""
+        """Ask a specific AI provider. Automatically responds in the user's language."""
         provider = provider.lower()
+        # Prepend language instruction to system prompt
+        lang_sys = self._LANG_INSTRUCTION
+        if system_prompt:
+            lang_sys = f"{self._LANG_INSTRUCTION}\n\n{system_prompt}"
         if provider == "chatgpt":
-            return self._ask_chatgpt(prompt, system_prompt)
+            return self._ask_chatgpt(prompt, lang_sys)
         elif provider == "gemini":
-            return self._ask_gemini(prompt, system_prompt)
+            return self._ask_gemini(prompt, lang_sys)
         elif provider == "azure":
-            return self._ask_azure(prompt, system_prompt)
+            return self._ask_azure(prompt, lang_sys)
         elif provider == "claude":
-            return self._ask_claude(prompt, system_prompt)
+            return self._ask_claude(prompt, lang_sys)
         elif provider == "grok":
-            return self._ask_grok(prompt, system_prompt)
+            return self._ask_grok(prompt, lang_sys)
         else:
             return AIResponse(
                 provider=provider, model="unknown",
