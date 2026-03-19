@@ -8,6 +8,8 @@ Environment Variables (set in Render Dashboard):
   GEMINI_API_KEY       - Gemini API key
   AZURE_OPENAI_API_KEY - Azure OpenAI API key
   AZURE_OPENAI_ENDPOINT - Azure endpoint URL
+  CLAUDE_API_KEY       - Claude (Anthropic) API key
+  GROK_API_KEY         - Grok (xAI) API key
   APP_USERNAME         - Login username (default: admin)
   APP_PASSWORD         - Login password (default: aihub2026)
   SECRET_KEY           - Flask session secret (auto-generated if not set)
@@ -115,7 +117,7 @@ LOGIN_HTML = """
 <body>
     <div class="login-box">
         <h1>AI Hub</h1>
-        <p class="subtitle">ChatGPT | Gemini | Azure OpenAI</p>
+        <p class="subtitle">ChatGPT | Gemini | Azure | Claude | Grok</p>
         ERROR_MSG
         <form method="POST">
             <input type="text" name="username" placeholder="Username" autofocus required>
@@ -302,10 +304,13 @@ MAIN_HTML = r"""
             <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')">🗣️ Discussion</button>
             <button class="mode-btn" data-mode="best" onclick="setMode('best')">🏆 Best Answer</button>
             <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')">🎭 Persona Debate</button>
+            <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')">🧠 Persona Discussion</button>
             <h3>Provider</h3>
             <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
             <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
             <button class="mode-btn" data-provider="azure" onclick="setProvider('azure')">Azure OpenAI</button>
+            <button class="mode-btn" data-provider="claude" onclick="setProvider('claude')">Claude</button>
+            <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
             <h3>Persona</h3>
             <div class="persona-grid" id="personaGrid"></div>
         </div>
@@ -315,6 +320,10 @@ MAIN_HTML = r"""
                 <div class="persona-selectors hidden" id="personaSelectors">
                     <div><label>FOR</label><select id="personaFor"></select></div>
                     <div><label>AGAINST</label><select id="personaAgainst"></select></div>
+                </div>
+                <div id="personaMultiSelect" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px;">
+                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;">Select personas for group discussion (2+):</div>
+                    <div id="personaCheckboxes" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
                 </div>
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
@@ -351,10 +360,12 @@ MAIN_HTML = r"""
                   f=document.getElementById('personaFor'),
                   a=document.getElementById('personaAgainst');
             g.innerHTML=''; f.innerHTML=''; a.innerHTML='';
+            const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
             for (const [k,n] of Object.entries(personas)) {
                 g.innerHTML += `<div class="persona-chip" data-key="${k}" onclick="togglePersona('${k}')">${n}</div>`;
                 f.innerHTML += `<option value="${k}">${n}</option>`;
                 a.innerHTML += `<option value="${k}">${n}</option>`;
+                cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${k}" class="persona-cb"> ${n}</label>`;
             }
             const keys=Object.keys(personas);
             if (keys.length>=2) a.value=keys[1];
@@ -364,8 +375,9 @@ MAIN_HTML = r"""
             document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
             document.querySelector(`.mode-btn[data-mode="${m}"]`)?.classList.add('active');
             document.getElementById('personaSelectors').classList.toggle('hidden', m!=='persona_debate');
+            document.getElementById('personaMultiSelect').style.display = (m==='persona_discuss') ? 'flex' : 'none';
             const ph={chat:'Type your message...',compare:'Ask all AIs...',debate:'Debate topic...',
-                       discuss:'Discussion topic...',best:'Question for best answer...',persona_debate:'Persona debate topic...'};
+                       discuss:'Discussion topic...',best:'Question for best answer...',persona_debate:'Persona debate topic...',persona_discuss:'Topic for persona group discussion...'};
             document.getElementById('userInput').placeholder = ph[m] || 'Type...';
         }
         function setProvider(p) {
@@ -486,6 +498,17 @@ MAIN_HTML = r"""
                     addMessage('System',`${result.for_name} vs ${result.against_name}: ${text}`,'system-msg');
                     for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
                     addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                } else if(currentMode==='persona_discuss'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
+                    else{
+                        result=await fetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel})}).then(r=>r.json());
+                        removeLoading(loadId);
+                        addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${result.participants.join(', ')}`,'system-msg');
+                        for(const e of result.discussion_log) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
+                        addMessage('Synthesis',result.synthesis,'judge-msg','CONCLUSION');
+                    }
                 }
             }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
             document.getElementById('sendBtn').disabled=false;input.focus();
@@ -584,6 +607,18 @@ def api_persona_debate():
     return jsonify({"topic": result["topic"], "for_name": result["for"],
         "against_name": result["against"], "judge": result["judge"],
         "debate_log": result["debate_log"], "judgment": result["judgment"]})
+
+
+@app.route("/api/persona_discuss", methods=["POST"])
+@login_required
+def api_persona_discuss():
+    data = request.json
+    result = hub.persona_discuss(topic=data.get("topic", ""),
+        persona_keys=data.get("personas", []), rounds=2)
+    if "error" in result:
+        return jsonify({"error": result["error"]}), 400
+    return jsonify({"topic": result["topic"], "participants": result["participants"],
+        "discussion_log": result["discussion_log"], "synthesis": result["synthesis"]})
 
 
 @app.route("/api/upload", methods=["POST"])
