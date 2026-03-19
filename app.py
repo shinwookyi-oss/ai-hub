@@ -292,6 +292,12 @@ MAIN_HTML = r"""
         .upload-btn:hover { border-color: var(--accent); }
         .remove-file-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 14px; padding: 2px 6px; }
         .file-bar.dragover { border-color: var(--accent); background: #1e1e3a; border-style: solid; }
+        .url-bar {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+            padding: 7px 12px; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; font-size: 12px; color: var(--text2); transition: all 0.2s;
+        }
+        .url-bar.has-url { border-color: var(--blue); background: #1a1a2e; }
         .persona-selectors { display: flex; gap: 12px; margin-bottom: 10px; }
         .persona-selectors select {
             padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
@@ -369,6 +375,11 @@ MAIN_HTML = r"""
                     <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕</button>
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse</button>
                     <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx" style="display:none">
+                </div>
+                <div class="url-bar" id="urlBar">
+                    <span>🌐</span>
+                    <input type="text" id="urlInput" placeholder="https://... 웹사이트 URL 입력 후 Enter" style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;font-family:'Inter',sans-serif;">
+                    <button class="upload-btn" id="urlFetchBtn" onclick="fetchUrl()">Fetch</button>
                 </div>
                 <div class="input-row">
                     <input type="text" id="userInput" placeholder="Type your message..." autofocus>
@@ -518,6 +529,36 @@ MAIN_HTML = r"""
             document.getElementById('fileSize').classList.add('hidden');
             document.getElementById('removeFileBtn').classList.add('hidden');
             fileBar.classList.remove('has-file');fileInput.value='';
+        }
+
+        // URL bar setup
+        const urlInput = document.getElementById('urlInput');
+        urlInput.addEventListener('keydown', e => { if(e.key==='Enter') fetchUrl(); });
+
+        async function fetchUrl() {
+            const url = urlInput.value.trim();
+            if(!url) return;
+            const btn = document.getElementById('urlFetchBtn');
+            btn.textContent = 'Loading...'; btn.disabled = true;
+            try {
+                const r = await fetch('/api/fetch_url', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({url})
+                }).then(r => r.json());
+                if(r.success) {
+                    uploadedFileContent = r.content;
+                    uploadedFileName = `[웹페이지] ${r.title}`;
+                    document.getElementById('urlBar').classList.add('has-url');
+                    addMessage('System', `🌐 URL 로드 완료: ${r.title}\n${r.url}\n(${r.char_count.toLocaleString()} 글자)`, 'system-msg');
+                    addMessage('System', '이제 질문을 입력하면 이 웹페이지 내용을 바탕으로 분석합니다.', 'system-msg');
+                } else {
+                    addMessage('Error', 'URL 로드 실패: ' + r.error, 'error-msg');
+                }
+            } catch(e) {
+                addMessage('Error', 'URL 로드 오류: ' + e.message, 'error-msg');
+            }
+            btn.textContent = 'Fetch'; btn.disabled = false;
         }
 
         async function send() {
@@ -732,12 +773,41 @@ def api_upload():
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
         elif ext == ".pdf":
+            # Step 1: Try normal text extraction
             try:
-                import PyPDF2
+                import pypdf
                 with open(filepath, "rb") as f:
-                    reader = PyPDF2.PdfReader(f)
+                    reader = pypdf.PdfReader(f)
                     for page in reader.pages: content += page.extract_text() or ""
-            except ImportError: content = "[PDF: pip install PyPDF2]"
+            except Exception: content = ""
+
+            # Step 2: If text is empty → AI Vision OCR using GPT-4o
+            if len(content.strip()) < 50 and hub.openai_api_key:
+                try:
+                    import fitz, base64  # PyMuPDF
+                    from openai import OpenAI
+                    client = OpenAI(api_key=hub.openai_api_key)
+                    doc = fitz.open(filepath)
+                    ocr_pages = []
+                    total_pages = len(doc)
+                    for i in range(total_pages):
+                        pix = doc[i].get_pixmap(dpi=150)
+                        b64 = base64.b64encode(pix.tobytes("png")).decode()
+                        resp = client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{"role":"user","content":[
+                                {"type":"text","text":f"이 PDF 페이지({i+1}/{total_pages})의 모든 텍스트를 정확하게 추출해주세요. 표, 숫자, 특수문자도 포함해서 원본 그대로 출력해주세요."},
+                                {"type":"image_url","image_url":{"url":f"data:image/png;base64,{b64}","detail":"high"}}
+                            ]}],
+                            max_tokens=4096
+                        )
+                        ocr_pages.append(f"=== 페이지 {i+1} ===\n{resp.choices[0].message.content}")
+                    content = "\n\n".join(ocr_pages)
+                    doc.close()
+                except Exception as e:
+                    if not content.strip(): content = f"[OCR 실패: {str(e)}]"
+            elif len(content.strip()) < 50:
+                content = "[PDF: 이미지 기반 PDF - OpenAI API 키 필요]"
         elif ext == ".docx":
             try:
                 import docx
@@ -760,6 +830,51 @@ def api_upload():
         if len(content) > 50000: content = content[:50000] + "\n\n[... truncated ...]"
         return jsonify({"success": True, "filename": file.filename,
             "size": os.path.getsize(filepath), "char_count": len(content), "content": content})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+
+@app.route("/api/fetch_url", methods=["POST"])
+@login_required
+def api_fetch_url():
+    """Fetch and extract text content from a URL for AI analysis"""
+    try:
+        url = request.json.get("url", "").strip()
+        if not url:
+            return jsonify({"success": False, "error": "No URL provided"})
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+
+        import requests as req
+        from bs4 import BeautifulSoup
+
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        resp = req.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        # Remove scripts, styles, nav elements
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "iframe"]):
+            tag.decompose()
+
+        text = soup.get_text(separator="\n", strip=True)
+        # Clean up excessive blank lines
+        import re
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        if len(text) > 40000:
+            text = text[:40000] + "\n\n[... 내용이 길어 일부 생략됨 ...]"
+
+        title = soup.title.string.strip() if soup.title else url
+
+        return jsonify({
+            "success": True,
+            "url": url,
+            "title": title,
+            "content": text,
+            "char_count": len(text)
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
