@@ -522,6 +522,97 @@ class AIHub:
         response.provider = f"{response.provider} as {persona_name}"
         return response
 
+    def persona_discuss(self, topic: str, persona_keys: list[str],
+                        rounds: int = 2, callback=None) -> dict:
+        """
+        Multiple personas have a group discussion on a topic.
+
+        Each persona uses a different AI provider (round-robin).
+        After all rounds, a synthesis is generated.
+
+        Args:
+            topic: Discussion topic
+            persona_keys: List of persona keys to participate
+            rounds: Number of discussion rounds
+            callback: Optional progress callback
+
+        Returns:
+            dict with discussion_log, participants, and synthesis
+        """
+        available = self.available_providers()
+        if not available:
+            return {"error": "No AI providers available"}
+
+        participants = []
+        for key in persona_keys:
+            name = self.get_persona_name(key)
+            if name:
+                participants.append({"key": key, "name": name})
+
+        if len(participants) < 2:
+            return {"error": "Need at least 2 personas for discussion"}
+
+        discussion_log = []
+
+        for r in range(1, rounds + 1):
+            for i, p in enumerate(participants):
+                provider = available[i % len(available)]
+                persona_prompt = self.get_persona_prompt(p["key"])
+                other_names = [pp["name"] for pp in participants if pp["key"] != p["key"]]
+
+                sys_prompt = (
+                    f"{persona_prompt}\n\n"
+                    f"You are in a group discussion about: '{topic}'. "
+                    f"Other participants: {', '.join(other_names)}. "
+                    f"Stay fully in character. Share your unique perspective. "
+                    f"Respond to others' points when relevant. Under 120 words."
+                )
+
+                if r == 1 and i == 0:
+                    prompt = f"Start the group discussion on: '{topic}'. Share your opening thoughts."
+                else:
+                    recent = discussion_log[-min(len(discussion_log), len(participants)):]
+                    context = "\n".join([f"{e['speaker']}: {e['content']}" for e in recent])
+                    prompt = (
+                        f"The discussion so far (Round {r}):\n\n{context}\n\n"
+                        f"Share your thoughts. Respond to others, agree, disagree, or add new insights."
+                    )
+
+                resp = self.ask(prompt, provider=provider, system_prompt=sys_prompt)
+                discussion_log.append({
+                    "round": r,
+                    "speaker": p["name"],
+                    "persona_key": p["key"],
+                    "provider": provider,
+                    "content": resp.content,
+                })
+                if callback:
+                    callback(p["name"], r, resp)
+
+        # Generate synthesis
+        full_discussion = "\n".join([
+            f"[R{e['round']}] {e['speaker']}: {e['content']}" for e in discussion_log
+        ])
+        participant_names = [p["name"] for p in participants]
+        synthesis_prompt = (
+            f"You just witnessed a group discussion about '{topic}' between: "
+            f"{', '.join(participant_names)}.\n\n"
+            f"{full_discussion}\n\n"
+            f"Synthesize the key insights from each participant. "
+            f"What were the main agreements, disagreements, and unique perspectives? "
+            f"What is the most actionable conclusion? Under 250 words."
+        )
+        synth_resp = self.ask(synthesis_prompt, provider=available[0],
+                              system_prompt="You are a neutral moderator summarizing a discussion.")
+
+        return {
+            "topic": topic,
+            "participants": participant_names,
+            "rounds": rounds,
+            "discussion_log": discussion_log,
+            "synthesis": synth_resp.content,
+        }
+
     def persona_debate(self, topic: str, persona_for: str, persona_against: str,
                        ai_for: str = "chatgpt", ai_against: str = "gemini",
                        judge: str = "azure", rounds: int = 3, callback=None) -> dict:
