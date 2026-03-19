@@ -61,8 +61,8 @@ class AIHub:
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         self.azure_api_key = azure_api_key or os.getenv("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.claude_api_key = claude_api_key or os.getenv("CLAUDE_API_KEY")
-        self.grok_api_key = grok_api_key or os.getenv("GROK_API_KEY")
+        self.claude_api_key = claude_api_key or os.getenv("CLAUDE_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+        self.grok_api_key = grok_api_key or os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")
 
         # 모델 설정
         self.chatgpt_model = chatgpt_model
