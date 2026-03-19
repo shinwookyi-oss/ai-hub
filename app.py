@@ -758,6 +758,23 @@ def api_upload():
         return jsonify({"success": False, "error": str(e)})
 
 
+# ── Global error handlers → always return JSON for /api/* ──
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": str(e),
+                        "detail": traceback.format_exc()[-500:]}), 500
+    raise e
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": "Internal server error", "detail": str(e)}), 500
+    return str(e), 500
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     print(f"\n  AI Hub Web App")
