@@ -507,7 +507,17 @@ MAIN_HTML = r"""
         async function uploadFile(file) {
             const fd=new FormData(); fd.append('file',file);
             try{
-                const r=await fetch('/api/upload',{method:'POST',body:fd}).then(r=>r.json());
+                const resp = await fetch('/api/upload', {method:'POST', body:fd});
+                const ct = resp.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    if (resp.status === 401) {
+                        addMessage('Error', '⚠️ 세션 만료. 페이지를 새로고침하고 다시 로그인해주세요.', 'error-msg');
+                    } else {
+                        addMessage('Error', `서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`, 'error-msg');
+                    }
+                    return;
+                }
+                const r = await resp.json();
                 if(r.success){
                     uploadedFileContent=r.content; uploadedFileName=r.filename;
                     const kb=(r.size/1024).toFixed(1);
@@ -519,8 +529,8 @@ MAIN_HTML = r"""
                     document.getElementById('removeFileBtn').classList.remove('hidden');
                     fileBar.classList.add('has-file');
                     addMessage('System',`File: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()} chars)`,'system-msg');
-                }else{addMessage('Error',r.error,'error-msg');}
-            }catch(e){addMessage('Error','Upload failed: '+e.message,'error-msg');}
+                }else{addMessage('Error',r.error||'Upload failed','error-msg');}
+            }catch(e){addMessage('Error','업로드 오류: '+e.message,'error-msg');}
         }
         function removeFile(){
             uploadedFileContent='';uploadedFileName='';
