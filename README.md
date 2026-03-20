@@ -59,6 +59,24 @@ Historical figures and expert personas that shape AI responses:
 - Automatically detects user language (Korean, English, Japanese, etc.)
 - Responds in the same language
 
+### 🎤 Voice Support
+- 🎙️ **Speech-to-Text** — Click the mic button, speak, and auto-send
+- 🔊 **Text-to-Speech** — Click the speaker icon on any AI response to hear it read aloud
+- Supports multiple languages via Web Speech API
+
+### 📱 Mobile Responsive
+- Hamburger menu for sidebar navigation
+- Single-panel view with Chat/Output tab switcher
+- Optimized layout for all screen sizes
+
+### 🌐 Supported Browsers
+| Browser | STT (Mic) | TTS (Speaker) |
+|---------|-----------|---------------|
+| **Chrome** | ✅ | ✅ |
+| **Edge** | ✅ | ✅ |
+| **Safari** | ⚠️ Limited | ✅ |
+| **Firefox** | ❌ | ✅ |
+
 ---
 
 ## 🚀 Quick Start
