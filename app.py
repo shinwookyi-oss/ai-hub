@@ -755,7 +755,11 @@ MAIN_HTML = r"""
         [data-theme="dim"] .info-strip { background:#0d1117;border-color:#21262d; }
         [data-theme="dim"] .output-panel { background:#0d1117; }
         [data-theme="dim"] .msg-body.user-msg { background:#1c2433;border-color:#58a6ff; }
+        [data-theme="dim"] #workspaceBtn { background:#1c2433 !important; }
         [data-theme="dim"] .header-tab.active { background:#1c2433; }
+        [data-theme="light"] #workspaceBtn { background:#ede9ff !important; color:#5a4bd1 !important; }
+        [data-theme="warm"] #workspaceBtn { background:#2d1f0a !important; }
+        [data-theme="ocean"] #workspaceBtn { background:#0d2a40 !important; }
         /* light */
         [data-theme="light"] { --bg:#f5f6f8;--surface:#ffffff;--surface2:#eaecef;--border:#d0d7de;--text:#1a1a2e;--text2:#57606a;--accent:#6c5ce7;--accent2:#5a4bd1;--green:#1a7f37;--orange:#bf8700;--red:#cf222e;--blue:#0969da; }
         [data-theme="light"] .header { background:linear-gradient(135deg,#eaecef,#d9dde3) !important;border-color:#d0d7de; }
@@ -887,7 +891,7 @@ MAIN_HTML = r"""
         </div>
     </div>
         <div class="sidebar" id="mainSidebar">
-            <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
