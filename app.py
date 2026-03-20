@@ -397,16 +397,66 @@ MAIN_HTML = r"""
         /* ── Chart ── */
         .chart-container{background:#12121a;border:1px solid var(--border);border-radius:10px;padding:16px;margin:10px 0;}
         .chart-container canvas{max-height:350px;}
+        /* ── Mobile Toggle ── */
+        .mobile-menu-btn {
+            display: none; border: none; background: none; color: var(--text);
+            font-size: 22px; cursor: pointer; padding: 4px 8px;
+        }
+        .mobile-panel-tabs {
+            display: none; border-bottom: 1px solid var(--border); background: var(--surface);
+        }
+        .mobile-panel-tabs button {
+            flex: 1; padding: 10px; border: none; border-bottom: 2px solid transparent;
+            background: none; color: var(--text2); font-size: 13px;
+            font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+        }
+        .mobile-panel-tabs button.active { color: var(--accent2); border-bottom-color: var(--accent); }
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: block; }
+            .mobile-panel-tabs { display: flex; }
+            .header h1 { font-size: 16px; }
+            .status-dots { display: none; }
+            .container { flex-direction: column; }
+            .sidebar {
+                position: fixed; top: 48px; left: 0; bottom: 0; z-index: 100;
+                width: 260px; transform: translateX(-100%); transition: transform 0.3s;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+            }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay {
+                display: none; position: fixed; inset: 0; top: 48px;
+                background: rgba(0,0,0,0.5); z-index: 99;
+            }
+            .sidebar-overlay.open { display: block; }
+            .main-panel { border-right: none; width: 100%; }
+            .output-panel { display: none; width: 100%; min-width: 0; }
+            .output-panel.mobile-show { display: flex; flex: 1; }
+            .main-panel.mobile-hide { display: none; }
+            .header { padding: 10px 14px; }
+            .input-area { padding: 10px 14px; }
+            .chat-area { padding: 10px; }
+            .compare-grid { grid-template-columns: 1fr; }
+            .persona-grid { grid-template-columns: 1fr 1fr 1fr; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>⚡ AI Hub</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+            <h1>⚡ AI Hub</h1>
+        </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
             <a href="/logout" class="logout-btn">Logout</a>
         </div>
     </div>
+    <div class="mobile-panel-tabs" id="mobileTabs">
+        <button class="active" onclick="showMobilePanel('chat')">💬 Chat</button>
+        <button onclick="showMobilePanel('output')">📄 Output</button>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="container">
         <div class="sidebar">
             <h3>Mode</h3>
@@ -964,6 +1014,32 @@ MAIN_HTML = r"""
             // Refresh history after sending
             if (supabaseEnabled) setTimeout(()=>initHistory(), 1000);
         };
+
+        // ── Mobile Responsive ──
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+        }
+        function showMobilePanel(panel) {
+            const tabs = document.querySelectorAll('.mobile-panel-tabs button');
+            tabs.forEach(t => t.classList.remove('active'));
+            const mp = document.querySelector('.main-panel');
+            const op = document.querySelector('.output-panel');
+            if (panel === 'chat') {
+                tabs[0].classList.add('active');
+                if(mp) { mp.classList.remove('mobile-hide'); }
+                if(op) { op.classList.remove('mobile-show'); }
+            } else {
+                tabs[1].classList.add('active');
+                if(mp) { mp.classList.add('mobile-hide'); }
+                if(op) { op.classList.add('mobile-show'); }
+            }
+        }
+        // Auto-close sidebar on mobile when mode/provider is selected
+        const origSetMode = setMode;
+        setMode = function(m) { origSetMode(m); if(window.innerWidth<=768) toggleSidebar(); };
+        const origSetProvider = setProvider;
+        setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
         initStatus(); initPersonas(); initHistory();
     </script>
