@@ -2906,198 +2906,218 @@ def index():
 @app.route("/api/ask", methods=["POST"])
 @login_required
 def api_ask():
-    data = request.json
-    prompt = data.get("prompt", "")
-    provider = data.get("provider", "chatgpt")
-    persona = data.get("persona", "")
-    if persona:
-        # Load memories + past conversations for this persona
-        memory_context = ""
-        conversation_context = ""
-        user_id = session.get("username", "admin")
-        if supabase_client:
-            try:
-                # Load distilled insights
-                mem_result = supabase_client.table("persona_memory").select("content").eq(
-                    "user_id", user_id
-                ).eq("persona_key", persona).order("created_at", desc=True).limit(20).execute()
-                if mem_result.data:
-                    memories = [m["content"] for m in mem_result.data]
-                    memory_context = "\n".join(f"- {m}" for m in memories)
-            except Exception:
-                pass
-            try:
-                # Load recent Q&A conversation history
-                conv_result = supabase_client.table("persona_conversations").select(
-                    "question,answer"
-                ).eq("user_id", user_id).eq(
-                    "persona_key", persona
-                ).order("created_at", desc=True).limit(10).execute()
-                if conv_result.data:
-                    convs = []
-                    for c in reversed(conv_result.data):  # chronological order
-                        convs.append(f"Q: {c['question'][:200]}\nA: {c['answer'][:300]}")
-                    conversation_context = "\n\n".join(convs)
-            except Exception:
-                pass
-
-        # Combine both memory types
-        full_memory = ""
-        if memory_context:
-            full_memory += f"KEY INSIGHTS:\n{memory_context}"
-        if conversation_context:
-            if full_memory:
-                full_memory += "\n\n"
-            full_memory += f"RECENT CONVERSATION HISTORY:\n{conversation_context}"
-
-        response = hub.ask_as(prompt, persona=persona, provider=provider,
-                              memory_context=full_memory)
-
-        # Save full Q&A + extract insight
-        if response.success and supabase_client:
-            try:
-                # Save full Q&A pair
-                supabase_client.table("persona_conversations").insert({
-                    "user_id": user_id,
-                    "persona_key": persona,
-                    "question": prompt[:2000],
-                    "answer": response.content[:3000],
-                    "provider": provider
-                }).execute()
-            except Exception:
-                pass
-
-            # Auto-extract memory insight (only for substantial responses)
-            if len(response.content) > 50:
+    try:
+        data = request.json
+        prompt = data.get("prompt", "")
+        provider = data.get("provider", "chatgpt")
+        persona = data.get("persona", "")
+        response = None
+        if persona:
+            memory_context = ""
+            conversation_context = ""
+            user_id = session.get("username", "admin")
+            if supabase_client:
                 try:
-                    extract = hub.ask(
-                        f"From this conversation, extract ONE concise key insight or fact worth remembering "
-                        f"for future reference (1 sentence max, in the language of the content). "
-                        f"If nothing worth remembering, respond with exactly 'NONE'.\n\n"
-                        f"User asked: {prompt[:500]}\nResponse: {response.content[:1000]}",
-                        provider=provider,
-                        system_prompt="You are a memory extraction assistant. Extract only genuinely useful facts or insights. Respond with a single sentence or 'NONE'."
-                    )
-                    if extract.success and extract.content.strip().upper() != "NONE" and len(extract.content.strip()) > 5:
-                        supabase_client.table("persona_memory").insert({
-                            "user_id": user_id,
-                            "persona_key": persona,
-                            "content": extract.content.strip()[:500]
-                        }).execute()
+                    mem_result = supabase_client.table("persona_memory").select("content").eq(
+                        "user_id", user_id
+                    ).eq("persona_key", persona).order("created_at", desc=True).limit(20).execute()
+                    if mem_result.data:
+                        memories = [m["content"] for m in mem_result.data]
+                        memory_context = "\n".join(f"- {m}" for m in memories)
                 except Exception:
                     pass
-    else:
-        response = hub.ask(prompt, provider=provider)
-    return jsonify({"provider": response.provider, "model": response.model,
-                     "content": response.content, "success": response.success,
-                     "error": response.error, "elapsed_seconds": response.elapsed_seconds})
+                try:
+                    conv_result = supabase_client.table("persona_conversations").select(
+                        "question,answer"
+                    ).eq("user_id", user_id).eq(
+                        "persona_key", persona
+                    ).order("created_at", desc=True).limit(10).execute()
+                    if conv_result.data:
+                        convs = []
+                        for c in reversed(conv_result.data):
+                            convs.append(f"Q: {c['question'][:200]}\nA: {c['answer'][:300]}")
+                        conversation_context = "\n\n".join(convs)
+                except Exception:
+                    pass
+            full_memory = ""
+            if memory_context:
+                full_memory += f"KEY INSIGHTS:\n{memory_context}"
+            if conversation_context:
+                if full_memory:
+                    full_memory += "\n\n"
+                full_memory += f"RECENT CONVERSATION HISTORY:\n{conversation_context}"
+            response = hub.ask_as(prompt, persona=persona, provider=provider,
+                                  memory_context=full_memory)
+            if response.success and supabase_client:
+                try:
+                    supabase_client.table("persona_conversations").insert({
+                        "user_id": user_id,
+                        "persona_key": persona,
+                        "question": prompt[:2000],
+                        "answer": response.content[:3000],
+                        "provider": provider
+                    }).execute()
+                except Exception:
+                    pass
+                if len(response.content) > 50:
+                    try:
+                        extract = hub.ask(
+                            f"From this conversation, extract ONE concise key insight or fact worth remembering "
+                            f"for future reference (1 sentence max, in the language of the content). "
+                            f"If nothing worth remembering, respond with exactly 'NONE'.\n\n"
+                            f"User asked: {prompt[:500]}\nResponse: {response.content[:1000]}",
+                            provider=provider,
+                            system_prompt="You are a memory extraction assistant. Extract only genuinely useful facts or insights. Respond with a single sentence or 'NONE'."
+                        )
+                        if extract.success and extract.content.strip().upper() != "NONE" and len(extract.content.strip()) > 5:
+                            supabase_client.table("persona_memory").insert({
+                                "user_id": user_id,
+                                "persona_key": persona,
+                                "content": extract.content.strip()[:500]
+                            }).execute()
+                    except Exception:
+                        pass
+        else:
+            response = hub.ask(prompt, provider=provider)
+        return jsonify({"provider": response.provider, "model": response.model,
+                         "content": response.content, "success": response.success,
+                         "error": response.error, "elapsed_seconds": response.elapsed_seconds})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"서버 오류: {str(e)}", "content": "", "provider": "error", "model": "", "elapsed_seconds": 0}), 500
 
 
 @app.route("/api/compare", methods=["POST"])
 @login_required
 def api_compare():
-    data = request.json
-    results = hub.ask_all(data.get("prompt", ""))
-    return jsonify({"results": [{"provider": r.provider, "model": r.model,
-        "content": r.content, "success": r.success, "error": r.error,
-        "elapsed_seconds": r.elapsed_seconds} for r in results]})
+    try:
+        data = request.json
+        results = hub.ask_all(data.get("prompt", ""))
+        return jsonify({"results": [{"provider": r.provider, "model": r.model,
+            "content": r.content, "success": r.success, "error": r.error,
+            "elapsed_seconds": r.elapsed_seconds} for r in results]})
+    except Exception as e:
+        return jsonify({"error": str(e), "results": []}), 500
 
 
 @app.route("/api/debate", methods=["POST"])
 @login_required
 def api_debate():
-    topic = request.json.get("topic", "")
-    av = hub.available_providers()
-    result = hub.debate(topic=topic, rounds=2, ai_for=av[0],
-        ai_against=av[1] if len(av) > 1 else av[0],
-        judge=av[2] if len(av) >= 3 else av[0])
-    return jsonify({"topic": result["topic"], "for_name": result["for"],
-        "against_name": result["against"], "judge": result["judge"],
-        "debate_log": result["debate_log"], "judgment": result["judgment"]})
+    try:
+        topic = request.json.get("topic", "")
+        av = hub.available_providers()
+        result = hub.debate(topic=topic, rounds=2, ai_for=av[0],
+            ai_against=av[1] if len(av) > 1 else av[0],
+            judge=av[2] if len(av) >= 3 else av[0])
+        return jsonify({"topic": result["topic"], "for_name": result["for"],
+            "against_name": result["against"], "judge": result["judge"],
+            "debate_log": result["debate_log"], "judgment": result["judgment"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/discuss", methods=["POST"])
 @login_required
 def api_discuss():
-    topic = request.json.get("topic", "")
-    result = hub.discuss(topic=topic, rounds=2)
-    return jsonify({"topic": result["topic"], "participants": result["participants"],
-        "discussion_log": result["discussion_log"], "summary": result["summary"]})
+    try:
+        topic = request.json.get("topic", "")
+        result = hub.discuss(topic=topic, rounds=2)
+        return jsonify({"topic": result["topic"], "participants": result["participants"],
+            "discussion_log": result["discussion_log"], "summary": result["summary"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/best", methods=["POST"])
 @login_required
 def api_best():
-    question = request.json.get("question", "")
-    result = hub.find_best(question=question)
-    return jsonify({"question": result["question"],
-        "answers": [{"provider": r.provider, "model": r.model, "content": r.content,
-            "success": r.success, "error": r.error, "elapsed_seconds": r.elapsed_seconds}
-            for r in result["answers"]],
-        "evaluations": result["evaluations"], "votes": result["votes"], "winner": result["winner"]})
+    try:
+        question = request.json.get("question", "")
+        result = hub.find_best(question=question)
+        return jsonify({"question": result["question"],
+            "answers": [{"provider": r.provider, "model": r.model, "content": r.content,
+                "success": r.success, "error": r.error, "elapsed_seconds": r.elapsed_seconds}
+                for r in result["answers"]],
+            "evaluations": result["evaluations"], "votes": result["votes"], "winner": result["winner"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/persona_debate", methods=["POST"])
 @login_required
 def api_persona_debate():
-    data = request.json
-    av = hub.available_providers()
-    result = hub.persona_debate(topic=data.get("topic", ""),
-        persona_for=data.get("persona_for", "elon_musk"),
-        persona_against=data.get("persona_against", "trump"),
-        ai_for=av[0], ai_against=av[1] if len(av) > 1 else av[0],
-        judge=av[2] if len(av) >= 3 else av[0], rounds=2)
-    return jsonify({"topic": result["topic"], "for_name": result["for"],
-        "against_name": result["against"], "judge": result["judge"],
-        "debate_log": result["debate_log"], "judgment": result["judgment"]})
+    try:
+        data = request.json
+        av = hub.available_providers()
+        result = hub.persona_debate(topic=data.get("topic", ""),
+            persona_for=data.get("persona_for", "elon_musk"),
+            persona_against=data.get("persona_against", "trump"),
+            ai_for=av[0], ai_against=av[1] if len(av) > 1 else av[0],
+            judge=av[2] if len(av) >= 3 else av[0], rounds=2)
+        return jsonify({"topic": result["topic"], "for_name": result["for"],
+            "against_name": result["against"], "judge": result["judge"],
+            "debate_log": result["debate_log"], "judgment": result["judgment"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/persona_discuss", methods=["POST"])
 @login_required
 def api_persona_discuss():
-    data = request.json
-    result = hub.persona_discuss(topic=data.get("topic", ""),
-        persona_keys=data.get("personas", []), rounds=2)
-    if "error" in result:
-        return jsonify({"error": result["error"]}), 400
-    return jsonify({"topic": result["topic"], "participants": result["participants"],
-        "discussion_log": result["discussion_log"], "synthesis": result["synthesis"]})
+    try:
+        data = request.json
+        result = hub.persona_discuss(topic=data.get("topic", ""),
+            persona_keys=data.get("personas", []), rounds=2)
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        return jsonify({"topic": result["topic"], "participants": result["participants"],
+            "discussion_log": result["discussion_log"], "synthesis": result["synthesis"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/persona_report", methods=["POST"])
 @login_required
 def api_persona_report():
-    data = request.json
-    personas = data.get("personas", [])
-    if len(personas) < 1:
-        return jsonify({"error": "Select at least 1 persona"}), 400
-    result = hub.multi_persona_report(topic=data.get("topic", ""),
-        persona_keys=personas, provider=data.get("provider", "chatgpt"))
-    return jsonify(result)
+    try:
+        data = request.json
+        personas = data.get("personas", [])
+        if len(personas) < 1:
+            return jsonify({"error": "Select at least 1 persona"}), 400
+        result = hub.multi_persona_report(topic=data.get("topic", ""),
+            persona_keys=personas, provider=data.get("provider", "chatgpt"))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/persona_chain", methods=["POST"])
 @login_required
 def api_persona_chain():
-    data = request.json
-    personas = data.get("personas", [])
-    if len(personas) < 2:
-        return jsonify({"error": "Select at least 2 personas for chain"}), 400
-    result = hub.persona_chain(topic=data.get("topic", ""),
-        persona_keys=personas, provider=data.get("provider", "chatgpt"))
-    return jsonify(result)
+    try:
+        data = request.json
+        personas = data.get("personas", [])
+        if len(personas) < 2:
+            return jsonify({"error": "Select at least 2 personas for chain"}), 400
+        result = hub.persona_chain(topic=data.get("topic", ""),
+            persona_keys=personas, provider=data.get("provider", "chatgpt"))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/persona_vote", methods=["POST"])
 @login_required
 def api_persona_vote():
-    data = request.json
-    personas = data.get("personas", [])
-    if len(personas) < 2:
-        return jsonify({"error": "Select at least 2 personas for voting"}), 400
-    result = hub.persona_vote(proposal=data.get("proposal", ""),
-        persona_keys=personas, provider=data.get("provider", "chatgpt"))
-    return jsonify(result)
+    try:
+        data = request.json
+        personas = data.get("personas", [])
+        if len(personas) < 2:
+            return jsonify({"error": "Select at least 2 personas for voting"}), 400
+        result = hub.persona_vote(proposal=data.get("proposal", ""),
+            persona_keys=personas, provider=data.get("provider", "chatgpt"))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/decision_matrix", methods=["POST"])
