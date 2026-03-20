@@ -1,8 +1,17 @@
 # ⚡ AI Hub — By Shinwook Yi
 
-**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface.
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?logo=javascript&logoColor=black)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white)
+![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?logo=render&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface with 67 role-playing personas, multi-stakeholder analysis modes, and enterprise-grade security.
 
 🌐 **Live Demo**: [https://ai-hub-zqpf.onrender.com](https://ai-hub-zqpf.onrender.com/)
+
+![AI Hub Screenshot](screenshots/main-ui.png)
 
 ---
 
