@@ -1581,6 +1581,48 @@ class AIHub:
             "persona_count": len(analyses)
         }
 
+    def multi_persona_report_stream(self, topic: str, persona_keys: list,
+                                     provider: str = "chatgpt"):
+        """SSE generator: yields JSON chunks as each persona analysis completes."""
+        available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
+                     if p in self.available_providers()]
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+        analyses = []
+        yield {"type": "start", "persona_count": len(persona_keys)}
+        for i, key in enumerate(persona_keys):
+            name = self.get_persona_name(key)
+            prompt_text = self.get_persona_prompt(key)
+            if not prompt_text:
+                continue
+            ai = available[i % len(available)]
+            sys_prompt = (
+                f"{prompt_text}\n\n"
+                f"Analyze the following topic from your unique expert perspective. "
+                f"Focus on key insights, risks, and recommendations from your role. "
+                f"Be specific and practical. Under 150 words."
+            )
+            resp = self.ask(f"Analyze this topic: {topic}", provider=ai, system_prompt=sys_prompt)
+            analysis = resp.content if resp.success else f"Error: {resp.error}"
+            analyses.append({"persona_key": key, "persona_name": name, "analysis": analysis, "provider": ai})
+            yield {"type": "persona", "index": i, "persona_name": name, "analysis": analysis, "provider": ai}
+        # Synthesis
+        all_a = "\n\n".join(f"[{a['persona_name']}]:\n{a['analysis']}" for a in analyses)
+        synth_prompt = (
+            f"You received expert analysis from {len(analyses)} stakeholders on: '{topic}'.\n\n"
+            f"{all_a}\n\n"
+            f"Create a comprehensive EXECUTIVE REPORT:\n"
+            f"1. Key findings across all perspectives\n2. Areas of agreement/disagreement\n"
+            f"3. Critical risks and opportunities\n4. Final recommendation\n"
+            f"Write professionally and concisely."
+        )
+        synth = self.ask(synth_prompt, provider=provider,
+                         system_prompt="You are an executive report synthesizer.")
+        yield {"type": "synthesis",
+               "report": synth.content if synth.success else synth.error,
+               "persona_count": len(analyses)}
+
     # ──────────────────────────── Persona Chain ────────────────────────────
 
     def persona_chain(self, topic: str, persona_keys: list[str],
@@ -1709,6 +1751,102 @@ class AIHub:
             "summary": synth.content if synth.success else synth.error,
             "total_votes": len(votes)
         }
+
+    def persona_chain_stream(self, topic: str, persona_keys: list,
+                              provider: str = "chatgpt"):
+        """SSE generator: yields each chain step as it completes."""
+        available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
+                     if p in self.available_providers()]
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+        chain = []
+        prev_output = ""
+        yield {"type": "start", "steps": len(persona_keys)}
+        for i, key in enumerate(persona_keys):
+            name = self.get_persona_name(key)
+            prompt_text = self.get_persona_prompt(key)
+            if not prompt_text:
+                continue
+            ai = available[i % len(available)]
+            if i == 0:
+                user_msg = f"You are the FIRST analyst. Analyze this topic:\n\n{topic}"
+            else:
+                prev_name = chain[-1]["persona_name"]
+                user_msg = (
+                    f"Analyst #{i+1}. Previous analyst ({prev_name}) said:\n\n\"{prev_output}\"\n\n"
+                    f"Original topic: {topic}\n\nBuild on their analysis. Add your unique perspective."
+                )
+            sys_prompt = f"{prompt_text}\n\nProvide focused analysis. Under 150 words."
+            resp = self.ask(user_msg, provider=ai, system_prompt=sys_prompt)
+            content = resp.content if resp.success else f"Error: {resp.error}"
+            chain.append({"step": i + 1, "persona_key": key, "persona_name": name,
+                          "analysis": content, "provider": ai})
+            prev_output = content
+            yield {"type": "step", "step": i + 1, "persona_name": name,
+                   "analysis": content, "provider": ai}
+        chain_text = "\n\n".join(f"[Step {c['step']} - {c['persona_name']}]:\n{c['analysis']}" for c in chain)
+        synth = self.ask(
+            f"Synthesize this chain analysis on '{topic}':\n\n{chain_text}\n\nCreate a final conclusion.",
+            provider=provider,
+            system_prompt="You are a chain analysis synthesizer. Produce a clear final conclusion."
+        )
+        yield {"type": "conclusion", "conclusion": synth.content if synth.success else synth.error,
+               "steps": len(chain)}
+
+    def persona_vote_stream(self, proposal: str, persona_keys: list,
+                             provider: str = "chatgpt"):
+        """SSE generator: yields each persona's vote as it comes in."""
+        available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
+                     if p in self.available_providers()]
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+        votes = []
+        yield {"type": "start", "voter_count": len(persona_keys)}
+        for i, key in enumerate(persona_keys):
+            name = self.get_persona_name(key)
+            prompt_text = self.get_persona_prompt(key)
+            if not prompt_text:
+                continue
+            ai = available[i % len(available)]
+            sys_prompt = (
+                f"{prompt_text}\n\n"
+                f"You must vote on the following proposal. Respond in EXACTLY this format:\n"
+                f"VOTE: [APPROVE or OPPOSE or CONDITIONAL]\n"
+                f"REASON: [Your reason in 1-2 sentences from your perspective]\n"
+                f"CONDITION: [If CONDITIONAL, state your condition. Otherwise write N/A]"
+            )
+            resp = self.ask(f"Vote on this proposal: {proposal}", provider=ai,
+                           system_prompt=sys_prompt)
+            content = resp.content if resp.success else ""
+            vote_type = "ABSTAIN"
+            for v in ["APPROVE", "OPPOSE", "CONDITIONAL"]:
+                if v in content.upper():
+                    vote_type = v
+                    break
+            votes.append({"persona_key": key, "persona_name": name,
+                          "vote": vote_type, "response": content, "provider": ai})
+            yield {"type": "vote", "index": i, "persona_name": name,
+                   "vote": vote_type, "response": content, "provider": ai}
+        # Tally
+        tally = {"APPROVE": 0, "OPPOSE": 0, "CONDITIONAL": 0, "ABSTAIN": 0}
+        for v in votes:
+            tally[v["vote"]] = tally.get(v["vote"], 0) + 1
+        decision = "APPROVED" if tally["APPROVE"] > tally["OPPOSE"] else "REJECTED"
+        if tally["CONDITIONAL"] >= max(tally["APPROVE"], tally["OPPOSE"]):
+            decision = "NEEDS REVISION"
+        summary_text = "\n".join(
+            f"- {v['persona_name']}: {v['vote']} — {v['response'][:150]}" for v in votes
+        )
+        synth = self.ask(
+            f"Summarize voting on '{proposal}':\nApprove={tally['APPROVE']}, "
+            f"Oppose={tally['OPPOSE']}, Conditional={tally['CONDITIONAL']}\n\n{summary_text}",
+            provider=provider,
+            system_prompt="You are a voting result summarizer. Be concise and objective."
+        )
+        yield {"type": "tally", "tally": tally, "decision": decision, "votes": votes,
+               "summary": synth.content if synth.success else ""}
 
     # ──────────────────────────── AI Debate ────────────────────────────
 

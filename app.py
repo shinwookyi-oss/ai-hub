@@ -26,7 +26,8 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import time
 
-from flask import Flask, request, jsonify, session, redirect, url_for
+from flask import Flask, request, jsonify, session, redirect, url_for, Response, stream_with_context
+import json
 
 from ai_hub import AIHub
 
@@ -1872,16 +1873,23 @@ MAIN_HTML = r"""
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<1){removeLoading(loadId);addMessage('Error','Select at least 1 persona.','error-msg');}
                     else{
-                        result=await safeFetch('/api/persona_report',{method:'POST',headers:{'Content-Type':'application/json'},
+                        const anaCards=[];let personaCount=sel.length;
+                        addMessage('System',`MULTI-PERSONA REPORT: ${text}\nAnalyzing ${personaCount} perspectives...`,'system-msg');
+                        const resp=await fetch('/api/persona_report',{method:'POST',headers:{'Content-Type':'application/json'},
                             body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
-                        removeLoading(loadId);
-                        if(result.error){addMessage('Error',result.error,'error-msg');}
-                        else{
-                            let anaCards=(result.analyses||[]).map(a=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(a.persona_name)}</div><div class="doc-answer">${escapeHtml(a.analysis)}</div></div><hr class="doc-divider">`).join('');
-                            addMessage('System',`MULTI-PERSONA REPORT: ${text}\n${(result.analyses||[]).map(a=>a.persona_name).join(', ')}`,'system-msg');
-                            addMessage('Report',result.report||'','judge-msg','EXECUTIVE REPORT');
-                            showDoc(`<div class="doc-sec-title">📊 Multi-Persona Report (${result.persona_count} perspectives)</div>${anaCards}<div class="doc-verdict"><div class="doc-verdict-label">📋 Executive Report</div><div class="doc-verdict-text">${escapeHtml(result.report||'')}</div></div>`, text, `Report: ${result.persona_count} personas`);
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='persona'){addMessage(ck.persona_name,ck.analysis,'',`[${ck.index+1}/${personaCount}]`);anaCards.push(`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(ck.persona_name)}</div><div class="doc-answer">${escapeHtml(ck.analysis)}</div></div><hr class="doc-divider">`);
+                                    }else if(ck.type==='synthesis'){removeLoading(loadId);addMessage('Report',ck.report||'','judge-msg','EXECUTIVE REPORT');showDoc(`<div class="doc-sec-title">📊 Multi-Persona Report (${ck.persona_count} perspectives)</div>${anaCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">📋 Executive Report</div><div class="doc-verdict-text">${escapeHtml(ck.report||'')}</div></div>`,text,`Report: ${ck.persona_count} personas`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
                         }
+                        removeLoading(loadId);
                     }
                 } else if(currentMode==='decision_matrix'){
                     const opts=document.getElementById('dmOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
@@ -1904,39 +1912,44 @@ MAIN_HTML = r"""
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas for chain.','error-msg');}
                     else{
-                        result=await safeFetch('/api/persona_chain',{method:'POST',headers:{'Content-Type':'application/json'},
+                        const chainCards=[];addMessage('System',`CHAIN ANALYSIS: ${text}`,'system-msg');
+                        const resp=await fetch('/api/persona_chain',{method:'POST',headers:{'Content-Type':'application/json'},
                             body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
-                        removeLoading(loadId);
-                        if(result.error){addMessage('Error',result.error,'error-msg');}
-                        else{
-                            let chainCards=(result.chain||[]).map(c=>`<div class="doc-round"><div class="doc-round-meta">Step ${c.step}</div><div class="doc-round-speaker">${escapeHtml(c.persona_name)}</div><div class="doc-round-text">${escapeHtml(c.analysis)}</div></div>`).join('');
-                            addMessage('System',`CHAIN ANALYSIS: ${text}`,'system-msg');
-                            (result.chain||[]).forEach(c=>addMessage(c.persona_name,c.analysis,'',`Step ${c.step}`));
-                            addMessage('Conclusion',result.conclusion||'','judge-msg','FINAL');
-                            showDoc(`<div class="doc-sec-title">🔗 Chain Analysis (${result.steps} steps)</div>${chainCards}<div class="doc-verdict"><div class="doc-verdict-label">🎯 Final Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.conclusion||'')}</div></div>`, text, `Chain: ${result.steps} steps`);
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='step'){addMessage(ck.persona_name,ck.analysis,'',`Step ${ck.step}`);chainCards.push(`<div class="doc-round"><div class="doc-round-meta">Step ${ck.step}</div><div class="doc-round-speaker">${escapeHtml(ck.persona_name)}</div><div class="doc-round-text">${escapeHtml(ck.analysis)}</div></div>`);
+                                    }else if(ck.type==='conclusion'){removeLoading(loadId);addMessage('Conclusion',ck.conclusion||'','judge-msg','FINAL');showDoc(`<div class="doc-sec-title">🔗 Chain Analysis (${ck.steps} steps)</div>${chainCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">🎯 Final Conclusion</div><div class="doc-verdict-text">${escapeHtml(ck.conclusion||'')}</div></div>`,text,`Chain: ${ck.steps} steps`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
                         }
+                        removeLoading(loadId);
                     }
                 } else if(currentMode==='persona_vote'){
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
                     else{
-                        result=await safeFetch('/api/persona_vote',{method:'POST',headers:{'Content-Type':'application/json'},
+                        const voteCards=[];const voteColors={APPROVE:'#4caf50',OPPOSE:'#f44336',CONDITIONAL:'#ff9800',ABSTAIN:'#666'};
+                        addMessage('System',`PROPOSAL VOTE: ${text}`,'system-msg');
+                        const resp=await fetch('/api/persona_vote',{method:'POST',headers:{'Content-Type':'application/json'},
                             body:JSON.stringify({proposal:prompt,personas:sel,provider:currentProvider})});
-                        removeLoading(loadId);
-                        if(result.error){addMessage('Error',result.error,'error-msg');}
-                        else{
-                            const t=result.tally||{};
-                            const voteColors={APPROVE:'#4caf50',OPPOSE:'#f44336',CONDITIONAL:'#ff9800',ABSTAIN:'#666'};
-                            let voteCards=(result.votes||[]).map(v=>{
-                                const col=voteColors[v.vote]||'#666';
-                                return `<div class="doc-provider"><div class="doc-provider-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px;"></span>${escapeHtml(v.persona_name)} <span style="color:${col};font-weight:600;">${v.vote}</span></div><div class="doc-answer">${escapeHtml(v.response)}</div></div><hr class="doc-divider">`;
-                            }).join('');
-                            let tallyBar=`<div style="display:flex;gap:10px;margin:8px 0;font-size:12px;font-weight:600;"><span style="color:#4caf50;">✅ ${t.APPROVE||0}</span><span style="color:#f44336;">❌ ${t.OPPOSE||0}</span><span style="color:#ff9800;">⚠️ ${t.CONDITIONAL||0}</span></div>`;
-                            let decisionCol=result.decision==='APPROVED'?'#4caf50':result.decision==='REJECTED'?'#f44336':'#ff9800';
-                            addMessage('System',`VOTE: ${text}\nResult: ${result.decision} (${t.APPROVE||0} approve, ${t.OPPOSE||0} oppose, ${t.CONDITIONAL||0} conditional)`,'system-msg');
-                            addMessage('Summary',result.summary||'','judge-msg',result.decision);
-                            showDoc(`<div class="doc-sec-title">🗳️ Persona Voting (${result.total_votes} votes)</div>${tallyBar}<div style="text-align:center;font-size:18px;font-weight:700;color:${decisionCol};margin:10px 0;">${result.decision}</div>${voteCards}<div class="doc-verdict"><div class="doc-verdict-label">📋 Summary</div><div class="doc-verdict-text">${escapeHtml(result.summary||'')}</div></div>`, text, `Vote: ${result.decision}`);
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='vote'){const col=voteColors[ck.vote]||'#666';addMessage(ck.persona_name,`${ck.vote}\n${ck.response}`,'','Vote');voteCards.push(`<div class="doc-provider"><div class="doc-provider-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px;"></span>${escapeHtml(ck.persona_name)} <span style="color:${col};font-weight:600;">${ck.vote}</span></div><div class="doc-answer">${escapeHtml(ck.response)}</div></div><hr class="doc-divider">`);
+                                    }else if(ck.type==='tally'){removeLoading(loadId);const t=ck.tally||{};const decisionCol=ck.decision==='APPROVED'?'#4caf50':ck.decision==='REJECTED'?'#f44336':'#ff9800';let tallyBar=`<div style="display:flex;gap:10px;margin:8px 0;font-size:12px;font-weight:600;"><span style="color:#4caf50;">✅ ${t.APPROVE||0}</span><span style="color:#f44336;">❌ ${t.OPPOSE||0}</span><span style="color:#ff9800;">⚠️ ${t.CONDITIONAL||0}</span></div>`;addMessage('Summary',ck.summary||'','judge-msg',ck.decision);showDoc(`<div class="doc-sec-title">🗳️ Persona Voting (${sel.length} votes)</div>${tallyBar}<div style="text-align:center;font-size:18px;font-weight:700;color:${decisionCol};margin:10px 0;">${ck.decision}</div>${voteCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">📋 Summary</div><div class="doc-verdict-text">${escapeHtml(ck.summary||'')}</div></div>`,text,`Vote: ${ck.decision}`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
                         }
+                        removeLoading(loadId);
                     }
                 }
             }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
@@ -3168,9 +3181,17 @@ def api_persona_report():
         personas = data.get("personas", [])
         if len(personas) < 1:
             return jsonify({"error": "Select at least 1 persona"}), 400
-        result = hub.multi_persona_report(topic=data.get("topic", ""),
-            persona_keys=personas, provider=data.get("provider", "chatgpt"))
-        return jsonify(result)
+        topic = data.get("topic", "")
+        provider = data.get("provider", "chatgpt")
+        def generate():
+            try:
+                for chunk in hub.multi_persona_report_stream(topic=topic, persona_keys=personas, provider=provider):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3183,9 +3204,17 @@ def api_persona_chain():
         personas = data.get("personas", [])
         if len(personas) < 2:
             return jsonify({"error": "Select at least 2 personas for chain"}), 400
-        result = hub.persona_chain(topic=data.get("topic", ""),
-            persona_keys=personas, provider=data.get("provider", "chatgpt"))
-        return jsonify(result)
+        topic = data.get("topic", "")
+        provider = data.get("provider", "chatgpt")
+        def generate():
+            try:
+                for chunk in hub.persona_chain_stream(topic=topic, persona_keys=personas, provider=provider):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3198,9 +3227,17 @@ def api_persona_vote():
         personas = data.get("personas", [])
         if len(personas) < 2:
             return jsonify({"error": "Select at least 2 personas for voting"}), 400
-        result = hub.persona_vote(proposal=data.get("proposal", ""),
-            persona_keys=personas, provider=data.get("provider", "chatgpt"))
-        return jsonify(result)
+        proposal = data.get("proposal", data.get("topic", ""))
+        provider = data.get("provider", "chatgpt")
+        def generate():
+            try:
+                for chunk in hub.persona_vote_stream(proposal=proposal, persona_keys=personas, provider=provider):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3217,7 +3254,7 @@ def api_decision_matrix():
         return jsonify({"error": "Need ≥2 options, ≥1 criteria, ≥1 persona"}), 400
 
     available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
-                 if p in hub.providers]
+                 if p in hub.available_providers()]
     if not available:
         return jsonify({"error": "No AI providers available"}), 400
 
