@@ -2212,7 +2212,7 @@ MAIN_HTML = r"""
                         </select></td>
                         <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
                         <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
-                        <td><button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
+                        <td><button class="admin-btn-sm" onclick="adminResetPw('${u.id}','${u.username}')" title="비밀번호 변경">🔑</button> <button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
                     </tr>`;
                 }).join('');
             } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
@@ -2263,6 +2263,19 @@ MAIN_HTML = r"""
                     method:'PUT', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({tier})
                 });
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminResetPw(id, username) {
+            const pw = prompt(`"${username}" 의 새 비밀번호를 입력하세요:`);
+            if (!pw || !pw.trim()) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({password: pw.trim()})
+                });
+                const data = await res.json();
+                if (data.success) alert(`✅ "${username}" 비밀번호가 변경되었습니다.`);
+                else alert(data.error);
             } catch(e) { alert('Error: ' + e.message); }
         }
         async function adminSetTempPw(id, username) {
