@@ -114,7 +114,7 @@ class AIHub:
     def _get_openai_client(self):
         if self._openai_client is None:
             from openai import OpenAI
-            self._openai_client = OpenAI(api_key=self.openai_api_key)
+            self._openai_client = OpenAI(api_key=self.openai_api_key, timeout=25.0)
         return self._openai_client
 
     def _get_azure_client(self):
@@ -124,6 +124,7 @@ class AIHub:
                 api_key=self.azure_api_key,
                 api_version=self.azure_api_version,
                 azure_endpoint=self.azure_endpoint,
+                timeout=25.0,
             )
         return self._azure_client
 
@@ -227,7 +228,7 @@ class AIHub:
     def _get_claude_client(self):
         if self._claude_client is None:
             import anthropic
-            self._claude_client = anthropic.Anthropic(api_key=self.claude_api_key)
+            self._claude_client = anthropic.Anthropic(api_key=self.claude_api_key, timeout=25.0)
         return self._claude_client
 
     def _get_grok_client(self):
@@ -236,6 +237,7 @@ class AIHub:
             self._grok_client = OpenAI(
                 api_key=self.grok_api_key,
                 base_url="https://api.x.ai/v1",
+                timeout=25.0,
             )
         return self._grok_client
 
