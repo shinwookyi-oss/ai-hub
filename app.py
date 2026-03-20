@@ -349,6 +349,31 @@ MAIN_HTML = r"""
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .hidden { display: none !important; }
+        /* ── Chat History ── */
+        .history-section { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+        .new-chat-btn {
+            width: 100%; padding: 9px 12px; border: 1px dashed var(--accent);
+            border-radius: 8px; background: transparent; color: var(--accent2);
+            font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
+            margin-bottom: 8px; text-align: center; transition: all 0.2s;
+        }
+        .new-chat-btn:hover { background: #1e1e3a; border-style: solid; }
+        .history-list { max-height: 200px; overflow-y: auto; }
+        .history-item {
+            padding: 7px 10px; border-radius: 6px; font-size: 12px;
+            cursor: pointer; margin-bottom: 3px; transition: all 0.15s;
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text2); white-space: nowrap; overflow: hidden;
+        }
+        .history-item:hover { background: var(--surface2); color: var(--text); }
+        .history-item.active { background: #2a2058; color: var(--accent2); }
+        .history-item .title { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .history-item .del-btn {
+            opacity: 0; border: none; background: none; color: var(--red);
+            cursor: pointer; font-size: 12px; padding: 0 4px; transition: opacity 0.2s;
+        }
+        .history-item:hover .del-btn { opacity: 1; }
+        .history-empty { font-size: 11px; color: var(--text2); text-align: center; padding: 10px; }
         /* ── Markdown rendering ── */
         .md-body h1,.md-body h2,.md-body h3{color:var(--accent2);margin:10px 0 6px;}
         .md-body h1{font-size:18px;} .md-body h2{font-size:16px;} .md-body h3{font-size:14px;}
@@ -400,6 +425,13 @@ MAIN_HTML = r"""
             <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
             <h3>Persona</h3>
             <div class="persona-grid" id="personaGrid"></div>
+            <div class="history-section">
+                <h3>Chat History</h3>
+                <button class="new-chat-btn" onclick="newConversation()">+ New Chat</button>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">Loading...</div>
+                </div>
+            </div>
         </div>
         <div class="main-panel">
             <div class="chat-area" id="chatArea"></div>
@@ -831,7 +863,109 @@ MAIN_HTML = r"""
             document.getElementById('sendBtn').disabled=false;input.focus();
         }
         document.getElementById('userInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
-        initStatus(); initPersonas();
+
+        // ── Conversation History (Supabase) ──
+        let currentConvId = null;
+        let supabaseEnabled = false;
+
+        async function initHistory() {
+            try {
+                const r = await fetch('/api/conversations').then(r=>r.json());
+                supabaseEnabled = r.supabase;
+                if (!supabaseEnabled) {
+                    document.getElementById('historyList').innerHTML = '<div class="history-empty">No DB connected</div>';
+                    return;
+                }
+                renderHistory(r.conversations || []);
+            } catch(e) {
+                document.getElementById('historyList').innerHTML = '<div class="history-empty">Error loading</div>';
+            }
+        }
+
+        function renderHistory(convs) {
+            const list = document.getElementById('historyList');
+            if (!convs.length) {
+                list.innerHTML = '<div class="history-empty">No conversations yet</div>';
+                return;
+            }
+            list.innerHTML = convs.map(c => {
+                const active = c.id === currentConvId ? ' active' : '';
+                const date = new Date(c.updated_at).toLocaleDateString();
+                return `<div class="history-item${active}" onclick="loadConversation('${c.id}')">
+                    <span class="title">${escapeHtml(c.title)}</span>
+                    <button class="del-btn" onclick="event.stopPropagation();deleteConversation('${c.id}')" title="Delete">🗑</button>
+                </div>`;
+            }).join('');
+        }
+
+        async function newConversation() {
+            currentConvId = null;
+            chatArea.innerHTML = '';
+            if (typeof docPanel !== 'undefined' && docPanel) docPanel.innerHTML = '';
+            initHistory();
+        }
+
+        async function ensureConversation(firstMsg) {
+            if (currentConvId || !supabaseEnabled) return;
+            try {
+                const title = firstMsg.substring(0, 50);
+                const r = await fetch('/api/conversations', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({title: title, mode: currentMode})
+                }).then(r=>r.json());
+                if (r.conversation) currentConvId = r.conversation.id;
+            } catch(e) { console.log('Conv create error:', e); }
+        }
+
+        async function saveMsg(data) {
+            if (!currentConvId || !supabaseEnabled) return;
+            try {
+                await fetch(`/api/conversations/${currentConvId}/messages`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } catch(e) { console.log('Save msg error:', e); }
+        }
+
+        async function loadConversation(convId) {
+            currentConvId = convId;
+            chatArea.innerHTML = '';
+            initHistory();
+            try {
+                const r = await fetch(`/api/conversations/${convId}/messages`).then(r=>r.json());
+                for (const m of (r.messages || [])) {
+                    if (m.role === 'user') {
+                        addMessage('You', m.content, 'user-msg');
+                    } else {
+                        addMessage(m.speaker || m.provider || 'AI', m.content, '', m.badge || m.model || '', m.elapsed_seconds ? m.elapsed_seconds+'s' : '');
+                    }
+                }
+            } catch(e) { addMessage('Error', 'Failed to load conversation', 'error-msg'); }
+        }
+
+        async function deleteConversation(convId) {
+            if (!confirm('Delete this conversation?')) return;
+            try {
+                await fetch(`/api/conversations/${convId}`, {method:'DELETE'});
+                if (currentConvId === convId) { currentConvId = null; chatArea.innerHTML = ''; }
+                initHistory();
+            } catch(e) { console.log('Delete error:', e); }
+        }
+
+        // Patch send() to auto-save messages
+        const _origSend = send;
+        send = async function() {
+            const text = document.getElementById('userInput').value.trim();
+            if (text && supabaseEnabled) {
+                await ensureConversation(text);
+                saveMsg({role:'user', content:text, update_title: !currentConvId});
+            }
+            await _origSend();
+            // Refresh history after sending
+            if (supabaseEnabled) setTimeout(()=>initHistory(), 1000);
+        };
+
+        initStatus(); initPersonas(); initHistory();
     </script>
 </body>
 </html>
