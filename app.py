@@ -4055,7 +4055,7 @@ def admin_list_users():
     last_error = None
     for attempt in range(5):
         try:
-            res = supabase_admin.table("users").select("id,username,tier,display_name,email,phone,is_active,created_at,last_login,temp_password").order("created_at", desc=False).execute()
+            res = supabase_admin.table("users").select("id,username,tier,display_name,is_active,created_at,last_login").order("created_at", desc=False).execute()
             return jsonify({"success": True, "users": res.data or []})
         except Exception as e:
             last_error = e
