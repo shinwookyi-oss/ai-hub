@@ -439,6 +439,22 @@ MAIN_HTML = r"""
             .compare-grid { grid-template-columns: 1fr; }
             .persona-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
+        /* ── Voice Buttons ── */
+        .mic-btn {
+            padding: 11px 14px; border: none; border-radius: 10px;
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text2); font-size: 18px; cursor: pointer;
+            transition: all 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .mic-btn:hover { border-color: var(--accent); color: var(--accent2); }
+        .mic-btn.recording { background: #3a1a1a; border-color: var(--red); color: var(--red); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+        .speak-btn {
+            border: none; background: none; color: var(--text2); cursor: pointer;
+            font-size: 14px; padding: 2px 6px; transition: all 0.2s; opacity: 0.6;
+        }
+        .speak-btn:hover { color: var(--accent2); opacity: 1; }
+        .speak-btn.speaking { color: var(--green); opacity: 1; }
     </style>
 </head>
 <body>
@@ -510,6 +526,7 @@ MAIN_HTML = r"""
                 </div>
                 <div class="input-row">
                     <input type="text" id="userInput" placeholder="Type your message..." autofocus>
+                    <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
                     <button class="send-btn" id="sendBtn" onclick="send()">Send</button>
                 </div>
             </div>
@@ -1042,6 +1059,74 @@ MAIN_HTML = r"""
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
         initStatus(); initPersonas(); initHistory();
+
+        // ── Voice Support (Web Speech API) ──
+        let recognition = null;
+        let isRecording = false;
+        const micBtn = document.getElementById('micBtn');
+
+        // Speech-to-Text
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SR();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = navigator.language || 'en-US';
+            recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = '⏹️'; };
+            recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = '🎙️'; };
+            recognition.onresult = (e) => {
+                let transcript = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    transcript += e.results[i][0].transcript;
+                }
+                document.getElementById('userInput').value = transcript;
+                if (e.results[e.results.length-1].isFinal) {
+                    // Auto-send after final result
+                    setTimeout(() => send(), 300);
+                }
+            };
+            recognition.onerror = (e) => { console.log('Speech error:', e.error); isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = '🎙️'; };
+        } else {
+            micBtn.style.display = 'none'; // Hide if not supported
+        }
+
+        function toggleMic() {
+            if (!recognition) return;
+            if (isRecording) { recognition.stop(); }
+            else { recognition.start(); }
+        }
+
+        // Text-to-Speech
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const cleaned = text.replace(/[#*`_~>|\-]/g, '').replace(/\n+/g, '. ').substring(0, 3000);
+            const utter = new SpeechSynthesisUtterance(cleaned);
+            utter.lang = navigator.language || 'en-US';
+            utter.rate = 1.0;
+            utter.onstart = () => { document.querySelectorAll('.speak-btn.speaking').forEach(b=>b.classList.remove('speaking')); };
+            window.speechSynthesis.speak(utter);
+        }
+
+        // Add speaker buttons to AI messages (MutationObserver)
+        const chatObserver = new MutationObserver((mutations) => {
+            mutations.forEach(m => {
+                m.addedNodes.forEach(node => {
+                    if (node.nodeType !== 1) return;
+                    const msgBody = node.querySelector && node.querySelector('.msg-body:not(.user-msg):not(.system-msg)');
+                    if (msgBody && !msgBody.querySelector('.speak-btn')) {
+                        const btn = document.createElement('button');
+                        btn.className = 'speak-btn';
+                        btn.title = 'Read aloud';
+                        btn.textContent = '🔊';
+                        btn.onclick = () => speakText(msgBody.textContent);
+                        const header = node.querySelector('.msg-header');
+                        if (header) header.appendChild(btn);
+                    }
+                });
+            });
+        });
+        chatObserver.observe(chatArea, { childList: true });
     </script>
 </body>
 </html>
