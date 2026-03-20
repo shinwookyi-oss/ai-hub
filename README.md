@@ -2,7 +2,7 @@
 
 **Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface.
 
-🌐 **Live Demo**: [shinwookyi-ai.onrender.com](https://shinwookyi-ai.onrender.com)
+🌐 **Live Demo**: [shinwookyi-ai.onrender.com](https://ai-hub-zqpf.onrender.com/))
 
 ---
 
