@@ -4069,6 +4069,15 @@ def session_info():
     return jsonify(info)
 
 
+# ── Favicon & common browser requests ──
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204  # No Content — silently ignore
+
+@app.route("/robots.txt")
+def robots():
+    return "User-agent: *\nDisallow: /api/\n", 200, {"Content-Type": "text/plain"}
+
 # ──────────────────────────── Error Handlers ────────────────────────────
 
 @app.errorhandler(Exception)
