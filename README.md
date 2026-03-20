@@ -1,4 +1,4 @@
-# ⚡ AI Hub — By Shinwook Yi
+# ⚡ AI Hub — By Shinwook Yi, CPA, MBA
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)
@@ -12,6 +12,19 @@
 🌐 **Live Demo**: [https://ai-hub-zqpf.onrender.com](https://ai-hub-zqpf.onrender.com/)
 
 ![AI Hub Screenshot](screenshots/main-ui.png)
+
+---
+
+## 👨‍💻 Author
+
+**Shinwook Yi, CPA, MBA**
+
+## 🛠️ Development Approach
+
+**What I built vs AI-assisted:**
+
+- **Architecture & Implementation**: I designed the system architecture, built the Flask app, and integrated multiple provider SDKs with unified routing.
+- **AI-assisted workflow**: Parts of development were accelerated using AI-assisted coding, with manual review, testing, and iterative refactoring.
 
 ---
 
@@ -335,14 +348,7 @@ User → Flask UI/API → Auth Layer → Provider Router → AI Providers (OpenA
 
 ---
 
-## 🛠️ Development Approach
 
-**What I built vs AI-assisted:**
-
-- **Architecture & Implementation**: I designed the system architecture, built the Flask app, and integrated multiple provider SDKs with unified routing.
-- **AI-assisted workflow**: Parts of development were accelerated using AI-assisted coding, with manual review, testing, and iterative refactoring.
-
----
 
 ## 📄 License
 
@@ -350,6 +356,4 @@ Private project.
 
 ---
 
-## 👨‍💻 Author
-
-**shinwookyi-oss**
+**
