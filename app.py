@@ -2167,7 +2167,7 @@ MAIN_HTML = r"""
             try {
                 const res = await fetch('/api/admin/users');
                 const data = await res.json();
-                if (!data.success) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);">${data.error}</td></tr>`; return; }
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--orange);text-align:center;padding:12px;">⚠️ ${data.error}<br><button onclick="loadAdminUsers()" style="margin-top:8px;padding:4px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer;">🔄 Retry</button></td></tr>`; return; }
                 if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text2);">No users yet</td></tr>'; return; }
                 tbody.innerHTML = data.users.map(u => {
                     const tierClass = `tier-${u.tier}`;
@@ -4024,11 +4024,16 @@ def api_slides():
 def admin_list_users():
     if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
-    try:
-        res = supabase_admin.table("users").select("id,username,tier,display_name,email,phone,is_active,created_at,last_login,temp_password").order("created_at", desc=False).execute()
-        return jsonify({"success": True, "users": res.data or []})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    last_error = None
+    for attempt in range(3):
+        try:
+            res = supabase_admin.table("users").select("id,username,tier,display_name,email,phone,is_active,created_at,last_login,temp_password").order("created_at", desc=False).execute()
+            return jsonify({"success": True, "users": res.data or []})
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                time.sleep(1.5)
+    return jsonify({"success": False, "error": "Database temporarily unavailable. Please close and reopen the admin panel."}), 503
 
 
 @app.route("/api/admin/users", methods=["POST"])
