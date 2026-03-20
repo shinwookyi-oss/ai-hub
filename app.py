@@ -1087,7 +1087,7 @@ MAIN_HTML = r"""
         function saveCustomPersonas(pcs) {
             localStorage.setItem('customPersonas_' + CURRENT_USERNAME, JSON.stringify(pcs));
         }
-        }
+
         function addCustomPersona() {
             let limit = 0;
             if (USER_TIER === 'premium') limit = 5;
