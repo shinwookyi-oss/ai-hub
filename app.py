@@ -233,20 +233,77 @@ LOGIN_HTML = """
 def login_page():
     if request.method == "POST":
         ip = request.remote_addr or "unknown"
-        # Rate limit login attempts
         if not login_limiter.is_allowed(ip):
             return LOGIN_HTML.replace("ERROR_MSG", '<p class="error">Too many login attempts. Please wait and try again.</p>')
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if username == APP_USERNAME and _hash_password(password) == APP_PASSWORD_HASH:
+        pw_hash = _hash_password(password)
+        # Try Supabase users table first
+        user_found = False
+        if supabase_client:
+            try:
+                res = supabase_client.table("users").select("*").eq("username", username).eq("is_active", True).execute()
+                if res.data and len(res.data) > 0:
+                    db_user = res.data[0]
+                    if db_user["password_hash"] == pw_hash:
+                        session.permanent = True
+                        session["logged_in"] = True
+                        session["user_id"] = db_user["id"]
+                        session["username"] = db_user["username"]
+                        session["user_tier"] = db_user.get("tier", "free")
+                        session["display_name"] = db_user.get("display_name", username)
+                        session["last_active"] = datetime.utcnow().isoformat()
+                        # Update last_login
+                        try:
+                            supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
+                        except Exception:
+                            pass
+                        return redirect("/")
+                    else:
+                        user_found = True  # user exists but wrong password
+            except Exception:
+                pass  # Supabase error, fall through to env var
+        # Fallback: env var credentials
+        if not user_found and username == APP_USERNAME and pw_hash == APP_PASSWORD_HASH:
             session.permanent = True
             session["logged_in"] = True
+            session["user_id"] = "env_admin"
             session["username"] = username
-            session["user_tier"] = os.getenv("USER_TIER", "admin")
+            session["user_tier"] = "admin"
+            session["display_name"] = "Administrator"
             session["last_active"] = datetime.utcnow().isoformat()
             return redirect("/")
         return LOGIN_HTML.replace("ERROR_MSG", '<p class="error">Invalid credentials</p>')
     return LOGIN_HTML.replace("ERROR_MSG", "")
+
+
+def _seed_admin_user():
+    """Auto-create admin user in Supabase if none exists."""
+    if not supabase_client:
+        return
+    try:
+        res = supabase_client.table("users").select("id").eq("tier", "admin").limit(1).execute()
+        if not res.data:
+            supabase_client.table("users").insert({
+                "username": APP_USERNAME,
+                "password_hash": APP_PASSWORD_HASH,
+                "tier": "admin",
+                "display_name": "Administrator",
+                "is_active": True,
+            }).execute()
+            print("  ✅ Admin user seeded in Supabase")
+    except Exception as e:
+        print(f"  ⚠️ Admin seed skipped: {e}")
+
+
+# Admin-only decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("user_tier") != "admin":
+            return jsonify({"success": False, "error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 @app.route("/logout")
@@ -594,6 +651,29 @@ MAIN_HTML = r"""
         }
         .speak-btn:hover { color: var(--accent2); opacity: 1; }
         .speak-btn.speaking { color: var(--green); opacity: 1; }
+        /* ── Admin Panel Modal ── */
+        .admin-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:250; }
+        .admin-overlay.open { display:flex; align-items:center; justify-content:center; }
+        .admin-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:16px; width:90%; max-width:750px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; }
+        .admin-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+        .admin-header h2 { font-size:18px; margin:0; }
+        .admin-body { padding:16px 20px; overflow-y:auto; flex:1; }
+        .admin-table { width:100%; border-collapse:collapse; font-size:12px; }
+        .admin-table th { text-align:left; padding:8px 6px; color:var(--text2); border-bottom:1px solid var(--border); font-size:10px; text-transform:uppercase; }
+        .admin-table td { padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.05); vertical-align:middle; }
+        .admin-table tr:hover { background:rgba(255,255,255,0.03); }
+        .tier-badge { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+        .tier-admin { background:#2d1f5e; color:#a78bfa; }
+        .tier-premium { background:#1f3a2d; color:#6ee7b7; }
+        .tier-free { background:#1f2937; color:#9ca3af; }
+        .admin-add-form { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+        .admin-add-form input, .admin-add-form select { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+        .admin-add-form input { flex:1; min-width:100px; }
+        .admin-add-form button { padding:7px 14px; border:none; border-radius:8px; background:var(--green); color:#fff; font-size:12px; font-weight:600; cursor:pointer; }
+        .admin-btn-sm { border:none; background:none; cursor:pointer; font-size:13px; padding:2px 5px; opacity:0.7; }
+        .admin-btn-sm:hover { opacity:1; }
+        .settings-btn { border:none; background:none; color:var(--text2); cursor:pointer; font-size:16px; padding:4px 8px; transition:all 0.2s; }
+        .settings-btn:hover { color:var(--accent2); }
         /* ── Workspace Modal ── */
         .ws-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; }
         .ws-overlay.open { display:flex; align-items:center; justify-content:center; }
@@ -628,6 +708,7 @@ MAIN_HTML = r"""
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
+            <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
         </div>
     </div>
@@ -636,6 +717,28 @@ MAIN_HTML = r"""
         <button onclick="showMobilePanel('output')">📄 Output</button>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <!-- Admin Panel Modal -->
+    <div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdmin()">
+        <div class="admin-modal">
+            <div class="admin-header">
+                <h2>⚙️ User Management</h2>
+                <button class="ws-close" onclick="closeAdmin()">×</button>
+            </div>
+            <div class="admin-body">
+                <table class="admin-table">
+                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <tbody id="adminUserList"><tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr></tbody>
+                </table>
+                <div class="admin-add-form" id="adminAddForm">
+                    <input type="text" id="newUsername" placeholder="Username">
+                    <input type="password" id="newPassword" placeholder="Password">
+                    <input type="text" id="newDisplayName" placeholder="Display Name">
+                    <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option></select>
+                    <button onclick="adminAddUser()">+ Add User</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container">
     <!-- Workspace Modal -->
     <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
@@ -1694,7 +1797,95 @@ MAIN_HTML = r"""
         const origSetProvider = setProvider;
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
-        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang();
+        // ── Admin Panel ──
+        const USER_TIER = 'USER_TIER_DATA';
+        function initAdmin() {
+            if (USER_TIER === 'admin') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
+            }
+        }
+        function openAdmin() {
+            document.getElementById('adminOverlay').classList.add('open');
+            adminLoadUsers();
+        }
+        function closeAdmin() {
+            document.getElementById('adminOverlay').classList.remove('open');
+        }
+        async function adminLoadUsers() {
+            const tbody = document.getElementById('adminUserList');
+            tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/users');
+                const data = await res.json();
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);">${data.error}</td></tr>`; return; }
+                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">No users yet</td></tr>'; return; }
+                tbody.innerHTML = data.users.map(u => {
+                    const tierClass = `tier-${u.tier}`;
+                    const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString() : '-';
+                    const statusIcon = u.is_active ? '🟢' : '🔴';
+                    return `<tr>
+                        <td><strong>${u.username}</strong></td>
+                        <td>${u.display_name || '-'}</td>
+                        <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
+                            <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
+                            <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
+                            <option value="admin" ${u.tier==='admin'?'selected':''}>Admin</option>
+                        </select></td>
+                        <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
+                        <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
+                        <td><button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
+                    </tr>`;
+                }).join('');
+            } catch(e) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
+        }
+        async function adminAddUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const display_name = document.getElementById('newDisplayName').value.trim() || username;
+            const tier = document.getElementById('newTier').value;
+            if (!username || !password) { alert('Username and password are required'); return; }
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({username, password, display_name, tier})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('newUsername').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('newDisplayName').value = '';
+                    adminLoadUsers();
+                } else { alert(data.error); }
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminDeleteUser(id, name) {
+            if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {method:'DELETE'});
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminToggleActive(id, active) {
+            try {
+                await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({is_active: active})
+                });
+                adminLoadUsers();
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminUpdateTier(id, tier) {
+            try {
+                await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({tier})
+                });
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+
+        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin();
 
         // ── Voice Support (Web Speech API) ──
         let recognition = null;
@@ -2174,7 +2365,8 @@ def index():
     persona_groups = hub.list_persona_groups()
     html = MAIN_HTML.replace("AI_STATUS", json.dumps(status)).replace(
         "PERSONA_DATA", json.dumps(personas, ensure_ascii=False)).replace(
-        "PERSONA_GROUPS_DATA", json.dumps(persona_groups, ensure_ascii=False))
+        "PERSONA_GROUPS_DATA", json.dumps(persona_groups, ensure_ascii=False)).replace(
+        "USER_TIER_DATA", session.get("user_tier", "free"))
     return html
 
 
@@ -3149,6 +3341,123 @@ def api_slides():
 
 
 # ── Global error handlers → always return JSON for /api/* ──
+# ──────────────────────────── Admin: User Management ────────────────────────
+
+@app.route("/api/admin/users", methods=["GET"])
+@login_required
+@admin_required
+def admin_list_users():
+    if not supabase_client:
+        return jsonify({"success": False, "error": "Supabase not configured"}), 400
+    try:
+        res = supabase_client.table("users").select("id,username,tier,display_name,is_active,created_at,last_login").order("created_at", desc=False).execute()
+        return jsonify({"success": True, "users": res.data or []})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/users", methods=["POST"])
+@login_required
+@admin_required
+def admin_create_user():
+    if not supabase_client:
+        return jsonify({"success": False, "error": "Supabase not configured"}), 400
+    data = request.json
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    tier = data.get("tier", "free")
+    display_name = data.get("display_name", username)
+    if not username or not password:
+        return jsonify({"success": False, "error": "Username and password are required"}), 400
+    if len(password) < 4:
+        return jsonify({"success": False, "error": "Password must be at least 4 characters"}), 400
+    if tier not in ("admin", "premium", "free"):
+        return jsonify({"success": False, "error": "Invalid tier"}), 400
+    try:
+        # Check if username exists
+        existing = supabase_client.table("users").select("id").eq("username", username).execute()
+        if existing.data:
+            return jsonify({"success": False, "error": "Username already exists"}), 409
+        res = supabase_client.table("users").insert({
+            "username": username,
+            "password_hash": _hash_password(password),
+            "tier": tier,
+            "display_name": display_name,
+            "is_active": True,
+        }).execute()
+        return jsonify({"success": True, "user": res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<user_id>", methods=["PUT"])
+@login_required
+@admin_required
+def admin_update_user(user_id):
+    if not supabase_client:
+        return jsonify({"success": False, "error": "Supabase not configured"}), 400
+    data = request.json
+    updates = {}
+    if "tier" in data and data["tier"] in ("admin", "premium", "free"):
+        updates["tier"] = data["tier"]
+    if "display_name" in data:
+        updates["display_name"] = data["display_name"]
+    if "is_active" in data:
+        updates["is_active"] = bool(data["is_active"])
+    if "password" in data and data["password"].strip():
+        updates["password_hash"] = _hash_password(data["password"].strip())
+    if not updates:
+        return jsonify({"success": False, "error": "No valid fields to update"}), 400
+    try:
+        supabase_client.table("users").update(updates).eq("id", user_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<user_id>", methods=["DELETE"])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    if not supabase_client:
+        return jsonify({"success": False, "error": "Supabase not configured"}), 400
+    # Prevent deleting yourself
+    if session.get("user_id") == user_id:
+        return jsonify({"success": False, "error": "Cannot delete your own account"}), 400
+    try:
+        supabase_client.table("users").delete().eq("id", user_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/password", methods=["POST"])
+@login_required
+def change_own_password():
+    if not supabase_client:
+        return jsonify({"success": False, "error": "Supabase not configured"}), 400
+    data = request.json
+    current_pw = (data.get("current_password") or "").strip()
+    new_pw = (data.get("new_password") or "").strip()
+    if not current_pw or not new_pw:
+        return jsonify({"success": False, "error": "Both current and new passwords are required"}), 400
+    if len(new_pw) < 4:
+        return jsonify({"success": False, "error": "New password must be at least 4 characters"}), 400
+    user_id = session.get("user_id")
+    if not user_id or user_id == "env_admin":
+        return jsonify({"success": False, "error": "Password change only available for Supabase users"}), 400
+    try:
+        res = supabase_client.table("users").select("password_hash").eq("id", user_id).execute()
+        if not res.data or res.data[0]["password_hash"] != _hash_password(current_pw):
+            return jsonify({"success": False, "error": "Current password is incorrect"}), 401
+        supabase_client.table("users").update({"password_hash": _hash_password(new_pw)}).eq("id", user_id).execute()
+        return jsonify({"success": True, "message": "Password changed successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ──────────────────────────── Error Handlers ────────────────────────────
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     import traceback
@@ -3166,8 +3475,9 @@ def handle_500(e):
 
 
 if __name__ == "__main__":
+    _seed_admin_user()
     port = int(os.getenv("PORT", 5000))
     print(f"\n  AI Hub Web App")
     print(f"  http://localhost:{port}")
-    print(f"  Login: {APP_USERNAME} / {APP_PASSWORD}\n")
+    print(f"  Login: {APP_USERNAME}\n")
     app.run(debug=False, host="0.0.0.0", port=port)

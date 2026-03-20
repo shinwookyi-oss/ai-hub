@@ -66,18 +66,19 @@ Each persona **accumulates knowledge** over conversations through two systems:
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
 
-### 🔐 Security
+### 🔐 Security & User Management
 | Feature | Description |
 |---------|-------------|
-| **Password Hashing** | SHA-256 with configurable salt — no plaintext passwords stored |
+| **Multi-User Auth** | Supabase `users` table with SHA-256 hashed passwords (env-var fallback) |
+| **Admin Panel** | ⚙️ button → manage users: add, delete, toggle active, change tier |
 | **Tiered Rate Limiting** | `admin`: **unlimited**, `premium`: 60 req/min, `free`: 20 req/min |
-| **Login Rate Limiting** | 20 attempts/min per IP to prevent brute force |
+| **Login Protection** | 20 attempts/min per IP to prevent brute force |
 | **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
-| **Session Management** | Permanent sessions with `last_active` tracking |
+| **Password Change** | Self-service password change via API for Supabase users |
+| **Auto-Seed** | Admin user auto-created in Supabase on first launch |
 
 Configure via environment variables:
 ```bash
-export USER_TIER=admin          # admin | premium | free
 export SESSION_TIMEOUT_HOURS=2  # Session timeout in hours
 export PASSWORD_SALT=your_salt  # Custom salt for password hashing
 ```
@@ -194,6 +195,18 @@ export APP_PASSWORD=your_password
 
 ### Supabase Tables Required
 ```sql
+-- User management
+CREATE TABLE users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  tier TEXT DEFAULT 'free' CHECK (tier IN ('admin', 'premium', 'free')),
+  display_name TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_login TIMESTAMPTZ
+);
+
 -- Conversation history
 CREATE TABLE conversations (...);  -- auto-created by app
 CREATE TABLE messages (...);       -- auto-created by app
