@@ -142,6 +142,40 @@ ai-hub/
 
 ---
 
+## 🏗️ How It Works (Architecture)
+
+```mermaid
+graph LR
+    A[User] --> B[Flask UI / API]
+    B --> C[Auth Layer]
+    C --> D[Provider Router]
+    D --> E[OpenAI]
+    D --> F[Gemini]
+    D --> G[Anthropic]
+    D --> H[Azure OpenAI]
+    D --> I[xAI / Grok]
+    B --> J[Supabase]
+    J --> K[Conversation History]
+    J --> L[Message Logging]
+```
+
+**Request Flow:**
+```
+User → Flask UI/API → Auth Layer → Provider Router → AI Providers (OpenAI / Gemini / Anthropic / xAI / Azure)
+                                                   ↘ Supabase (Logging & History)
+```
+
+---
+
+## 🛠️ Development Approach
+
+**What I built vs AI-assisted:**
+
+- **Architecture & Implementation**: I designed the system architecture, built the Flask app, and integrated multiple provider SDKs with unified routing.
+- **AI-assisted workflow**: Parts of development were accelerated using AI-assisted coding, with manual review, testing, and iterative refactoring.
+
+---
+
 ## 📄 License
 
 Private project.
