@@ -17,7 +17,7 @@
 | **Claude** | claude-sonnet-4 | Anthropic |
 | **Grok** | grok-3-mini-fast | xAI |
 
-### 🎯 7 Interaction Modes
+### 🎯 11 Interaction Modes
 - 💬 **Chat** — 1-on-1 conversation with any AI
 - 🔄 **Compare All** — Ask all AIs simultaneously and compare responses side by side
 - ⚔️ **Debate** — AI vs AI structured debate on any topic
@@ -25,6 +25,10 @@
 - 🏆 **Best Answer** — All AIs answer, then cross-evaluate and vote for the best
 - 🎭 **Persona Debate** — Role-play debate between historical figures
 - 🧠 **Persona Discussion** — Group discussion with multiple personas
+- 📊 **Multi-Persona Report** — Selected personas analyze a topic → executive report
+- ⚖️ **Decision Matrix** — Score options × criteria with persona evaluators
+- 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous
+- 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal
 
 ### 👤 55 Persona System (3 Groups)
 Role-based personas for **multi-stakeholder decision-making** — gather diverse perspectives before making major decisions:
@@ -35,12 +39,16 @@ Role-based personas for **multi-stakeholder decision-making** — gather diverse
 | 🔍 **기능별 (Function)** | FBI Profiler, 사주전문가, 관상전문가, 심리전문가 |
 | 👑 **자문 그룹 (Advisory)** | Rockefeller, Elon Musk, Trump, Sam Walton, J.P. Morgan, 조조, 사마의, 제갈량, Thomas Jefferson, 무사시, 토쿠가와, 손정의, 정주영, 이병철, 테슬라, 에디슨, 정약용, **손자, 오자서, 삼국지 전략가, 로마인 이야기, E.H. 카, 니체, 쇼펜하우어** |
 
-### 🧠 Persona Memory (Self-Learning)
-Each persona **accumulates knowledge** over conversations:
-- **Auto-extraction**: After each persona chat, AI extracts key insights and saves to Supabase
-- **Memory injection**: Next conversation loads past memories into the persona's system prompt
-- **Memory panel**: Click a persona → view, add, delete, or clear accumulated memories
-- **Max 20 memories** loaded per conversation (most recent first)
+### 🧠 Persona Memory & Learning
+Each persona **accumulates knowledge** over conversations through two systems:
+
+| System | Description |
+|--------|-------------|
+| 💡 **Key Insights** | AI auto-extracts 1-line insights after each conversation (max 20 loaded) |
+| 💬 **Q&A History** | Full question-answer pairs stored and loaded (recent 10 pairs) |
+
+- **Memory injection**: Combined insights + Q&A history injected into persona system prompt
+- **Memory panel**: Click a persona → view insights, Q&A history, add/delete/clear
 - Memories are per-user, per-persona — private and isolated
 
 ### 🚀 Advanced Analysis Modes
@@ -155,13 +163,47 @@ export GROK_API_KEY=xai-...
 export AZURE_OPENAI_API_KEY=...
 export AZURE_OPENAI_ENDPOINT=https://...
 
-# Conversation History (Supabase)
+# Conversation History & Memory (Supabase)
 export SUPABASE_URL=https://xxx.supabase.co
 export SUPABASE_KEY=eyJ...
 
 # Authentication (defaults: admin / aihub2026)
 export APP_USERNAME=admin
 export APP_PASSWORD=your_password
+```
+
+### Supabase Tables Required
+```sql
+-- Conversation history
+CREATE TABLE conversations (...);  -- auto-created by app
+CREATE TABLE messages (...);       -- auto-created by app
+
+-- Persona memory (insights)
+CREATE TABLE persona_memory (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL, persona_key TEXT NOT NULL,
+  content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Persona conversations (Q&A history)
+CREATE TABLE persona_conversations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL, persona_key TEXT NOT NULL,
+  question TEXT NOT NULL, answer TEXT NOT NULL,
+  provider TEXT DEFAULT 'chatgpt', created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Prompt library
+CREATE TABLE saved_prompts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL, name TEXT NOT NULL,
+  prompt TEXT NOT NULL, mode TEXT DEFAULT 'chat',
+  personas JSONB DEFAULT '[]', created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Workspace files (auto-created by app)
+CREATE TABLE workspace_folders (...);  -- auto-created
+CREATE TABLE workspace_files (...);    -- auto-created
 ```
 
 ### Run Locally
@@ -187,10 +229,10 @@ Open http://localhost:5000
 
 ```
 ai-hub/
-├── app.py              # Flask app (UI + API routes + auth)
-├── ai_hub.py           # AIHub core class (5 providers, personas, modes)
+├── app.py              # Flask app (UI + API routes + auth + all modes)
+├── ai_hub.py           # AIHub core (5 providers, 55 personas, 11 modes, memory)
 ├── requirements.txt    # Python dependencies
-├── Procfile            # Render/Heroku deployment config
+├── Procfile            # Render deployment config
 └── .gitignore
 ```
 
@@ -226,14 +268,15 @@ graph LR
     D --> I[xAI / Grok]
     B --> J[Supabase]
     J --> K[Conversation History]
-    J --> L[Message Logging]
+    J --> L[Persona Memory & Q&A]
     J --> M[Workspace / Files]
+    J --> N[Prompt Library]
 ```
 
 **Request Flow:**
 ```
 User → Flask UI/API → Auth Layer → Provider Router → AI Providers (OpenAI / Gemini / Anthropic / xAI / Azure)
-                                                   ↘ Supabase (Logging & History)
+                                                   ↘ Supabase (History · Memory · Workspace · Prompts)
 ```
 
 ---
