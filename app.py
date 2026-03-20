@@ -1062,8 +1062,9 @@ MAIN_HTML = r"""
         let currentMode='chat', currentProvider='chatgpt', currentPersona='',
             uploadedFileContent='', uploadedFileName='',
             uploadedFiles=[];  // array of {name, content, size, chars}
-        const personas = PERSONA_DATA;
-        const personaGroups = PERSONA_GROUPS_DATA;
+        let personas = PERSONA_DATA;
+        let personaGroups = PERSONA_GROUPS_DATA;
+        const CURRENT_USERNAME = 'USERNAME_DATA';
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
 
@@ -1075,18 +1076,61 @@ MAIN_HTML = r"""
                 c.innerHTML += `<div class="status-dot"><span class="dot ${s==='Ready'?'':'off'}"></span>${n}</div>`;
             }
         }
+        
+        function getCustomPersonas() {
+            try { return JSON.parse(localStorage.getItem('customPersonas_' + CURRENT_USERNAME) || '[]'); }
+            catch(e) { return []; }
+        }
+        function saveCustomPersonas(pcs) {
+            localStorage.setItem('customPersonas_' + CURRENT_USERNAME, JSON.stringify(pcs));
+        }
+        function addCustomPersona() {
+            const name = prompt(t('new_persona_name') || "Enter Custom Persona Name (e.g. My AI):");
+            if (!name) return;
+            const promptText = prompt(t('new_persona_prompt') || "Enter Persona Instructions:");
+            if (!promptText) return;
+            const newKey = 'custom_' + Date.now();
+            let pcs = getCustomPersonas();
+            pcs.push({ key: newKey, name: name, prompt: promptText });
+            saveCustomPersonas(pcs);
+            initPersonas();
+            togglePersona(newKey);
+        }
+        function deleteCustomPersona(key, event) {
+            if(event) event.stopPropagation();
+            if(!confirm("Delete this custom persona?")) return;
+            let pcs = getCustomPersonas();
+            pcs = pcs.filter(p => p.key !== key);
+            saveCustomPersonas(pcs);
+            delete personas[key];
+            if(currentPersona === key) togglePersona('');
+            initPersonas();
+        }
+
         function initPersonas() {
             const g=document.getElementById('personaGrid'),
                   f=document.getElementById('personaFor'),
                   a=document.getElementById('personaAgainst');
             g.innerHTML=''; f.innerHTML=''; a.innerHTML='';
             const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
-            personaGroups.forEach(function(group) {
+
+            let groupsToRender = JSON.parse(JSON.stringify(personaGroups));
+            const cps = getCustomPersonas();
+            if (cps.length > 0) {
+                cps.forEach(p => { personas[p.key] = { name: p.name, prompt: p.prompt, icon: "👤", group: "custom" }; });
+                groupsToRender.unshift({
+                    key: 'custom_group', name: 'My Custom Personas', icon: '👤',
+                    personas: cps
+                });
+            }
+
+            groupsToRender.forEach(function(group) {
                 g.innerHTML += `<div class="persona-group-header" onclick="togglePersonaGroup('${group.key}')">`
                     + `<span class="pg-toggle" id="pgToggle_${group.key}">▼</span> ${group.icon} ${group.name}</div>`;
                 g.innerHTML += `<div class="persona-group-body" id="pgBody_${group.key}">`
                     + group.personas.map(function(p) {
-                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">${p.name}</div>`;
+                        let delHtml = p.key.startsWith('custom_') ? `<span style="float:right;color:var(--red);padding-left:12px;cursor:pointer;" onclick="deleteCustomPersona('${p.key}', event)">×</span>` : '';
+                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">${p.name}${delHtml}</div>`;
                     }).join('') + '</div>';
                 // Populate debate selectors and checkboxes with group headers
                 f.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
@@ -2553,10 +2597,26 @@ def index():
     status = hub.status()
     personas = hub.list_personas()
     persona_groups = hub.list_persona_groups()
+    
+    username = session.get("username", "")
+    if username != "shinwookyi":
+        filtered_groups = []
+        filtered_personas = {}
+        for g in persona_groups:
+            limited_ps = g["personas"][:3]
+            new_g = dict(g)
+            new_g["personas"] = limited_ps
+            filtered_groups.append(new_g)
+            for p in limited_ps:
+                filtered_personas[p["key"]] = personas[p["key"]]
+        personas = filtered_personas
+        persona_groups = filtered_groups
+
     html = MAIN_HTML.replace("AI_STATUS", json.dumps(status)).replace(
         "PERSONA_DATA", json.dumps(personas, ensure_ascii=False)).replace(
         "PERSONA_GROUPS_DATA", json.dumps(persona_groups, ensure_ascii=False)).replace(
-        "USER_TIER_DATA", session.get("user_tier", "free"))
+        "USER_TIER_DATA", session.get("user_tier", "free")).replace(
+        "USERNAME_DATA", username)
     return html
 
 
