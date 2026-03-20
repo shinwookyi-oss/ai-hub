@@ -20,8 +20,11 @@ Environment Variables (set in Render Dashboard):
 import os
 import tempfile
 import secrets
+import hashlib
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
+import time
 
 from flask import Flask, request, jsonify, session, redirect, url_for
 
@@ -29,11 +32,56 @@ from ai_hub import AIHub
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
+app.permanent_session_lifetime = timedelta(hours=int(os.getenv("SESSION_TIMEOUT_HOURS", "2")))
 
 hub = AIHub()
 
 APP_USERNAME = os.getenv("APP_USERNAME", "admin")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "aihub2026")
+_raw_password = os.getenv("APP_PASSWORD", "aihub2026")
+
+# Password hashing: SHA-256 with salt
+def _hash_password(pw: str) -> str:
+    salt = os.getenv("PASSWORD_SALT", "aihub_salt_2026")
+    return hashlib.sha256(f"{salt}:{pw}".encode()).hexdigest()
+
+APP_PASSWORD_HASH = _hash_password(_raw_password)
+
+
+# ──────────────────────────── Rate Limiting (Tiered) ────────────────────────
+
+class RateLimiter:
+    """In-memory tiered rate limiter per IP."""
+    TIERS = {
+        "admin":   {"requests": 120, "window": 60},   # 120 req/min
+        "premium": {"requests": 60,  "window": 60},   # 60 req/min
+        "free":    {"requests": 20,  "window": 60},   # 20 req/min
+    }
+
+    def __init__(self):
+        self.requests = defaultdict(list)  # ip -> [timestamps]
+
+    def is_allowed(self, ip: str, tier: str = "free") -> bool:
+        cfg = self.TIERS.get(tier, self.TIERS["free"])
+        now = time.time()
+        self.requests[ip] = [t for t in self.requests[ip] if now - t < cfg["window"]]
+        if len(self.requests[ip]) >= cfg["requests"]:
+            return False
+        self.requests[ip].append(now)
+        return True
+
+    def remaining(self, ip: str, tier: str = "free") -> int:
+        cfg = self.TIERS.get(tier, self.TIERS["free"])
+        now = time.time()
+        self.requests[ip] = [t for t in self.requests[ip] if now - t < cfg["window"]]
+        return max(0, cfg["requests"] - len(self.requests[ip]))
+
+    def tier_info(self, tier: str = "free") -> dict:
+        cfg = self.TIERS.get(tier, self.TIERS["free"])
+        return {"tier": tier, "max_requests": cfg["requests"], "window_seconds": cfg["window"]}
+
+
+api_limiter = RateLimiter()
+login_limiter = RateLimiter()  # uses 'free' tier (20 attempts/min) for login
 
 UPLOAD_DIR = tempfile.mkdtemp(prefix="aihub_uploads_")
 
@@ -60,10 +108,34 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("logged_in"):
-            # Return JSON for API routes (includes file upload which uses multipart)
             if request.path.startswith("/api/") or request.is_json:
                 return jsonify({"success": False, "error": "Session expired. Please refresh and login again."}), 401
             return redirect(url_for("login_page"))
+        # Session timeout check
+        last_active = session.get("last_active")
+        if last_active:
+            try:
+                elapsed = (datetime.utcnow() - datetime.fromisoformat(last_active)).total_seconds()
+                if elapsed > app.permanent_session_lifetime.total_seconds():
+                    session.clear()
+                    if request.path.startswith("/api/"):
+                        return jsonify({"success": False, "error": "Session timed out. Please login again."}), 401
+                    return redirect(url_for("login_page"))
+            except Exception:
+                pass
+        session["last_active"] = datetime.utcnow().isoformat()
+        # Tiered rate limiting for API calls
+        if request.path.startswith("/api/"):
+            ip = request.remote_addr or "unknown"
+            tier = session.get("user_tier", os.getenv("USER_TIER", "admin"))
+            if not api_limiter.is_allowed(ip, tier):
+                info = api_limiter.tier_info(tier)
+                return jsonify({
+                    "success": False,
+                    "error": f"Rate limit exceeded ({info['max_requests']} req/{info['window_seconds']}s for {tier} tier). Try again shortly.",
+                    "tier": tier,
+                    "limit": info["max_requests"]
+                }), 429
         return f(*args, **kwargs)
     return decorated
 
@@ -154,10 +226,18 @@ LOGIN_HTML = """
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
     if request.method == "POST":
+        ip = request.remote_addr or "unknown"
+        # Rate limit login attempts
+        if not login_limiter.is_allowed(ip):
+            return LOGIN_HTML.replace("ERROR_MSG", '<p class="error">Too many login attempts. Please wait and try again.</p>')
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if username == APP_USERNAME and password == APP_PASSWORD:
+        if username == APP_USERNAME and _hash_password(password) == APP_PASSWORD_HASH:
+            session.permanent = True
             session["logged_in"] = True
+            session["username"] = username
+            session["user_tier"] = os.getenv("USER_TIER", "admin")
+            session["last_active"] = datetime.utcnow().isoformat()
             return redirect("/")
         return LOGIN_HTML.replace("ERROR_MSG", '<p class="error">Invalid credentials</p>')
     return LOGIN_HTML.replace("ERROR_MSG", "")
@@ -165,7 +245,7 @@ def login_page():
 
 @app.route("/logout")
 def logout():
-    session.pop("logged_in", None)
+    session.clear()
     return redirect(url_for("login_page"))
 
 
