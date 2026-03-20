@@ -880,8 +880,8 @@ MAIN_HTML = r"""
             </div>
             <div class="admin-body">
                 <table class="admin-table">
-                    <thead><tr><th>User</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Temp PW</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
-                    <tbody id="adminUserList"><tr><td colspan="9" style="color:var(--text2);">Loading...</td></tr></tbody>
+                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <tbody id="adminUserList"><tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr></tbody>
                 </table>
                 <div class="admin-add-form" id="adminAddForm">
                     <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
@@ -2195,22 +2195,15 @@ MAIN_HTML = r"""
             try {
                 const res = await fetch('/api/admin/users');
                 const data = await res.json();
-                if (!data.success) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--orange);text-align:center;padding:12px;">⚠️ ${data.error}<br><button onclick="loadAdminUsers()" style="margin-top:8px;padding:4px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer;">🔄 Retry</button></td></tr>`; return; }
-                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text2);">No users yet</td></tr>'; return; }
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--orange);text-align:center;padding:12px;">⚠️ ${data.error}<br><button onclick="adminLoadUsers()" style="margin-top:8px;padding:4px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer;">🔄 Retry</button></td></tr>`; return; }
+                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">No users yet</td></tr>'; return; }
                 tbody.innerHTML = data.users.map(u => {
                     const tierClass = `tier-${u.tier}`;
                     const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString() : '-';
                     const statusIcon = u.is_active ? '🟢' : '🔴';
                     return `<tr>
                         <td><strong>${u.username}</strong></td>
-                        <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:90px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
-                        <td><input type="email" id="editEmail_${u.id}" value="${escapeHtml(u.email||'')}" style="width:120px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'email', this.value)"></td>
-                        <td><input type="tel" id="editPhone_${u.id}" value="${escapeHtml(u.phone||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'phone', this.value)"></td>
-                        <td style="white-space:nowrap;">
-                          ${u.temp_password ? `<span id="tmpPwSpan_${u.id}" style="font-family:monospace;font-size:11px;cursor:pointer;color:var(--accent2);" title="클릭하면 표시됩니다" onclick="this.textContent=this.textContent==='●●●●'?'${escapeHtml(u.temp_password)}':'●●●●'">●●●●</span>` : '<span style="color:var(--text2);font-size:11px;">-</span>'}
-                          <button class="admin-btn-sm" onclick="adminSetTempPw('${u.id}','${u.username}')" title="임시 비밀번호 설정" style="margin-left:4px;">🔑</button>
-                          ${u.temp_password ? `<button class="admin-btn-sm" onclick="adminClearTempPw('${u.id}')" title="임시 비밀번호 삭제" style="margin-left:2px;color:var(--red);">✕</button>` : ''}
-                        </td>
+                        <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
                         <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
                             <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
                             <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
