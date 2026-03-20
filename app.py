@@ -2463,6 +2463,7 @@ MAIN_HTML = r"""
             var el = document.getElementById('wsFileList');
             var html = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
             html += '<button class="ws-btn ws-btn-green" onclick="saveNote()">+ Note</button>';
+            html += '<button class="ws-btn" style="background:#2a2a3e;" onclick="triggerWorkspaceUpload()">+ Upload File</button>';
             html += '<button class="ws-btn" onclick="saveCurrentChat()">Save Chat</button>';
             html += '<button class="ws-btn" onclick="saveCurrentSlides()">Save Slides</button>';
             html += '<button class="ws-btn" style="border-color:var(--blue);color:var(--blue);" onclick="saveUploadedFile()">' + '\uD83D\uDCBE Save File</button>';
@@ -2514,12 +2515,62 @@ MAIN_HTML = r"""
             if (!wsCurrentFolder) return;
             var name = prompt('Note title:');
             if (!name) return;
-            var r = await fetch('/api/folders/'+wsCurrentFolder+'/files', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({name:name, type:'note', content:''})
-            }).then(function(r){return r.json();});
+            try {
+                var r = await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({name:name, type:'note', content:''})
+                }).then(function(r){return r.json();});
+                if (r.error) {
+                    alert('Error saving note:\n' + r.error);
+                    return;
+                }
+                loadFiles(wsCurrentFolder);
+                if (r.file && r.file.id) { closeWorkspace(); openFile(r.file.id, 'note'); }
+            } catch(e) {
+                alert('Connection error:\n' + e.message);
+            }
+        }
+
+        async function uploadToWorkspace(file) {
+            if (!wsCurrentFolder) return;
+            var loadId = addLoading('Uploading and parsing file...');
+            const fd = new FormData(); fd.append('file', file);
+            try {
+                const resp = await fetch('/api/upload', {method:'POST', body:fd});
+                const ct = resp.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    alert(`Server Error (${resp.status})`);
+                    removeLoading(loadId);
+                    return;
+                }
+                const r = await resp.json();
+                if(r.success) {
+                    var saveResp = await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({name: r.filename, type:'file', content: r.content})
+                    }).then(res => res.json());
+                    if (saveResp.error) alert('Error saving to workspace:\n' + saveResp.error);
+                } else {
+                    alert('Error parsing file:\n' + r.error);
+                }
+            } catch(e) {
+                alert('Upload failed:\n' + e.message);
+            }
+            removeLoading(loadId);
             loadFiles(wsCurrentFolder);
-            if (r.file && r.file.id) { closeWorkspace(); openFile(r.file.id, 'note'); }
+        }
+
+        function triggerWorkspaceUpload() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = ".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx,.mp3,.wav,.m4a,.ogg,.webm";
+            input.onchange = async e => {
+                for (const f of e.target.files) {
+                    await uploadToWorkspace(f);
+                }
+            };
+            input.click();
         }
 
         async function saveCurrentChat() {
