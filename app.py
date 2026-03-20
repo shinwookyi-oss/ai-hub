@@ -13,12 +13,15 @@ Environment Variables (set in Render Dashboard):
   APP_USERNAME         - Login username (default: admin)
   APP_PASSWORD         - Login password (default: aihub2026)
   SECRET_KEY           - Flask session secret (auto-generated if not set)
+  SUPABASE_URL         - Supabase project URL
+  SUPABASE_KEY         - Supabase anon public key
 """
 
 import os
 import tempfile
 import secrets
 from functools import wraps
+from datetime import datetime
 
 from flask import Flask, request, jsonify, session, redirect, url_for
 
@@ -33,6 +36,22 @@ APP_USERNAME = os.getenv("APP_USERNAME", "admin")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "aihub2026")
 
 UPLOAD_DIR = tempfile.mkdtemp(prefix="aihub_uploads_")
+
+# ──────────────────────────── Supabase ────────────────────────────
+
+supabase_client = None
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("  ✅ Supabase connected")
+    except Exception as e:
+        print(f"  ⚠️ Supabase init failed: {e}")
+else:
+    print("  ⚠️ Supabase not configured (no SUPABASE_URL/KEY)")
 
 
 # ──────────────────────────── Authentication ────────────────────────────
@@ -1088,6 +1107,99 @@ def api_fetch_url():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+# ──────────────────────────── Conversation History (Supabase) ────────────────────────────
+
+@app.route("/api/conversations", methods=["GET"])
+@login_required
+def api_conversations_list():
+    """List all conversations for current user"""
+    if not supabase_client:
+        return jsonify({"conversations": [], "supabase": False})
+    try:
+        username = session.get("username", APP_USERNAME)
+        result = supabase_client.table("conversations").select("*").eq(
+            "username", username).order("updated_at", desc=True).limit(50).execute()
+        return jsonify({"conversations": result.data, "supabase": True})
+    except Exception as e:
+        return jsonify({"conversations": [], "error": str(e), "supabase": True})
+
+
+@app.route("/api/conversations", methods=["POST"])
+@login_required
+def api_conversations_create():
+    """Create a new conversation"""
+    if not supabase_client:
+        return jsonify({"error": "Supabase not configured"}), 400
+    try:
+        data = request.json
+        username = session.get("username", APP_USERNAME)
+        result = supabase_client.table("conversations").insert({
+            "title": data.get("title", "New Chat"),
+            "mode": data.get("mode", "chat"),
+            "username": username,
+        }).execute()
+        return jsonify({"conversation": result.data[0]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/<conv_id>/messages", methods=["GET"])
+@login_required
+def api_conversation_messages(conv_id):
+    """Get all messages for a conversation"""
+    if not supabase_client:
+        return jsonify({"messages": []})
+    try:
+        result = supabase_client.table("messages").select("*").eq(
+            "conversation_id", conv_id).order("created_at").execute()
+        return jsonify({"messages": result.data})
+    except Exception as e:
+        return jsonify({"messages": [], "error": str(e)})
+
+
+@app.route("/api/conversations/<conv_id>/messages", methods=["POST"])
+@login_required
+def api_conversation_save_message(conv_id):
+    """Save a message to a conversation"""
+    if not supabase_client:
+        return jsonify({"saved": False})
+    try:
+        data = request.json
+        msg = {
+            "conversation_id": conv_id,
+            "role": data.get("role", "user"),
+            "speaker": data.get("speaker", ""),
+            "content": data.get("content", ""),
+            "provider": data.get("provider", ""),
+            "model": data.get("model", ""),
+            "badge": data.get("badge", ""),
+            "elapsed_seconds": data.get("elapsed_seconds"),
+        }
+        supabase_client.table("messages").insert(msg).execute()
+        # Update conversation title & timestamp
+        title_update = {"updated_at": datetime.utcnow().isoformat()}
+        if data.get("role") == "user" and data.get("update_title"):
+            title_text = data.get("content", "")[:50]
+            title_update["title"] = title_text
+        supabase_client.table("conversations").update(title_update).eq("id", conv_id).execute()
+        return jsonify({"saved": True})
+    except Exception as e:
+        return jsonify({"saved": False, "error": str(e)})
+
+
+@app.route("/api/conversations/<conv_id>", methods=["DELETE"])
+@login_required
+def api_conversation_delete(conv_id):
+    """Delete a conversation and all its messages"""
+    if not supabase_client:
+        return jsonify({"deleted": False})
+    try:
+        supabase_client.table("conversations").delete().eq("id", conv_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"deleted": False, "error": str(e)})
 
 
 # ── Global error handlers → always return JSON for /api/* ──
