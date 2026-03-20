@@ -519,7 +519,7 @@ MAIN_HTML = r"""
         .persona-selectors label { font-size: 12px; color: var(--text2); margin-bottom: 3px; display: block; }
         .input-row { display: flex; gap: 10px; }
         .input-row input {
-            flex: 1; padding: 11px 16px; border: 1px solid var(--border); border-radius: 10px;
+            flex: 1; padding: 22px 16px; border: 1px solid var(--border); border-radius: 10px;
             background: var(--surface2); color: var(--text); font-size: 14px;
             font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
         }
@@ -792,14 +792,14 @@ MAIN_HTML = r"""
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
                 <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
             </div>
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modePersona')">🎭 Persona Modes <span id="modePersonaArrow" style="float:right;">▶</span></h3>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modePersona')"><span data-i18n="grp_persona">🎭 Persona Modes</span> <span id="modePersonaArrow" style="float:right;">▶</span></h3>
             <div id="modePersona" class="collapsed">
                 <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
                 <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
                 <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
                 <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
             </div>
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeAnalysis')">📐 Analysis Modes <span id="modeAnalysisArrow" style="float:right;">▶</span></h3>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeAnalysis')"><span data-i18n="grp_analysis">📐 Analysis Modes</span> <span id="modeAnalysisArrow" style="float:right;">▶</span></h3>
             <div id="modeAnalysis" class="collapsed">
                 <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
                 <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
@@ -840,33 +840,33 @@ MAIN_HTML = r"""
             <div class="chat-area" id="chatArea"></div>
             <div class="input-area">
                 <div class="persona-selectors hidden" id="personaSelectors">
-                    <div><label>FOR</label><select id="personaFor"></select></div>
-                    <div><label>AGAINST</label><select id="personaAgainst"></select></div>
+                    <div><label data-i18n="lbl_for">FOR</label><select id="personaFor"></select></div>
+                    <div><label data-i18n="lbl_against">AGAINST</label><select id="personaAgainst"></select></div>
                 </div>
                 <div id="personaMultiSelect" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px;">
-                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;">Select personas (2+):</div>
+                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;" data-i18n="select_personas">Select personas (2+):</div>
                     <div id="personaCheckboxes" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
                 </div>
                 <div id="dmPanel" style="display:none; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px; font-size:11px;">
-                    <div style="color:#8888aa; margin-bottom:4px;">⚖️ Decision Matrix Setup</div>
-                    <div style="margin-bottom:4px;"><label style="color:var(--text2);">Options (comma-sep):</label>
+                    <div style="color:#8888aa; margin-bottom:4px;" data-i18n="dm_title">⚖️ Decision Matrix Setup</div>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);" data-i18n="dm_options">Options (comma-sep):</label>
                         <input id="dmOptions" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Option A, Option B, Option C"></div>
-                    <div style="margin-bottom:4px;"><label style="color:var(--text2);">Criteria (comma-sep):</label>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);" data-i18n="dm_criteria">Criteria (comma-sep):</label>
                         <input id="dmCriteria" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Cost, Risk, Revenue, Feasibility"></div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;" id="dmPersonaCheckboxes"></div>
                 </div>
                 <div style="display:flex;gap:4px;margin-bottom:6px;">
-                    <button onclick="toggleInputTools()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="Show/hide tools">📎 Tools ▾</button>
+                    <button onclick="toggleInputTools()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="Show/hide tools" data-i18n="tools">📎 Tools ▾</button>
                     <button onclick="exportPDF()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Export output to PDF">📄 PDF</button>
                 </div>
                 <div id="inputToolsPanel" style="display:none;">
                 <div style="display:flex;gap:4px;margin-bottom:6px;">
-                    <button onclick="savePrompt()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Save current input as prompt template">📋 Save Prompt</button>
-                    <button onclick="loadPrompts()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Load saved prompts">📂 Load Prompt</button>
+                    <button onclick="savePrompt()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Save current input as prompt template" data-i18n="save_prompt">📋 Save Prompt</button>
+                    <button onclick="loadPrompts()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Load saved prompts" data-i18n="load_prompt">📂 Load Prompt</button>
                 </div>
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
-                    <span id="fileLabel">Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)</span>
+                    <span id="fileLabel" data-i18n="file_drop">Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)</span>
                     <span class="file-name hidden" id="fileName"></span>
                     <span class="file-size hidden" id="fileSize"></span>
                     <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕ Clear</button>
@@ -930,6 +930,9 @@ MAIN_HTML = r"""
                 select_eval:'Select evaluators:', loading:'Loading...', new_note:'📝 New Note',
                 save_chat:'💬 Save Chat', save_slides:'📊 Save Slides', save_file:'💾 Save File',
                 pin:'📌', ask_ai:'🤖 Ask AI', continue_ai:'▶ Continue', develop:'🔨 Develop',
+                grp_persona:'🎭 Persona Modes', grp_analysis:'📐 Analysis Modes',
+                tools:'📎 Tools ▾', file_drop:'Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'FOR', lbl_against:'AGAINST', browse:'Browse', fetch:'Fetch',
             },
             ko: {
                 mode:'모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
@@ -953,6 +956,9 @@ MAIN_HTML = r"""
                 select_eval:'평가자 선택:', loading:'로딩 중...', new_note:'📝 새 노트',
                 save_chat:'💬 대화 저장', save_slides:'📊 슬라이드 저장', save_file:'💾 파일 저장',
                 pin:'📌', ask_ai:'🤖 AI에게 질문', continue_ai:'▶ 이어하기', develop:'🔨 발전',
+                grp_persona:'🎭 페르소나 모드', grp_analysis:'📐 분석 모드',
+                tools:'📎 도구 ▾', file_drop:'파일 드래그 또는 찾아보기 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'찬성', lbl_against:'반대', browse:'찾기', fetch:'가져오기',
             },
             ja: {
                 mode:'モード', provider:'プロバイダー', persona:'ペルソナ', custom:'+ カスタム',
@@ -970,6 +976,9 @@ MAIN_HTML = r"""
                 dm_title:'⚖️ 意思決定マトリックス', dm_options:'選択肢 (カンマ区切り):',
                 dm_criteria:'基準 (カンマ区切り):', select_personas:'ペルソナ選択 (2+):',
                 select_eval:'評価者選択:', loading:'読込中...',
+                grp_persona:'🎭 ペルソナモード', grp_analysis:'📐 分析モード',
+                tools:'📎 ツール ▾', file_drop:'ファイルをドロップまたは参照 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'賀成', lbl_against:'反対', browse:'参照', fetch:'取得',
             },
             zh: {
                 mode:'模式', provider:'提供商', persona:'角色', custom:'+ 自定义',
@@ -980,6 +989,9 @@ MAIN_HTML = r"""
                 workspace:'📂 工作空间', logout:'退出',
                 result:'📄 结果文档', ready:'✓ 就绪', visualize:'📊 可视化',
                 copy:'复制', clear:'清除', send:'发送', memory:'记忆',
+                grp_persona:'🎭 角色模式', grp_analysis:'📐 分析模式',
+                tools:'📎 工具 ▾', file_drop:'拖放文件或浏览 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'赞成', lbl_against:'反对', browse:'浏览', fetch:'获取',
             },
             es: {
                 mode:'Modo', provider:'Proveedor', persona:'Persona', custom:'+ Personalizar',
@@ -1964,7 +1976,7 @@ MAIN_HTML = r"""
             p.style.display = p.style.display === 'none' ? 'block' : 'none';
         }
         // Mode names for header label
-        const MODE_LABELS = {chat:'💬 Chat',compare:'🔄 Compare',debate:'⚔️ Debate',discuss:'🗣️ Discussion',best:'🏆 Best',persona_debate:'🎭 P.Debate',persona_discuss:'🧠 P.Discussion',persona_report:'📊 Multi-Report',decision_matrix:'⚖️ Matrix',persona_chain:'🔗 Chain',persona_vote:'🗳️ Vote'};
+        const MODE_LABELS = {chat:t('chat'),compare:t('compare'),debate:t('debate'),discuss:t('discuss'),best:t('best'),persona_debate:t('p_debate'),persona_discuss:t('p_discuss'),persona_report:t('p_report'),decision_matrix:t('dm'),persona_chain:t('chain'),persona_vote:t('vote')};
         const PROVIDER_LABELS = {chatgpt:'ChatGPT',gemini:'Gemini',azure:'Azure',claude:'Claude',grok:'Grok'};
         // Wrap setMode to update header label + auto-expand groups
         const origSetMode2 = setMode;
