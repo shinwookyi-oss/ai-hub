@@ -67,6 +67,14 @@ Each persona **accumulates knowledge** over conversations through two systems:
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
 
+### 🎨 Clean UI Design
+- **Collapsible Sidebar Modes** — 11 modes organized into 3 groups:
+  - **Mode** (5 basic modes, always visible)
+  - **🎭 Persona Modes** (4, collapsed by default, auto-expands on selection)
+  - **📐 Analysis Modes** (2, collapsed by default, auto-expands on selection)
+- **📎 Tools Toggle** — File upload, URL fetch, and prompt tools hidden behind one button; chat input always clean
+- **Dark Theme** — Premium glassmorphism dark UI with gradient accents
+
 ### 🔐 Security & User Management
 | Feature | Description |
 |---------|-------------|
