@@ -4031,9 +4031,11 @@ def admin_list_users():
             return jsonify({"success": True, "users": res.data or []})
         except Exception as e:
             last_error = e
-            if attempt < 2:
-                time.sleep(1.5)
-    return jsonify({"success": False, "error": "Database temporarily unavailable. Please close and reopen the admin panel."}), 503
+            if "PGRST002" in str(e) and attempt < 2:
+                time.sleep(0.5)
+            else:
+                break
+    return jsonify({"success": False, "error": "Database temporarily unavailable. Please retry."}), 503
 
 
 @app.route("/api/admin/users", methods=["POST"])
