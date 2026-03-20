@@ -4064,7 +4064,7 @@ def admin_list_users():
                 time.sleep(1.0)
             else:
                 break
-    return jsonify({"success": False, "error": "Database temporarily unavailable. Please retry."}), 503
+    return jsonify({"success": False, "error": f"Database error: {last_error}"}), 503
 
 
 @app.route("/api/admin/users", methods=["POST"])
