@@ -932,6 +932,14 @@ MAIN_HTML = r"""
                 <div style="display:flex;gap:6px;">
                     <button class="output-action-btn" id="vizBtn" onclick="visualize()" data-i18n="visualize">📊 Visualize</button>
                     <button class="output-action-btn" onclick="copyOutput()" data-i18n="copy">Copy</button>
+                    <select id="exportSelect" class="output-action-btn" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);cursor:pointer;outline:none;" onchange="if(this.value){exportDocument(this.value);this.value='';}">
+                        <option value="" disabled selected>📥 Download ▾</option>
+                        <option value="html">HTML</option>
+                        <option value="word">Word (.doc)</option>
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel (.xls)</option>
+                        <option value="csv">CSV</option>
+                    </select>
                     <button class="output-action-btn" onclick="clearOutput()" data-i18n="clear">Clear</button>
                 </div>
             </div>
@@ -970,6 +978,7 @@ MAIN_HTML = r"""
                 grp_persona:'🎭 Persona Modes', grp_analysis:'📐 Analysis Modes',
                 tools:'📎 Tools ▾', file_drop:'Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)',
                 lbl_for:'FOR', lbl_against:'AGAINST', browse:'Browse', fetch:'Fetch',
+                download:'📥 Download ▾',
             },
             ko: {
                 mode:'🎯 모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
@@ -996,6 +1005,7 @@ MAIN_HTML = r"""
                 grp_persona:'🎭 페르소나 모드', grp_analysis:'📐 분석 모드',
                 tools:'📎 도구 ▾', file_drop:'파일 드래그 또는 찾아보기 (TXT, PDF, CSV, DOCX...)',
                 lbl_for:'찬성', lbl_against:'반대', browse:'찾기', fetch:'가져오기',
+                download:'📥 다운로드 ▾',
             },
             ja: {
                 mode:'モード', provider:'プロバイダー', persona:'ペルソナ', custom:'+ カスタム',
@@ -1016,6 +1026,7 @@ MAIN_HTML = r"""
                 grp_persona:'🎭 ペルソナモード', grp_analysis:'📐 分析モード',
                 tools:'📎 ツール ▾', file_drop:'ファイルをドロップまたは参照 (TXT, PDF, CSV, DOCX...)',
                 lbl_for:'賀成', lbl_against:'反対', browse:'参照', fetch:'取得',
+                download:'📥 ダウンロード ▾',
             },
             zh: {
                 mode:'模式', provider:'提供商', persona:'角色', custom:'+ 自定义',
@@ -1029,6 +1040,7 @@ MAIN_HTML = r"""
                 grp_persona:'🎭 角色模式', grp_analysis:'📐 分析模式',
                 tools:'📎 工具 ▾', file_drop:'拖放文件或浏览 (TXT, PDF, CSV, DOCX...)',
                 lbl_for:'赞成', lbl_against:'反对', browse:'浏览', fetch:'获取',
+                download:'📥 下载 ▾',
             },
             es: {
                 mode:'Modo', provider:'Proveedor', persona:'Persona', custom:'+ Personalizar',
@@ -1039,6 +1051,7 @@ MAIN_HTML = r"""
                 workspace:'📂 Espacio', logout:'Salir',
                 result:'📄 Documento', ready:'✓ Listo', visualize:'📊 Visualizar',
                 copy:'Copiar', clear:'Limpiar', send:'Enviar', memory:'Memoria',
+                download:'📥 Descargar ▾',
             },
         };
         function t(key) { return (I18N[LANG]||{})[key] || (I18N['en']||{})[key] || key; }
@@ -1429,6 +1442,36 @@ MAIN_HTML = r"""
                 const b = document.querySelector('.output-action-btn');
                 b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 1500);
             });
+        }
+        function exportDocument(format) {
+            var content = outputArea.innerText;
+            var html = outputArea.innerHTML;
+            if (!content || content.includes('AI 분석 결과가')) { alert('No content to export'); return; }
+            var title = 'AI_Hub_Export_' + new Date().toISOString().slice(0,10);
+            
+            if (format === 'pdf') {
+                window.print();
+            } else if (format === 'html') {
+                var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px;line-height:1.6;color:#333;margin:0 auto;max-width:900px;}</style></head><body>' + html + '</body></html>';
+                var blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8;'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.html'; a.click();
+            } else if (format === 'word') {
+                var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title></head><body>' + html + '</body></html>';
+                var blob = new Blob(['\ufeff', docHtml], {type: 'application/msword'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.doc'; a.click();
+            } else if (format === 'csv') {
+                var csv = content.split('\\n').map(l => '"' + l.replace(/"/g,'""') + '"').join('\\n');
+                var blob = new Blob(['\ufeff', csv], {type: 'text/csv;charset=utf-8;'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.csv'; a.click();
+            } else if (format === 'excel') {
+                var xlsHtml = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>' + html + '</body></html>';
+                var blob = new Blob(['\ufeff', xlsHtml], {type: 'application/vnd.ms-excel'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.xls'; a.click();
+            }
         }
         async function visualize() {
             const btn = document.getElementById('vizBtn');
