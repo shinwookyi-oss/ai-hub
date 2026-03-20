@@ -724,6 +724,8 @@ MAIN_HTML = r"""
         .ws-folder-item { padding:8px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; font-size:13px; transition:all 0.2s; display:flex; justify-content:space-between; align-items:center; }
         .ws-folder-item:hover { border-color:var(--accent); }
         .ws-folder-item.active { border-color:var(--green); background:#0a2a1a; }
+        .ws-folder-item .folder-actions { display:none; align-items:center; gap:6px; }
+        .ws-folder-item:hover .folder-actions { display:flex; }
         .ws-file-item { padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; transition:all 0.2s; }
         .ws-file-item:hover { border-color:var(--accent2); background:#1a1a2e; }
         .ws-file-type { font-size:10px; color:var(--text2); text-transform:uppercase; }
@@ -2380,22 +2382,65 @@ MAIN_HTML = r"""
             try {
                 var r = await fetch('/api/folders').then(function(r){return r.json();});
                 var el = document.getElementById('wsFolderList');
-                var html = '';
-                (r.folders || []).forEach(function(f) {
-                    var cls = wsCurrentFolder === f.id ? 'ws-folder-item active' : 'ws-folder-item';
-                    html += '<div class="'+cls+'" onclick="selectFolder(\'' + f.id + '\')"><span>' + (f.icon||'\uD83D\uDCC1') + ' ' + f.name + '</span><button class="ws-close" onclick="event.stopPropagation();deleteFolder(\'' + f.id + '\')" title="Delete">\u00D7</button></div>';
+                if (!r.workspace) {
+                    el.innerHTML = '<div style="color:var(--text2);font-size:12px;">Supabase not configured</div>';
+                    return;
+                }
+                
+                let folders = (r.folders || []).map(f => {
+                    let descObj = {text: f.description || ''};
+                    try {
+                        let parsed = JSON.parse(f.description);
+                        if (parsed && typeof parsed === 'object') descObj = parsed;
+                    } catch(e) {}
+                    f.parent_id = descObj.parent_id || null;
+                    f.descText = descObj.text || '';
+                    return f;
                 });
+                
+                let rootFolders = folders.filter(f => !f.parent_id);
+                let html = '';
+                
+                function renderFolder(f, depth) {
+                    var cls = wsCurrentFolder === f.id ? 'ws-folder-item active' : 'ws-folder-item';
+                    let pad = depth * 15;
+                    let h = `<div class="${cls}" style="padding-left:${12 + pad}px;" onclick="selectFolder('${f.id}')">
+                        <span style="display:flex;align-items:center;gap:6px;">
+                            ${depth > 0 ? `<span style="color:var(--text2);font-size:10px;">↳</span>` : ''}
+                            ${f.icon||'📁'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+                        </span>
+                        <div class="folder-actions">
+                            ${depth < 2 ? `<button class="ws-close" onclick="event.stopPropagation();createSubFolder('${f.id}')" title="Add Subfolder" style="font-size:16px;margin-right:4px;">+</button>` : ''}
+                            <button class="ws-close" onclick="event.stopPropagation();deleteFolder('${f.id}')" title="Delete">×</button>
+                        </div>
+                    </div>`;
+                    let children = folders.filter(child => child.parent_id === f.id);
+                    children.forEach(c => { h += renderFolder(c, depth + 1); });
+                    return h;
+                }
+                
+                rootFolders.forEach(f => { html += renderFolder(f, 0); });
                 el.innerHTML = html;
-                if (!r.workspace) el.innerHTML = '<div style="color:var(--text2);font-size:12px;">Supabase not configured</div>';
             } catch(e) { console.log('loadFolders err:', e); }
         }
 
         async function createFolder() {
             var name = prompt('Folder name:');
             if (!name) return;
-            var icon = prompt('Folder icon (emoji):', '\uD83D\uDCC1') || '\uD83D\uDCC1';
+            var icon = prompt('Folder icon (emoji):', '📁') || '📁';
             var desc = prompt('Folder description (optional):', '') || '';
-            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:desc})});
+            let extDesc = JSON.stringify({text: desc, parent_id: null});
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:extDesc})});
+            loadFolders();
+        }
+
+        async function createSubFolder(parentId) {
+            var name = prompt('Subfolder name:');
+            if (!name) return;
+            var icon = prompt('Folder icon (emoji):', '📁') || '📁';
+            var desc = prompt('Folder description (optional):', '') || '';
+            let extDesc = JSON.stringify({text: desc, parent_id: parentId});
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:extDesc})});
             loadFolders();
         }
 
@@ -2675,7 +2720,7 @@ def api_ask():
         # Load memories + past conversations for this persona
         memory_context = ""
         conversation_context = ""
-        user_id = session.get("user", "admin")
+        user_id = session.get("username", "admin")
         if supabase_client:
             try:
                 # Load distilled insights
@@ -2930,7 +2975,7 @@ def api_prompts_list():
         return jsonify({"prompts": []})
     try:
         result = supabase_client.table("saved_prompts").select("*").eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).order("created_at", desc=True).execute()
         return jsonify({"prompts": result.data or []})
     except Exception:
@@ -2944,7 +2989,7 @@ def api_prompts_save():
         return jsonify({"error": "No database"}), 400
     data = request.json
     result = supabase_client.table("saved_prompts").insert({
-        "user_id": session.get("user", "admin"),
+        "user_id": session.get("username", "admin"),
         "name": data.get("name", "Untitled"),
         "prompt": data.get("prompt", ""),
         "mode": data.get("mode", "chat"),
@@ -3247,7 +3292,7 @@ def api_folders_list():
         return jsonify({"folders": [], "workspace": False})
     try:
         result = supabase_client.table("folders").select("*").eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).order("created_at", desc=False).execute()
         return jsonify({"folders": result.data, "workspace": True})
     except:
@@ -3263,7 +3308,7 @@ def api_folders_create():
     try:
         data = request.json
         result = supabase_client.table("folders").insert({
-            "user_id": session.get("user", "admin"),
+            "user_id": session.get("username", "admin"),
             "name": data.get("name", "New Folder"),
             "icon": data.get("icon", "📁"),
             "description": data.get("description", "")
@@ -3330,7 +3375,7 @@ def api_files_create(folder_id):
         data = request.json
         result = supabase_client.table("workspace_files").insert({
             "folder_id": folder_id,
-            "user_id": session.get("user", "admin"),
+            "user_id": session.get("username", "admin"),
             "name": data.get("name", "Untitled"),
             "type": data.get("type", "note"),  # note, conversation, slides, file
             "content": data.get("content", ""),
@@ -3398,7 +3443,7 @@ def api_persona_memory_list(persona_key):
         return jsonify({"memories": [], "error": "No database"}), 200
     try:
         result = supabase_client.table("persona_memory").select("*").eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).eq("persona_key", persona_key).order("created_at", desc=True).execute()
         return jsonify({"memories": result.data or [], "count": len(result.data or [])})
     except Exception as e:
@@ -3417,7 +3462,7 @@ def api_persona_memory_add(persona_key):
         if not content:
             return jsonify({"error": "Empty memory"}), 400
         result = supabase_client.table("persona_memory").insert({
-            "user_id": session.get("user", "admin"),
+            "user_id": session.get("username", "admin"),
             "persona_key": persona_key,
             "content": content[:500]
         }).execute()
@@ -3447,10 +3492,10 @@ def api_persona_memory_clear(persona_key):
         return jsonify({"error": "No database"}), 400
     try:
         supabase_client.table("persona_memory").delete().eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).eq("persona_key", persona_key).execute()
         supabase_client.table("persona_conversations").delete().eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).eq("persona_key", persona_key).execute()
         return jsonify({"cleared": True})
     except Exception as e:
@@ -3465,7 +3510,7 @@ def api_persona_conversations(persona_key):
         return jsonify({"conversations": []})
     try:
         result = supabase_client.table("persona_conversations").select("*").eq(
-            "user_id", session.get("user", "admin")
+            "user_id", session.get("username", "admin")
         ).eq("persona_key", persona_key).order("created_at", desc=True).limit(20).execute()
         return jsonify({"conversations": result.data or [], "count": len(result.data or [])})
     except Exception:
