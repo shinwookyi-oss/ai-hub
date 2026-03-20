@@ -857,7 +857,7 @@ MAIN_HTML = r"""
             <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <span style="display:flex;gap:4px;"><button onclick="resetHiddenPersonas()" title="숨긴 페르소나 복원" style="font-size:10px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;">↺</button><button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></span></h3>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
-                <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span id="memCount">0</span></div>
+                <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span style="display:flex;align-items:center;gap:8px;"><span id="memCount">0</span><span onclick="togglePersona(currentPersona)" title="닫기" style="cursor:pointer;color:var(--text2);font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">✕</span></span></div>
                 <div class="mem-list" id="memList"></div>
                 <div class="mem-actions">
                     <button onclick="addPersonaMemory()" data-i18n="add_mem">+ Add Memory</button>
