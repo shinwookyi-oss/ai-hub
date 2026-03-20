@@ -807,7 +807,7 @@ MAIN_HTML = r"""
             <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
-            <h3 data-i18n="mode" style="cursor:pointer;" onclick="document.getElementById('modeBasic').classList.toggle('collapsed')">Mode <span style="font-size:10px;color:var(--text2);float:right;">▼</span></h3>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
             <div id="modeBasic">
                 <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
                 <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
@@ -931,7 +931,7 @@ MAIN_HTML = r"""
         const LANG = (navigator.language || navigator.userLanguage || 'en').slice(0,2);
         const I18N = {
             en: {
-                mode:'Mode', provider:'Provider', persona:'Persona', custom:'+ Custom',
+                mode:'🎯 Mode', provider:'Provider', persona:'Persona', custom:'+ Custom',
                 chat:'💬 Chat', compare:'🔄 Compare All', debate:'⚔️ Debate', discuss:'🗣️ Discussion',
                 best:'🏆 Best Answer', p_debate:'🎭 Persona Debate', p_discuss:'🧠 Persona Discussion',
                 p_report:'📊 Multi-Report', dm:'⚖️ Decision Matrix', chain:'🔗 Chain Analysis',
@@ -958,7 +958,7 @@ MAIN_HTML = r"""
                 lbl_for:'FOR', lbl_against:'AGAINST', browse:'Browse', fetch:'Fetch',
             },
             ko: {
-                mode:'모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
+                mode:'🎯 모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
                 chat:'💬 채팅', compare:'🔄 전체 비교', debate:'⚔️ 토론', discuss:'🗣️ 토의',
                 best:'🏆 최적 답변', p_debate:'🎭 페르소나 토론', p_discuss:'🧠 페르소나 토의',
                 p_report:'📊 다중 리포트', dm:'⚖️ 결정 매트릭스', chain:'🔗 체인 분석',
