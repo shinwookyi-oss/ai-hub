@@ -66,6 +66,22 @@ Each persona **accumulates knowledge** over conversations through two systems:
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
 
+### 🔐 Security
+| Feature | Description |
+|---------|-------------|
+| **Password Hashing** | SHA-256 with configurable salt — no plaintext passwords stored |
+| **Tiered Rate Limiting** | `admin`: 120 req/min, `premium`: 60 req/min, `free`: 20 req/min |
+| **Login Rate Limiting** | 20 attempts/min per IP to prevent brute force |
+| **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
+| **Session Management** | Permanent sessions with `last_active` tracking |
+
+Configure via environment variables:
+```bash
+export USER_TIER=admin          # admin | premium | free
+export SESSION_TIMEOUT_HOURS=2  # Session timeout in hours
+export PASSWORD_SALT=your_salt  # Custom salt for password hashing
+```
+
 ### 📊 Rich Visualization
 - **Markdown** rendering with syntax highlighting
 - **Mermaid** diagrams (flowcharts, sequence diagrams, etc.)
