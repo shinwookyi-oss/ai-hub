@@ -356,13 +356,23 @@ MAIN_HTML = r"""
             text-decoration: none; transition: all 0.2s;
         }
         .logout-btn:hover { border-color: var(--red); color: var(--red); }
+        /* Header tabs */
+        .header-tabs { display:flex; gap:6px; align-items:center; }
+        .header-tab { padding:5px 12px; border:1px solid var(--border); border-radius:20px; background:var(--surface2); color:var(--text2); font-size:11px; font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+        .header-tab:hover { border-color:var(--accent); color:var(--text); }
+        .header-tab.active { border-color:var(--accent); background:#2a2058; color:var(--accent2); }
+        .sidebar-toggle { border:none; background:none; color:var(--text2); cursor:pointer; font-size:18px; padding:2px 6px; transition:all 0.2s; }
+        .sidebar-toggle:hover { color:var(--accent2); }
         /* 3-column layout */
         .container { display: flex; flex: 1; overflow: hidden; }
         .sidebar {
             width: 220px; min-width: 220px; flex-shrink: 0;
             background: var(--surface); border-right: 1px solid var(--border);
-            padding: 12px; overflow-y: auto;
+            padding: 12px; overflow-y: auto; transition: width 0.3s, min-width 0.3s, padding 0.3s;
         }
+        .sidebar.hidden-sidebar { width:0; min-width:0; padding:0; overflow:hidden; border-right:none; }
+        .sidebar-section { display:none; }
+        .sidebar-section.active { display:block; }
         .sidebar h3 {
             font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
             color: var(--text2); margin-bottom: 10px; margin-top: 16px;
@@ -706,7 +716,13 @@ MAIN_HTML = r"""
     <div class="header">
         <div style="display:flex;align-items:center;gap:10px;">
             <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+            <button class="sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebarCollapse()" title="Toggle sidebar">◀</button>
             <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi</span></h1>
+        </div>
+        <div class="header-tabs" id="headerTabs">
+            <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="chat">💬 Chat</button>
+            <button class="header-tab" id="tabProvider" onclick="switchSidebarTab('provider')">ChatGPT</button>
+            <button class="header-tab" id="tabPersona" onclick="switchSidebarTab('persona')" data-i18n="persona">Persona</button>
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
@@ -764,8 +780,10 @@ MAIN_HTML = r"""
             </div>
         </div>
     </div>
-        <div class="sidebar">
+        <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <!-- Mode Section -->
+            <div class="sidebar-section active" id="sectionMode">
             <h3 data-i18n="mode" style="cursor:pointer;" onclick="document.getElementById('modeBasic').classList.toggle('collapsed')">Mode <span style="font-size:10px;color:var(--text2);float:right;">▼</span></h3>
             <div id="modeBasic">
                 <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
@@ -786,12 +804,18 @@ MAIN_HTML = r"""
                 <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
                 <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
             </div>
+            </div>
+            <!-- Provider Section -->
+            <div class="sidebar-section" id="sectionProvider">
             <h3 data-i18n="provider">Provider</h3>
             <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
             <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
             <button class="mode-btn" data-provider="azure" onclick="setProvider('azure')">Azure OpenAI</button>
             <button class="mode-btn" data-provider="claude" onclick="setProvider('claude')">Claude</button>
             <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
+            </div>
+            <!-- Persona Section -->
+            <div class="sidebar-section" id="sectionPersona">
             <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></h3>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
@@ -802,6 +826,8 @@ MAIN_HTML = r"""
                     <button onclick="clearPersonaMemory()" data-i18n="clear_all">🗑 Clear All</button>
                 </div>
             </div>
+            </div>
+            <!-- History always visible -->
             <div class="history-section">
                 <h3 data-i18n="history">Chat History</h3>
                 <button class="new-chat-btn" onclick="newConversation()" data-i18n="new_chat">+ New Chat</button>
@@ -1901,6 +1927,32 @@ MAIN_HTML = r"""
         }
 
         // ── UI Toggle Functions ──
+        let currentSidebarTab = 'mode';
+        function switchSidebarTab(tab) {
+            const sidebar = document.getElementById('mainSidebar');
+            // If clicking the same tab, toggle sidebar
+            if (currentSidebarTab === tab && !sidebar.classList.contains('hidden-sidebar')) {
+                sidebar.classList.add('hidden-sidebar');
+                document.getElementById('sidebarToggleBtn').textContent = '▶';
+                return;
+            }
+            // Ensure sidebar is visible
+            sidebar.classList.remove('hidden-sidebar');
+            document.getElementById('sidebarToggleBtn').textContent = '◀';
+            currentSidebarTab = tab;
+            // Switch sections
+            document.querySelectorAll('.sidebar-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('section' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            // Highlight active tab
+            document.querySelectorAll('.header-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+        }
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('mainSidebar');
+            const btn = document.getElementById('sidebarToggleBtn');
+            sidebar.classList.toggle('hidden-sidebar');
+            btn.textContent = sidebar.classList.contains('hidden-sidebar') ? '▶' : '◀';
+        }
         function toggleModeGroup(id) {
             const el = document.getElementById(id);
             const arrow = document.getElementById(id + 'Arrow');
@@ -1911,10 +1963,14 @@ MAIN_HTML = r"""
             const p = document.getElementById('inputToolsPanel');
             p.style.display = p.style.display === 'none' ? 'block' : 'none';
         }
-        // Auto-expand group when selecting a mode from collapsed group
+        // Mode names for header label
+        const MODE_LABELS = {chat:'💬 Chat',compare:'🔄 Compare',debate:'⚔️ Debate',discuss:'🗣️ Discussion',best:'🏆 Best',persona_debate:'🎭 P.Debate',persona_discuss:'🧠 P.Discussion',persona_report:'📊 Multi-Report',decision_matrix:'⚖️ Matrix',persona_chain:'🔗 Chain',persona_vote:'🗳️ Vote'};
+        const PROVIDER_LABELS = {chatgpt:'ChatGPT',gemini:'Gemini',azure:'Azure',claude:'Claude',grok:'Grok'};
+        // Wrap setMode to update header label + auto-expand groups
         const origSetMode2 = setMode;
         setMode = function(m) {
             origSetMode2(m);
+            document.getElementById('tabMode').textContent = MODE_LABELS[m] || m;
             const personaModes = ['persona_debate','persona_discuss','persona_report','persona_vote'];
             const analysisModes = ['decision_matrix','persona_chain'];
             if (personaModes.includes(m)) {
@@ -1925,6 +1981,12 @@ MAIN_HTML = r"""
                 document.getElementById('modeAnalysis').classList.remove('collapsed');
                 document.getElementById('modeAnalysisArrow').textContent = '▼';
             }
+        };
+        // Wrap setProvider to update header label
+        const origSetProvider2 = setProvider;
+        setProvider = function(p) {
+            origSetProvider2(p);
+            document.getElementById('tabProvider').textContent = PROVIDER_LABELS[p] || p;
         };
 
         initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin();
