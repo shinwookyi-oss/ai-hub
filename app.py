@@ -443,6 +443,12 @@ MAIN_HTML = r"""
             border: 1px solid #2a2a3e; border-radius: 8px; font-size: 11px;
         }
         .persona-memory-panel.active { display: block; }
+        /* Sticky persona section header so ✕ is always visible */
+        #sectionPersona > h3 {
+            position: sticky; top: 0; z-index: 5;
+            background: var(--surface); padding: 4px 0 6px; margin: 0 0 8px;
+            border-bottom: 1px solid var(--border);
+        }
         .mem-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--accent2); }
         .mem-header span { font-weight: 600; }
         .mem-list { max-height: 150px; overflow-y: auto; }
@@ -811,7 +817,7 @@ MAIN_HTML = r"""
         <div class="header-tabs" id="headerTabs">
             <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="mode">Mode</button>
             <button class="header-tab" id="tabProvider" onclick="switchSidebarTab('provider')">AI</button>
-            <button class="header-tab" id="tabPersona" onclick="switchSidebarTab('persona')" data-i18n="persona">Persona</button>
+            <button class="header-tab" id="tabPersona" onclick="switchSidebarTab('persona')" data-i18n="persona" title="클릭: 패널 열기  ·  다시 클릭: 닫기">Persona</button>
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
