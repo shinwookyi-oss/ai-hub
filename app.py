@@ -1303,14 +1303,6 @@ MAIN_HTML = r"""
             document.getElementById('personaMultiSelect').style.display = isMulti ? 'flex' : 'none';
             document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
             document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
-            // Auto-switch to Persona tab for multi-select & debate modes, Mode tab otherwise
-            if (isMulti || m === 'persona_debate') {
-                switchSidebarTab('persona');
-                setTimeout(() => {
-                    const ms = document.getElementById('personaMultiSelect');
-                    if (ms) ms.scrollIntoView({behavior:'smooth', block:'nearest'});
-                }, 100);
-            }
         }
         function setProvider(p) {
             currentProvider=p;
