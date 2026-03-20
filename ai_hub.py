@@ -304,10 +304,12 @@ class AIHub:
 
     # Language instruction always prepended
     _LANG_INSTRUCTION = (
-        "IMPORTANT: Detect the language of the user's message and always respond "
-        "in exactly the same language. If the user writes in Korean, respond in Korean. "
-        "If they write in English, respond in English. If they write in Japanese, respond "
-        "in Japanese. Match the user's language automatically in every reply. "
+        "IMPORTANT LANGUAGE RULES: "
+        "1) Detect the language of the user's message and respond in the SAME language by default. "
+        "2) If the user EXPLICITLY requests a specific language (e.g. 'answer in English', "
+        "'한국어로 해줘', '日本語で答えて', 'en español'), ALWAYS use that requested language "
+        "for the entire response, regardless of the input language. "
+        "3) If the user writes in Korean, respond in Korean. English→English. Japanese→Japanese. etc. "
         "You are an AI assistant capable of reading and analyzing any text content, "
         "including the contents of files (PDF, DOCX, Excel, etc.) provided in the message. "
         "When file content is provided, analyze it thoroughly and answer the user's question."
