@@ -851,7 +851,7 @@ MAIN_HTML = r"""
                 <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
                 <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
             </div>
-            <div style="font-size:10px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">선택 활성 페르소나</div>
+            <div style="font-size:10px;color:var(--text2);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px;border-top:1px solid var(--border);padding-top:8px;">Active Persona</div>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
                 <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span style="display:flex;align-items:center;gap:8px;"><span id="memCount">0</span><span onclick="togglePersona(currentPersona)" title="닫기" style="cursor:pointer;color:var(--text2);font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">✕</span></span></div>
