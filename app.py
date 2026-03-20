@@ -739,7 +739,61 @@ MAIN_HTML = r"""
         .ws-btn-green { border-color:var(--green); color:var(--green); }
         .ws-editor { width:100%; min-height:200px; background:#12121f; border:1px solid var(--border); border-radius:8px; padding:12px; color:var(--text); font-family:'Inter',sans-serif; font-size:13px; resize:vertical; outline:none; }
         .ws-editor:focus { border-color:var(--accent); }
-        @media(max-width:768px) { .ws-body{flex-direction:column;} .ws-folders{width:100%;border-right:none;border-bottom:1px solid var(--border);padding-right:0;padding-bottom:12px;} }
+        /* ── Theme Picker ── */
+        .theme-picker-btn { border:none; background:none; cursor:pointer; font-size:17px; padding:3px 7px; transition:transform 0.2s; }
+        .theme-picker-btn:hover { transform:rotate(20deg); }
+        .theme-picker-popup { display:none; position:fixed; top:52px; right:10px; z-index:300; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; box-shadow:0 8px 30px rgba(0,0,0,0.4); }
+        .theme-picker-popup.open { display:block; }
+        .theme-picker-title { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+        .theme-swatches { display:flex; gap:8px; }
+        .theme-swatch { width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.2s; display:flex; align-items:center; justify-content:center; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+        .theme-swatch:hover { transform:scale(1.15); }
+        .theme-swatch.active { border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,0.3); }
+        /* dim */
+        [data-theme="dim"] { --bg:#0f1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#58a6ff;--accent2:#79c0ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--blue:#58a6ff; }
+        [data-theme="dim"] .header { background:linear-gradient(135deg,#161b22,#0d1117) !important; }
+        [data-theme="dim"] .info-strip { background:#0d1117;border-color:#21262d; }
+        [data-theme="dim"] .output-panel { background:#0d1117; }
+        [data-theme="dim"] .msg-body.user-msg { background:#1c2433;border-color:#58a6ff; }
+        [data-theme="dim"] .header-tab.active { background:#1c2433; }
+        /* light */
+        [data-theme="light"] { --bg:#f5f6f8;--surface:#ffffff;--surface2:#eaecef;--border:#d0d7de;--text:#1a1a2e;--text2:#57606a;--accent:#6c5ce7;--accent2:#5a4bd1;--green:#1a7f37;--orange:#bf8700;--red:#cf222e;--blue:#0969da; }
+        [data-theme="light"] .header { background:linear-gradient(135deg,#eaecef,#d9dde3) !important;border-color:#d0d7de; }
+        [data-theme="light"] .info-strip { background:#e8eaed;border-color:#d0d7de;color:#57606a; }
+        [data-theme="light"] .output-panel { background:#f0f2f5; }
+        [data-theme="light"] .msg-body { background:#ffffff;border-color:#d0d7de;color:#1a1a2e; }
+        [data-theme="light"] .msg-body.user-msg { background:#ede9ff;border-color:#6c5ce7; }
+        [data-theme="light"] .msg-body.system-msg { background:#e8f4fd;border-color:#0969da;color:#1a1a2e; }
+        [data-theme="light"] .msg-body.error-msg { background:#fff0f0;border-color:#cf222e; }
+        [data-theme="light"] .md-body code,[data-theme="light"] .md-body pre { background:#ededf5;color:#333; }
+        [data-theme="light"] .md-body th { background:#eaecef;color:#5a4bd1; }
+        [data-theme="light"] .md-body tr:nth-child(even) { background:#f5f6f8; }
+        [data-theme="light"] .md-body td { color:#1a1a2e; }
+        [data-theme="light"] .sidebar { background:#ffffff; }
+        [data-theme="light"] .mode-btn { color:#1a1a2e; }
+        [data-theme="light"] .mode-btn.active { background:#ede9ff; }
+        [data-theme="light"] .header-tab.active { background:#ede9ff; }
+        [data-theme="light"] .persona-memory-panel { background:#f5f6f8;border-color:#d0d7de; }
+        [data-theme="light"] .admin-modal,[data-theme="light"] .ws-modal { background:#ffffff; }
+        [data-theme="light"] .ms-header.h1 { -webkit-text-fill-color:#5a4bd1; }
+        [data-theme="light"] .input-row textarea { color:#1a1a2e; background:#ffffff; }
+        [data-theme="light"] .doc-answer,[data-theme="light"] .doc-round-text { color:#374151; }
+        /* warm */
+        [data-theme="warm"] { --bg:#1a1208;--surface:#251a0d;--surface2:#332212;--border:#4a3820;--text:#f0e0c0;--text2:#c4a882;--accent:#e8a000;--accent2:#ffd166;--green:#8bc34a;--orange:#ff7043;--red:#ef5350;--blue:#42a5f5; }
+        [data-theme="warm"] .header { background:linear-gradient(135deg,#251a0d,#1a1208) !important; }
+        [data-theme="warm"] .info-strip { background:#120e05;border-color:#332212; }
+        [data-theme="warm"] .output-panel { background:#120e05; }
+        [data-theme="warm"] .msg-body.user-msg { background:#2d1f0a;border-color:#e8a000; }
+        [data-theme="warm"] .md-body code,[data-theme="warm"] .md-body pre { background:#1e1508; }
+        [data-theme="warm"] .header-tab.active { background:#2d1f0a; }
+        /* ocean */
+        [data-theme="ocean"] { --bg:#051520;--surface:#0a2030;--surface2:#0d2a40;--border:#1a4060;--text:#c0e8f8;--text2:#6a9ab8;--accent:#00b4d8;--accent2:#48cae4;--green:#2dc653;--orange:#ff9f1c;--red:#ef476f;--blue:#00b4d8; }
+        [data-theme="ocean"] .header { background:linear-gradient(135deg,#0a2030,#051520) !important; }
+        [data-theme="ocean"] .info-strip { background:#030f18;border-color:#0d2a40; }
+        [data-theme="ocean"] .output-panel { background:#030f18; }
+        [data-theme="ocean"] .msg-body.user-msg { background:#0a2535;border-color:#00b4d8; }
+        [data-theme="ocean"] .md-body code,[data-theme="ocean"] .md-body pre { background:#0a2030; }
+        [data-theme="ocean"] .header-tab.active { background:#0d2a40; }
     </style>
 </head>
 <body>
@@ -756,8 +810,20 @@ MAIN_HTML = r"""
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
+            <button class="theme-picker-btn" onclick="toggleThemePicker()" title="Theme">🎨</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
+        </div>
+    </div>
+    <!-- Theme Picker Popup -->
+    <div class="theme-picker-popup" id="themePickerPopup">
+        <div class="theme-picker-title">🎨 Theme</div>
+        <div class="theme-swatches">
+            <div class="theme-swatch active" id="ts_dark" onclick="applyTheme('dark')" title="Dark" style="background:#0a0a0f;border-color:#6c5ce7;">🌑</div>
+            <div class="theme-swatch" id="ts_dim" onclick="applyTheme('dim')" title="Dim" style="background:#161b22;border-color:#58a6ff;">🌘</div>
+            <div class="theme-swatch" id="ts_light" onclick="applyTheme('light')" title="Light" style="background:#f5f6f8;border-color:#d0d7de;">☀️</div>
+            <div class="theme-swatch" id="ts_warm" onclick="applyTheme('warm')" title="Warm" style="background:#251a0d;border-color:#e8a000;">🔥</div>
+            <div class="theme-swatch" id="ts_ocean" onclick="applyTheme('ocean')" title="Ocean" style="background:#0a2030;border-color:#00b4d8;">🌊</div>
         </div>
     </div>
     <div class="info-strip" id="infoStrip">
@@ -1083,6 +1149,30 @@ MAIN_HTML = r"""
         const USER_TIER = 'USER_TIER_DATA';
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
+
+        // ── Theme Switcher ──
+        function applyTheme(name) {
+            document.body.removeAttribute('data-theme');
+            if (name !== 'dark') document.body.setAttribute('data-theme', name);
+            localStorage.setItem('ai_hub_theme', name);
+            document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+            const el = document.getElementById('ts_' + name);
+            if (el) el.classList.add('active');
+            document.getElementById('themePickerPopup').classList.remove('open');
+        }
+        function toggleThemePicker() {
+            document.getElementById('themePickerPopup').classList.toggle('open');
+        }
+        function initTheme() {
+            const saved = localStorage.getItem('ai_hub_theme') || 'dark';
+            applyTheme(saved);
+        }
+        document.addEventListener('click', function(e) {
+            const popup = document.getElementById('themePickerPopup');
+            if (popup.classList.contains('open') && !popup.contains(e.target) && !e.target.classList.contains('theme-picker-btn')) {
+                popup.classList.remove('open');
+            }
+        });
 
         function initStatus() {
             const status = AI_STATUS;
@@ -2299,7 +2389,7 @@ MAIN_HTML = r"""
             } catch(e) { err.textContent = '네트워크 오류: ' + e.message; err.style.display='block'; }
         }
 
-        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin(); initSessionInfo();
+        initTheme(); initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin(); initSessionInfo();
 
         // ── Voice Support (Web Speech API) ──
         let recognition = null;
