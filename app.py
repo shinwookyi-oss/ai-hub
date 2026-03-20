@@ -316,7 +316,23 @@ def _seed_admin_user():
             print("  ✅ Ensured shinwookyi is owner")
         except Exception as e:
             print(f"  ⚠️ Failed to force-upgrade shinwookyi: {e}")
-            
+
+        # Seed guest user (ensure password_hash matches current SALT)
+        try:
+            guest_hash = _hash_password("Guest123")
+            existing = supabase_client.table("users").select("id").eq("username", "guest").execute()
+            if existing.data:
+                supabase_admin.table("users").update({"password_hash": guest_hash, "is_active": True}).eq("username", "guest").execute()
+                print("  ✅ Guest user password synced")
+            else:
+                supabase_admin.table("users").insert({
+                    "username": "guest", "password_hash": guest_hash,
+                    "tier": "free", "display_name": "Guest", "is_active": True,
+                }).execute()
+                print("  ✅ Guest user created")
+        except Exception as e:
+            print(f"  ⚠️ Guest seed skipped: {e}")
+
     except Exception as e:
         print(f"  ⚠️ Admin seed skipped: {e}")
 
