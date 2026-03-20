@@ -720,8 +720,8 @@ MAIN_HTML = r"""
             <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi</span></h1>
         </div>
         <div class="header-tabs" id="headerTabs">
-            <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="chat">💬 Chat</button>
-            <button class="header-tab" id="tabProvider" onclick="switchSidebarTab('provider')">ChatGPT</button>
+            <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="mode">Mode</button>
+            <button class="header-tab" id="tabProvider" onclick="switchSidebarTab('provider')">AI</button>
             <button class="header-tab" id="tabPersona" onclick="switchSidebarTab('persona')" data-i18n="persona">Persona</button>
         </div>
         <div class="header-right">
