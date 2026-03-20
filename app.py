@@ -455,6 +455,30 @@ MAIN_HTML = r"""
         }
         .speak-btn:hover { color: var(--accent2); opacity: 1; }
         .speak-btn.speaking { color: var(--green); opacity: 1; }
+        /* ── Workspace Modal ── */
+        .ws-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; }
+        .ws-overlay.open { display:flex; align-items:center; justify-content:center; }
+        .ws-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:16px; width:90%; max-width:700px; max-height:85vh; display:flex; flex-direction:column; }
+        .ws-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+        .ws-header h2 { font-size:18px; margin:0; }
+        .ws-close { border:none; background:none; color:var(--text2); font-size:22px; cursor:pointer; }
+        .ws-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; gap:16px; }
+        .ws-folders { width:200px; min-width:160px; border-right:1px solid var(--border); padding-right:14px; }
+        .ws-files { flex:1; min-width:0; }
+        .ws-folder-item { padding:8px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; font-size:13px; transition:all 0.2s; display:flex; justify-content:space-between; align-items:center; }
+        .ws-folder-item:hover { border-color:var(--accent); }
+        .ws-folder-item.active { border-color:var(--green); background:#0a2a1a; }
+        .ws-file-item { padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; transition:all 0.2s; }
+        .ws-file-item:hover { border-color:var(--accent2); background:#1a1a2e; }
+        .ws-file-type { font-size:10px; color:var(--text2); text-transform:uppercase; }
+        .ws-file-name { font-size:14px; font-weight:500; }
+        .ws-file-date { font-size:11px; color:var(--text2); }
+        .ws-btn { padding:7px 14px; border:1px solid var(--border); border-radius:8px; background:var(--surface2); color:var(--text); font-size:12px; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.2s; }
+        .ws-btn:hover { border-color:var(--accent); }
+        .ws-btn-green { border-color:var(--green); color:var(--green); }
+        .ws-editor { width:100%; min-height:200px; background:#12121f; border:1px solid var(--border); border-radius:8px; padding:12px; color:var(--text); font-family:'Inter',sans-serif; font-size:13px; resize:vertical; outline:none; }
+        .ws-editor:focus { border-color:var(--accent); }
+        @media(max-width:768px) { .ws-body{flex-direction:column;} .ws-folders{width:100%;border-right:none;border-bottom:1px solid var(--border);padding-right:0;padding-bottom:12px;} }
     </style>
 </head>
 <body>
@@ -474,7 +498,30 @@ MAIN_HTML = r"""
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="container">
+    <!-- Workspace Modal -->
+    <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
+        <div class="ws-modal">
+            <div class="ws-header">
+                <h2>📂 My Workspace</h2>
+                <button class="ws-close" onclick="closeWorkspace()">×</button>
+            </div>
+            <div class="ws-body">
+                <div class="ws-folders">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Folders</span>
+                        <button class="ws-btn ws-btn-green" onclick="createFolder()" style="padding:4px 10px;font-size:11px;">+ New</button>
+                    </div>
+                    <div id="wsFolderList"></div>
+                </div>
+                <div class="ws-files">
+                    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Files</div>
+                    <div id="wsFileList"><div style="color:var(--text2);font-size:13px;">Select a folder to view files</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
         <div class="sidebar">
+            <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()">📂 My Workspace</button>
             <h3>Mode</h3>
             <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
             <button class="mode-btn" data-mode="compare" onclick="setMode('compare')">🔄 Compare All</button>
@@ -1263,6 +1310,137 @@ MAIN_HTML = r"""
             }
             await _origSendForSlides();
         };
+        // ── Workspace ──
+        var wsCurrentFolder = null;
+        function openWorkspace() {
+            document.getElementById('wsOverlay').classList.add('open');
+            loadFolders();
+        }
+        function closeWorkspace() { document.getElementById('wsOverlay').classList.remove('open'); }
+
+        async function loadFolders() {
+            try {
+                var r = await fetch('/api/folders').then(function(r){return r.json();});
+                var el = document.getElementById('wsFolderList');
+                var html = '';
+                (r.folders || []).forEach(function(f) {
+                    var cls = wsCurrentFolder === f.id ? 'ws-folder-item active' : 'ws-folder-item';
+                    html += '<div class="'+cls+'" onclick="selectFolder(\'' + f.id + '\')"><span>' + (f.icon||'\uD83D\uDCC1') + ' ' + f.name + '</span><button class="ws-close" onclick="event.stopPropagation();deleteFolder(\'' + f.id + '\')" title="Delete">\u00D7</button></div>';
+                });
+                el.innerHTML = html;
+                if (!r.workspace) el.innerHTML = '<div style="color:var(--text2);font-size:12px;">Supabase not configured</div>';
+            } catch(e) { console.log('loadFolders err:', e); }
+        }
+
+        async function createFolder() {
+            var name = prompt('Folder name:');
+            if (!name) return;
+            var icon = prompt('Folder icon (emoji):', '\uD83D\uDCC1') || '\uD83D\uDCC1';
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon})});
+            loadFolders();
+        }
+
+        async function deleteFolder(id) {
+            if (!confirm('Delete this folder and all files?')) return;
+            await fetch('/api/folders/'+id, {method:'DELETE'});
+            if (wsCurrentFolder === id) wsCurrentFolder = null;
+            loadFolders();
+            document.getElementById('wsFileList').innerHTML = '';
+        }
+
+        async function selectFolder(id) {
+            wsCurrentFolder = id;
+            loadFolders();
+            loadFiles(id);
+        }
+
+        async function loadFiles(folderId) {
+            var r = await fetch('/api/folders/'+folderId+'/files').then(function(r){return r.json();});
+            var el = document.getElementById('wsFileList');
+            var html = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
+            html += '<button class="ws-btn ws-btn-green" onclick="saveNote()">+ Note</button>';
+            html += '<button class="ws-btn" onclick="saveCurrentChat()">Save Chat</button>';
+            html += '<button class="ws-btn" onclick="saveCurrentSlides()">Save Slides</button>';
+            html += '</div>';
+            (r.files || []).forEach(function(f) {
+                var icon = {note:'\uD83D\uDCDD',conversation:'\uD83D\uDCAC',slides:'\uD83D\uDCCA',file:'\uD83D\uDCC4'}[f.type] || '\uD83D\uDCC4';
+                var date = f.updated_at ? new Date(f.updated_at).toLocaleDateString() : '';
+                html += '<div class="ws-file-item" onclick="openFile(\'' + f.id + '\',\'' + f.type + '\')">';
+                html += '<div class="ws-file-type">' + icon + ' ' + f.type + '  <button class="ws-close" onclick="event.stopPropagation();deleteFile(\'' + f.id + '\')" title="Delete">\u00D7</button></div>';
+                html += '<div class="ws-file-name">' + f.name + '</div>';
+                html += '<div class="ws-file-date">' + date + '</div></div>';
+            });
+            el.innerHTML = html;
+        }
+
+        async function saveNote() {
+            if (!wsCurrentFolder) return;
+            var name = prompt('Note title:');
+            if (!name) return;
+            await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name, type:'note', content:''})
+            });
+            loadFiles(wsCurrentFolder);
+        }
+
+        async function saveCurrentChat() {
+            if (!wsCurrentFolder) return;
+            var msgs = document.querySelectorAll('.msg-body');
+            var text = '';
+            msgs.forEach(function(m){ text += m.textContent + '\n---\n'; });
+            var name = prompt('Save chat as:', 'Chat ' + new Date().toLocaleDateString());
+            if (!name) return;
+            await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name, type:'conversation', content:text})
+            });
+            loadFiles(wsCurrentFolder);
+            addMessage('System', 'Chat saved to workspace!', 'system-msg');
+        }
+
+        async function saveCurrentSlides() {
+            if (!wsCurrentFolder || !currentSlides) { addMessage('System', 'No slides to save. Use /slides first.', 'system-msg'); return; }
+            var name = prompt('Save slides as:', currentSlideTopic);
+            if (!name) return;
+            await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name, type:'slides', content:JSON.stringify(currentSlides), metadata:{topic:currentSlideTopic}})
+            });
+            loadFiles(wsCurrentFolder);
+            addMessage('System', 'Slides saved to workspace!', 'system-msg');
+        }
+
+        async function openFile(fileId, type) {
+            var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
+            var f = r.file;
+            if (!f) return;
+            closeWorkspace();
+            if (type === 'note') {
+                var newContent = prompt('Edit note: ' + f.name, f.content || '');
+                if (newContent !== null) {
+                    await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:newContent})});
+                }
+            } else if (type === 'conversation') {
+                var outputArea = document.querySelector('.output-area');
+                if (outputArea) outputArea.innerHTML = '<div style="white-space:pre-wrap;color:var(--text);font-size:14px;line-height:1.8;">' + (f.content||'').replace(/</g,'&lt;') + '</div>';
+                if (window.innerWidth <= 768) showMobilePanel('output');
+            } else if (type === 'slides') {
+                try {
+                    var slides = JSON.parse(f.content);
+                    currentSlides = slides;
+                    currentSlideTopic = (f.metadata && f.metadata.topic) || f.name;
+                    showSlidesPreview(slides, currentSlideTopic);
+                    if (window.innerWidth <= 768) showMobilePanel('output');
+                } catch(e) {}
+            }
+        }
+
+        async function deleteFile(id) {
+            if (!confirm('Delete this file?')) return;
+            await fetch('/api/files/'+id, {method:'DELETE'});
+            if (wsCurrentFolder) loadFiles(wsCurrentFolder);
+        }
     </script>
 </body>
 </html>
@@ -1631,6 +1809,156 @@ def api_conversation_delete(conv_id):
         return jsonify({"deleted": True})
     except Exception as e:
         return jsonify({"deleted": False, "error": str(e)})
+
+
+# ──────────────────────────── Workspace: Folders & Files ────────────────────────────
+
+@app.route("/api/folders", methods=["GET"])
+@login_required
+def api_folders_list():
+    """List all folders"""
+    if not supabase_client:
+        return jsonify({"folders": [], "workspace": False})
+    try:
+        result = supabase_client.table("folders").select("*").eq(
+            "user_id", session.get("user", "admin")
+        ).order("created_at", desc=False).execute()
+        return jsonify({"folders": result.data, "workspace": True})
+    except:
+        return jsonify({"folders": [], "workspace": True})
+
+
+@app.route("/api/folders", methods=["POST"])
+@login_required
+def api_folders_create():
+    """Create a new folder"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        data = request.json
+        result = supabase_client.table("folders").insert({
+            "user_id": session.get("user", "admin"),
+            "name": data.get("name", "New Folder"),
+            "icon": data.get("icon", "📁"),
+            "description": data.get("description", "")
+        }).execute()
+        return jsonify({"folder": result.data[0] if result.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/folders/<folder_id>", methods=["PUT"])
+@login_required
+def api_folders_update(folder_id):
+    """Rename/update folder"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        data = request.json
+        update = {}
+        if "name" in data: update["name"] = data["name"]
+        if "icon" in data: update["icon"] = data["icon"]
+        if "description" in data: update["description"] = data["description"]
+        supabase_client.table("folders").update(update).eq("id", folder_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/folders/<folder_id>", methods=["DELETE"])
+@login_required
+def api_folders_delete(folder_id):
+    """Delete folder and its files"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("workspace_files").delete().eq("folder_id", folder_id).execute()
+        supabase_client.table("folders").delete().eq("id", folder_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/folders/<folder_id>/files", methods=["GET"])
+@login_required
+def api_files_list(folder_id):
+    """List files in a folder"""
+    if not supabase_client:
+        return jsonify({"files": []})
+    try:
+        result = supabase_client.table("workspace_files").select("*").eq(
+            "folder_id", folder_id
+        ).order("updated_at", desc=True).execute()
+        return jsonify({"files": result.data})
+    except:
+        return jsonify({"files": []})
+
+
+@app.route("/api/folders/<folder_id>/files", methods=["POST"])
+@login_required
+def api_files_create(folder_id):
+    """Create/save a file in a folder"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        data = request.json
+        result = supabase_client.table("workspace_files").insert({
+            "folder_id": folder_id,
+            "user_id": session.get("user", "admin"),
+            "name": data.get("name", "Untitled"),
+            "type": data.get("type", "note"),  # note, conversation, slides, file
+            "content": data.get("content", ""),
+            "metadata": data.get("metadata", {})
+        }).execute()
+        return jsonify({"file": result.data[0] if result.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/files/<file_id>", methods=["GET"])
+@login_required
+def api_files_get(file_id):
+    """Get file content"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        result = supabase_client.table("workspace_files").select("*").eq("id", file_id).execute()
+        if result.data:
+            return jsonify({"file": result.data[0]})
+        return jsonify({"error": "Not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/files/<file_id>", methods=["PUT"])
+@login_required
+def api_files_update(file_id):
+    """Update file content"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        data = request.json
+        update = {"updated_at": "now()"}
+        if "name" in data: update["name"] = data["name"]
+        if "content" in data: update["content"] = data["content"]
+        if "metadata" in data: update["metadata"] = data["metadata"]
+        supabase_client.table("workspace_files").update(update).eq("id", file_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/files/<file_id>", methods=["DELETE"])
+@login_required
+def api_files_delete(file_id):
+    """Delete a file"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("workspace_files").delete().eq("id", file_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ──────────────────────────── Audio: OpenAI TTS ────────────────────────────
