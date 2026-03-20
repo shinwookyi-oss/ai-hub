@@ -94,14 +94,22 @@ UPLOAD_DIR = tempfile.mkdtemp(prefix="aihub_uploads_")
 # ──────────────────────────── Supabase ────────────────────────────
 
 supabase_client = None
+supabase_admin = None  # service_role client for admin ops (bypasses RLS)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         from supabase import create_client
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("  ✅ Supabase connected")
+        if SUPABASE_SERVICE_KEY:
+            supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+            print("  ✅ Supabase admin (service_role) connected")
+        else:
+            supabase_admin = supabase_client  # fallback
+            print("  ⚠️ No SUPABASE_SERVICE_KEY, admin ops use anon key")
     except Exception as e:
         print(f"  ⚠️ Supabase init failed: {e}")
 else:
@@ -3512,10 +3520,10 @@ def api_slides():
 @login_required
 @admin_required
 def admin_list_users():
-    if not supabase_client:
+    if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     try:
-        res = supabase_client.table("users").select("id,username,tier,display_name,is_active,created_at,last_login").order("created_at", desc=False).execute()
+        res = supabase_admin.table("users").select("id,username,tier,display_name,is_active,created_at,last_login").order("created_at", desc=False).execute()
         return jsonify({"success": True, "users": res.data or []})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3540,10 +3548,10 @@ def admin_create_user():
         return jsonify({"success": False, "error": "Invalid tier"}), 400
     try:
         # Check if username exists
-        existing = supabase_client.table("users").select("id").eq("username", username).execute()
+        existing = supabase_admin.table("users").select("id").eq("username", username).execute()
         if existing.data:
             return jsonify({"success": False, "error": "Username already exists"}), 409
-        res = supabase_client.table("users").insert({
+        res = supabase_admin.table("users").insert({
             "username": username,
             "password_hash": _hash_password(password),
             "tier": tier,
@@ -3559,7 +3567,7 @@ def admin_create_user():
 @login_required
 @admin_required
 def admin_update_user(user_id):
-    if not supabase_client:
+    if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     data = request.json
     updates = {}
@@ -3574,7 +3582,7 @@ def admin_update_user(user_id):
     if not updates:
         return jsonify({"success": False, "error": "No valid fields to update"}), 400
     try:
-        supabase_client.table("users").update(updates).eq("id", user_id).execute()
+        supabase_admin.table("users").update(updates).eq("id", user_id).execute()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3584,13 +3592,13 @@ def admin_update_user(user_id):
 @login_required
 @admin_required
 def admin_delete_user(user_id):
-    if not supabase_client:
+    if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     # Prevent deleting yourself
     if session.get("user_id") == user_id:
         return jsonify({"success": False, "error": "Cannot delete your own account"}), 400
     try:
-        supabase_client.table("users").delete().eq("id", user_id).execute()
+        supabase_admin.table("users").delete().eq("id", user_id).execute()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
