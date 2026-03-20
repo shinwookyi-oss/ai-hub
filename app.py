@@ -1156,6 +1156,113 @@ MAIN_HTML = r"""
             });
         });
         chatObserver.observe(chatArea, { childList: true });
+
+        // ── Slide Generation ──
+        async function generateSlides(topic) {
+            if (!topic) { topic = prompt('Enter presentation topic:'); if (!topic) return; }
+            var loadId = addLoading('Generating slides...');
+            try {
+                var prompt_text = 'Create a presentation about: ' + topic + '. Return ONLY valid JSON array with this exact format: [{"title":"Title Slide","content":"Subtitle","bullets":[]},{"title":"Slide 2 Title","content":"","bullets":["Point 1","Point 2","Point 3"]}]. Create 6-10 slides. No markdown, no explanation, ONLY the JSON array.';
+                var resp = await safeFetch('/api/chat', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: prompt_text, provider: currentProvider || 'gemini', mode: 'chat'})
+                });
+                var data = await resp.json();
+                removeLoading(loadId);
+                var aiText = data.response || data.responses?.[0]?.response || '';
+                // Extract JSON from response
+                var jsonMatch = aiText.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) { addMessage('Error', 'Could not parse slides. Try again.', 'error-msg'); return; }
+                var slides = JSON.parse(jsonMatch[0]);
+                currentSlides = slides;
+                currentSlideTopic = topic;
+                // Show in output panel
+                showSlidesPreview(slides, topic);
+                addMessage('System', 'Slides generated! Check Output panel for preview & download.', 'system-msg');
+                // Switch to output on mobile
+                if (window.innerWidth <= 768) showMobilePanel('output');
+            } catch(e) { removeLoading(loadId); addMessage('Error', 'Slides error: ' + e.message, 'error-msg'); }
+        }
+        var currentSlides = null;
+        var currentSlideTopic = '';
+
+        function showSlidesPreview(slides, topic) {
+            var outputArea = document.querySelector('.output-area') || document.getElementById('outputArea');
+            if (!outputArea) return;
+            var html = '<div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+            html += '<span style="font-size:18px;font-weight:700;color:var(--accent2);">Presentation: ' + topic + '</span>';
+            html += '<button onclick="downloadPptx()" style="padding:8px 16px;border:1px solid var(--green);border-radius:8px;background:#0a2a1a;color:var(--green);cursor:pointer;font-family:Inter,sans-serif;font-size:12px;">Download PPTX</button>';
+            html += '<button onclick="toggleSlideshow()" style="padding:8px 16px;border:1px solid var(--accent);border-radius:8px;background:#1a1a3a;color:var(--accent2);cursor:pointer;font-family:Inter,sans-serif;font-size:12px;">Slideshow</button>';
+            html += '</div>';
+            slides.forEach(function(s, i) {
+                html += '<div style="background:#12121f;border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:12px;">';
+                html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Slide ' + (i+1) + '</div>';
+                html += '<div style="font-size:' + (i===0?'24px':'18px') + ';font-weight:700;color:#e0e0ff;margin-bottom:12px;">' + s.title + '</div>';
+                if (s.content) html += '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">' + s.content + '</div>';
+                if (s.bullets && s.bullets.length) {
+                    s.bullets.forEach(function(b) { html += '<div style="color:#bbb;font-size:14px;padding:4px 0 4px 16px;">• ' + b + '</div>'; });
+                }
+                html += '</div>';
+            });
+            outputArea.innerHTML = html;
+        }
+
+        async function downloadPptx() {
+            if (!currentSlides) return;
+            try {
+                var resp = await fetch('/api/slides', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({slides: currentSlides, title: currentSlideTopic})
+                });
+                if (resp.ok) {
+                    var blob = await resp.blob();
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = (currentSlideTopic || 'presentation') + '.pptx';
+                    a.click();
+                }
+            } catch(e) { addMessage('Error', 'Download failed: ' + e.message, 'error-msg'); }
+        }
+
+        function toggleSlideshow() {
+            if (!currentSlides) return;
+            var w = window.open('', '_blank');
+            var html = '<!DOCTYPE html><html><head><title>' + currentSlideTopic + '</title>';
+            html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.css">';
+            html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/theme/black.min.css">';
+            html += '<style>.reveal{font-family:Inter,sans-serif;} .reveal h2{color:#e0e0ff;} .reveal li{font-size:0.85em;margin:8px 0;}</style></head>';
+            html += '<body><div class="reveal"><div class="slides">';
+            currentSlides.forEach(function(s, i) {
+                html += '<section>';
+                html += '<h2>' + s.title + '</h2>';
+                if (s.content) html += '<p style="color:#aaa;">' + s.content + '</p>';
+                if (s.bullets && s.bullets.length) {
+                    html += '<ul style="text-align:left;">';
+                    s.bullets.forEach(function(b) { html += '<li>' + b + '</li>'; });
+                    html += '</ul>';
+                }
+                html += '</section>';
+            });
+            html += '</div></div>';
+            html += '<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.js"><\/script>';
+            html += '<script>Reveal.initialize({hash:true,transition:"slide"});<\/script></body></html>';
+            w.document.write(html);
+            w.document.close();
+        }
+
+        // Allow /slides command in chat
+        var _origSendForSlides = send;
+        send = async function() {
+            var input = document.getElementById('userInput');
+            var val = (input.value || '').trim();
+            if (val.toLowerCase().startsWith('/slides ')) {
+                var topic = val.substring(8).trim();
+                input.value = '';
+                await generateSlides(topic);
+                return;
+            }
+            await _origSendForSlides();
+        };
     </script>
 </body>
 </html>
@@ -1587,6 +1694,105 @@ def api_transcribe():
             os.remove(tmp_path)
     except Exception as e:
         return jsonify({"error": str(e), "success": False}), 500
+
+
+# ──────────────────────────── Slides: PPTX Generation ────────────────────────────
+
+@app.route("/api/slides", methods=["POST"])
+@login_required
+def api_slides():
+    """Generate PPTX from slide data and return for download"""
+    try:
+        from pptx import Presentation
+        from pptx.util import Inches, Pt, Emu
+        from pptx.dml.color import RGBColor
+        from pptx.enum.text import PP_ALIGN
+        from io import BytesIO
+
+        data = request.json
+        slides_data = data.get("slides", [])
+        title = data.get("title", "AI Hub Presentation")
+
+        if not slides_data:
+            return jsonify({"error": "No slides data"}), 400
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+
+        for i, slide_data in enumerate(slides_data):
+            slide_layout = prs.slide_layouts[6]  # Blank layout
+            slide = prs.slides.add_slide(slide_layout)
+
+            # Dark background
+            bg = slide.background
+            fill = bg.fill
+            fill.solid()
+            fill.fore_color.rgb = RGBColor(0x0d, 0x0d, 0x1a)
+
+            s_title = slide_data.get("title", "")
+            s_content = slide_data.get("content", "")
+            s_bullets = slide_data.get("bullets", [])
+
+            # Title
+            left = Inches(0.8)
+            top = Inches(0.6) if i == 0 else Inches(0.5)
+            width = Inches(11.7)
+            height = Inches(1.5) if i == 0 else Inches(1.0)
+            txBox = slide.shapes.add_textbox(left, top, width, height)
+            tf = txBox.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = s_title
+            p.font.size = Pt(40) if i == 0 else Pt(32)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(0xe0, 0xe0, 0xff)
+            p.alignment = PP_ALIGN.LEFT if i > 0 else PP_ALIGN.CENTER
+
+            # Subtitle for title slide
+            if i == 0 and s_content:
+                p2 = tf.add_paragraph()
+                p2.text = s_content
+                p2.font.size = Pt(20)
+                p2.font.color.rgb = RGBColor(0x88, 0x88, 0xaa)
+                p2.alignment = PP_ALIGN.CENTER
+
+            # Bullets
+            if s_bullets and i > 0:
+                b_top = Inches(1.8)
+                b_height = Inches(5.0)
+                txBox2 = slide.shapes.add_textbox(left, b_top, width, b_height)
+                tf2 = txBox2.text_frame
+                tf2.word_wrap = True
+                for j, bullet in enumerate(s_bullets):
+                    p = tf2.paragraphs[0] if j == 0 else tf2.add_paragraph()
+                    p.text = bullet
+                    p.font.size = Pt(22)
+                    p.font.color.rgb = RGBColor(0xcc, 0xcc, 0xdd)
+                    p.space_after = Pt(12)
+
+            # Content paragraph for non-title slides
+            if s_content and i > 0 and not s_bullets:
+                c_top = Inches(1.8)
+                txBox3 = slide.shapes.add_textbox(left, c_top, width, Inches(5.0))
+                tf3 = txBox3.text_frame
+                tf3.word_wrap = True
+                p = tf3.paragraphs[0]
+                p.text = s_content
+                p.font.size = Pt(20)
+                p.font.color.rgb = RGBColor(0xcc, 0xcc, 0xdd)
+
+        # Save to buffer
+        buffer = BytesIO()
+        prs.save(buffer)
+        buffer.seek(0)
+
+        from flask import send_file
+        safe_title = "".join(c for c in title if c.isalnum() or c in " -_").strip()[:50] or "presentation"
+        return send_file(buffer, mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        as_attachment=True, download_name=f"{safe_title}.pptx")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ── Global error handlers → always return JSON for /api/* ──
