@@ -1416,14 +1416,27 @@ MAIN_HTML = r"""
             var f = r.file;
             if (!f) return;
             closeWorkspace();
+            var outputArea = document.querySelector('.output-area') || document.getElementById('outputArea');
             if (type === 'note') {
-                var newContent = prompt('Edit note: ' + f.name, f.content || '');
-                if (newContent !== null) {
-                    await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:newContent})});
+                if (outputArea) {
+                    var html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+                    html += '<span style="font-size:16px;font-weight:700;color:var(--accent2);">\uD83D\uDCDD ' + f.name + '</span>';
+                    html += '<button class="ws-btn" style="font-size:11px;" onclick="askAiAboutFile(\'' + fileId + '\',\'note\')">\uD83E\uDD16 Ask AI</button>';
+                    html += '<button class="ws-btn" style="font-size:11px;" onclick="editNote(\'' + fileId + '\')">Edit</button>';
+                    html += '</div>';
+                    html += '<div style="white-space:pre-wrap;color:var(--text);font-size:14px;line-height:1.8;background:#12121f;padding:16px;border-radius:12px;">' + (f.content||'(empty)').replace(/</g,'&lt;') + '</div>';
+                    outputArea.innerHTML = html;
                 }
+                if (window.innerWidth <= 768) showMobilePanel('output');
             } else if (type === 'conversation') {
-                var outputArea = document.querySelector('.output-area');
-                if (outputArea) outputArea.innerHTML = '<div style="white-space:pre-wrap;color:var(--text);font-size:14px;line-height:1.8;">' + (f.content||'').replace(/</g,'&lt;') + '</div>';
+                if (outputArea) {
+                    var html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+                    html += '<span style="font-size:16px;font-weight:700;color:var(--accent2);">\uD83D\uDCAC ' + f.name + '</span>';
+                    html += '<button class="ws-btn" style="font-size:11px;" onclick="askAiAboutFile(\'' + fileId + '\',\'conversation\')">\uD83E\uDD16 Continue</button>';
+                    html += '</div>';
+                    html += '<div style="white-space:pre-wrap;color:var(--text);font-size:14px;line-height:1.8;">' + (f.content||'').replace(/</g,'&lt;') + '</div>';
+                    outputArea.innerHTML = html;
+                }
                 if (window.innerWidth <= 768) showMobilePanel('output');
             } else if (type === 'slides') {
                 try {
@@ -1434,6 +1447,39 @@ MAIN_HTML = r"""
                     if (window.innerWidth <= 768) showMobilePanel('output');
                 } catch(e) {}
             }
+        }
+
+        async function editNote(fileId) {
+            var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
+            var f = r.file;
+            if (!f) return;
+            var newContent = prompt('Edit note: ' + f.name, f.content || '');
+            if (newContent !== null) {
+                await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:newContent})});
+                openFile(fileId, 'note');
+            }
+        }
+
+        async function askAiAboutFile(fileId, type) {
+            var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
+            var f = r.file;
+            if (!f) return;
+            closeWorkspace();
+            var content = f.content || '';
+            var input = document.getElementById('userInput');
+            if (type === 'note') {
+                input.value = 'Based on this note, please analyze, expand, and suggest improvements:\n\n' + content;
+            } else if (type === 'conversation') {
+                input.value = 'Based on this previous conversation, continue the discussion and provide deeper insights:\n\n' + content.substring(0, 3000);
+            } else if (type === 'slides') {
+                try {
+                    var slides = JSON.parse(content);
+                    var summary = slides.map(function(s,i){return 'Slide '+(i+1)+': '+s.title;}).join(', ');
+                    input.value = 'I have a presentation about "' + ((f.metadata && f.metadata.topic) || f.name) + '" with slides: ' + summary + '. Please suggest improvements, additional content, and ways to make it more impactful.';
+                } catch(e) { input.value = 'Analyze and improve this presentation: ' + content.substring(0, 2000); }
+            }
+            addMessage('System', 'Loaded from workspace: ' + f.name, 'system-msg');
+            send();
         }
 
         async function deleteFile(id) {
