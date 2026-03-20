@@ -830,18 +830,6 @@ MAIN_HTML = r"""
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
                 <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
             </div>
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modePersona')"><span data-i18n="grp_persona">🎭 Persona Modes</span> <span id="modePersonaArrow" style="float:right;">▶</span></h3>
-            <div id="modePersona" class="collapsed">
-                <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
-                <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
-                <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
-                <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
-            </div>
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeAnalysis')"><span data-i18n="grp_analysis">📐 Analysis Modes</span> <span id="modeAnalysisArrow" style="float:right;">▶</span></h3>
-            <div id="modeAnalysis" class="collapsed">
-                <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
-                <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
-            </div>
             </div>
             <!-- Provider Section -->
             <div class="sidebar-section" id="sectionProvider">
@@ -855,6 +843,15 @@ MAIN_HTML = r"""
             <!-- Persona Section -->
             <div class="sidebar-section" id="sectionPersona">
             <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <span style="display:flex;gap:4px;"><button onclick="resetHiddenPersonas()" title="숨긴 페르소나 복원" style="font-size:10px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;">↺</button><button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></span></h3>
+            <!-- Persona Modes at top of Persona tab -->
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+                <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
+                <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
+                <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
+                <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
+                <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
+            </div>
+            <div style="font-size:10px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">선택 활성 페르소나</div>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
                 <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span style="display:flex;align-items:center;gap:8px;"><span id="memCount">0</span><span onclick="togglePersona(currentPersona)" title="닫기" style="cursor:pointer;color:var(--text2);font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">✕</span></span></div>
