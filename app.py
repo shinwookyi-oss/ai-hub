@@ -542,7 +542,7 @@ MAIN_HTML = r"""
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
-            <a href="/logout" class="logout-btn">Logout</a>
+            <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
         </div>
     </div>
     <div class="mobile-panel-tabs" id="mobileTabs">
@@ -555,13 +555,13 @@ MAIN_HTML = r"""
     <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
         <div class="ws-modal">
             <div class="ws-header">
-                <h2>📂 My Workspace</h2>
+                <h2 data-i18n="workspace">📂 My Workspace</h2>
                 <button class="ws-close" onclick="closeWorkspace()">×</button>
             </div>
             <div class="ws-body">
                 <div class="ws-folders">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Folders</span>
+                        <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;" data-i18n="folders">Folders</span>
                         <button class="ws-btn ws-btn-green" onclick="createFolder()" style="padding:4px 10px;font-size:11px;">+ New</button>
                     </div>
                     <div id="wsFolderList"></div>
@@ -574,38 +574,38 @@ MAIN_HTML = r"""
         </div>
     </div>
         <div class="sidebar">
-            <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()">📂 My Workspace</button>
-            <h3>Mode</h3>
-            <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
-            <button class="mode-btn" data-mode="compare" onclick="setMode('compare')">🔄 Compare All</button>
-            <button class="mode-btn" data-mode="debate" onclick="setMode('debate')">⚔️ Debate</button>
-            <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')">🗣️ Discussion</button>
-            <button class="mode-btn" data-mode="best" onclick="setMode('best')">🏆 Best Answer</button>
-            <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')">🎭 Persona Debate</button>
-            <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')">🧠 Persona Discussion</button>
-            <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')">📊 Multi-Report</button>
-            <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')">⚖️ Decision Matrix</button>
-            <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')">🔗 Chain Analysis</button>
-            <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')">🗳️ Persona Vote</button>
-            <h3>Provider</h3>
+            <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <h3 data-i18n="mode">Mode</h3>
+            <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
+            <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
+            <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
+            <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
+            <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
+            <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
+            <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
+            <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
+            <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
+            <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
+            <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
+            <h3 data-i18n="provider">Provider</h3>
             <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
             <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
             <button class="mode-btn" data-provider="azure" onclick="setProvider('azure')">Azure OpenAI</button>
             <button class="mode-btn" data-provider="claude" onclick="setProvider('claude')">Claude</button>
             <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
-            <h3 style="display:flex;justify-content:space-between;align-items:center;">Persona <button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;">+ Custom</button></h3>
+            <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></h3>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
                 <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span id="memCount">0</span></div>
                 <div class="mem-list" id="memList"></div>
                 <div class="mem-actions">
-                    <button onclick="addPersonaMemory()">+ Add Memory</button>
-                    <button onclick="clearPersonaMemory()">🗑 Clear All</button>
+                    <button onclick="addPersonaMemory()" data-i18n="add_mem">+ Add Memory</button>
+                    <button onclick="clearPersonaMemory()" data-i18n="clear_all">🗑 Clear All</button>
                 </div>
             </div>
             <div class="history-section">
-                <h3>Chat History</h3>
-                <button class="new-chat-btn" onclick="newConversation()">+ New Chat</button>
+                <h3 data-i18n="history">Chat History</h3>
+                <button class="new-chat-btn" onclick="newConversation()" data-i18n="new_chat">+ New Chat</button>
                 <div class="history-list" id="historyList">
                     <div class="history-empty">Loading...</div>
                 </div>
@@ -652,7 +652,7 @@ MAIN_HTML = r"""
                 <div class="input-row">
                     <input type="text" id="userInput" placeholder="Type your message..." autofocus>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
-                    <button class="send-btn" id="sendBtn" onclick="send()">Send</button>
+                    <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
             </div>
         </div>
@@ -663,9 +663,9 @@ MAIN_HTML = r"""
                     <span class="output-panel-badge" id="outputBadge">✓ Ready</span>
                 </div>
                 <div style="display:flex;gap:6px;">
-                    <button class="output-action-btn" id="vizBtn" onclick="visualize()">📊 Visualize</button>
-                    <button class="output-action-btn" onclick="copyOutput()">Copy</button>
-                    <button class="output-action-btn" onclick="clearOutput()">Clear</button>
+                    <button class="output-action-btn" id="vizBtn" onclick="visualize()" data-i18n="visualize">📊 Visualize</button>
+                    <button class="output-action-btn" onclick="copyOutput()" data-i18n="copy">Copy</button>
+                    <button class="output-action-btn" onclick="clearOutput()" data-i18n="clear">Clear</button>
                 </div>
             </div>
             <div class="output-area" id="outputArea">
@@ -674,6 +674,114 @@ MAIN_HTML = r"""
         </div>
     </div>
     <script>
+        // ── i18n: Browser Language Detection & Translation ──
+        const LANG = (navigator.language || navigator.userLanguage || 'en').slice(0,2);
+        const I18N = {
+            en: {
+                mode:'Mode', provider:'Provider', persona:'Persona', custom:'+ Custom',
+                chat:'💬 Chat', compare:'🔄 Compare All', debate:'⚔️ Debate', discuss:'🗣️ Discussion',
+                best:'🏆 Best Answer', p_debate:'🎭 Persona Debate', p_discuss:'🧠 Persona Discussion',
+                p_report:'📊 Multi-Report', dm:'⚖️ Decision Matrix', chain:'🔗 Chain Analysis',
+                vote:'🗳️ Persona Vote', history:'Chat History', new_chat:'+ New Chat',
+                workspace:'📂 My Workspace', folders:'Folders', files:'Files', new_folder:'+ New',
+                select_folder:'Select a folder to view files', logout:'Logout',
+                result:'📄 Result Document', ready:'✓ Ready', visualize:'📊 Visualize',
+                copy:'Copy', clear:'Clear', empty_output:'AI analysis results\nwill be documented here',
+                ph_chat:'Type your message...', ph_compare:'Ask all AIs...', ph_debate:'Debate topic...',
+                ph_discuss:'Discussion topic...', ph_best:'Question for best answer...',
+                ph_p_debate:'Persona debate topic...', ph_p_discuss:'Topic for group discussion...',
+                ph_p_report:'Topic for multi-persona report...', ph_dm:'(Configure options above, then type topic)',
+                ph_chain:'Topic for chain analysis (select personas ↑)...',
+                ph_vote:'Proposal to vote on (select personas ↑)...',
+                send:'Send', memory:'Memory', add_mem:'+ Add Memory', clear_all:'🗑 Clear All',
+                save_prompt:'📋 Save Prompt', load_prompt:'📂 Load Prompt', pdf:'📄 PDF',
+                dm_title:'⚖️ Decision Matrix Setup', dm_options:'Options (comma-sep):',
+                dm_criteria:'Criteria (comma-sep):', select_personas:'Select personas (2+):',
+                select_eval:'Select evaluators:', loading:'Loading...', new_note:'📝 New Note',
+                save_chat:'💬 Save Chat', save_slides:'📊 Save Slides', save_file:'💾 Save File',
+                pin:'📌', ask_ai:'🤖 Ask AI', continue_ai:'▶ Continue', develop:'🔨 Develop',
+            },
+            ko: {
+                mode:'모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
+                chat:'💬 채팅', compare:'🔄 전체 비교', debate:'⚔️ 토론', discuss:'🗣️ 토의',
+                best:'🏆 최적 답변', p_debate:'🎭 페르소나 토론', p_discuss:'🧠 페르소나 토의',
+                p_report:'📊 다중 리포트', dm:'⚖️ 결정 매트릭스', chain:'🔗 체인 분석',
+                vote:'🗳️ 페르소나 투표', history:'대화 기록', new_chat:'+ 새 대화',
+                workspace:'📂 내 작업공간', folders:'폴더', files:'파일', new_folder:'+ 새로 만들기',
+                select_folder:'폴더를 선택하세요', logout:'로그아웃',
+                result:'📄 결과 문서', ready:'✓ 준비됨', visualize:'📊 시각화',
+                copy:'복사', clear:'지우기', empty_output:'AI 분석 결과가\n여기에 문서화됩니다',
+                ph_chat:'메시지를 입력하세요...', ph_compare:'모든 AI에게 질문...', ph_debate:'토론 주제...',
+                ph_discuss:'토의 주제...', ph_best:'최적 답변 질문...', ph_p_debate:'페르소나 토론 주제...',
+                ph_p_discuss:'그룹 토의 주제...', ph_p_report:'다중 페르소나 리포트 주제...',
+                ph_dm:'(위에서 옵션 설정 후 주제 입력)', ph_chain:'체인 분석 주제 (위에서 페르소나 선택)...',
+                ph_vote:'투표할 제안 (위에서 페르소나 선택)...',
+                send:'전송', memory:'메모리', add_mem:'+ 기억 추가', clear_all:'🗑 전체 삭제',
+                save_prompt:'📋 프롬프트 저장', load_prompt:'📂 프롬프트 불러오기', pdf:'📄 PDF',
+                dm_title:'⚖️ 결정 매트릭스 설정', dm_options:'옵션 (쉼표 구분):',
+                dm_criteria:'기준 (쉼표 구분):', select_personas:'페르소나 선택 (2명 이상):',
+                select_eval:'평가자 선택:', loading:'로딩 중...', new_note:'📝 새 노트',
+                save_chat:'💬 대화 저장', save_slides:'📊 슬라이드 저장', save_file:'💾 파일 저장',
+                pin:'📌', ask_ai:'🤖 AI에게 질문', continue_ai:'▶ 이어하기', develop:'🔨 발전',
+            },
+            ja: {
+                mode:'モード', provider:'プロバイダー', persona:'ペルソナ', custom:'+ カスタム',
+                chat:'💬 チャット', compare:'🔄 全比較', debate:'⚔️ ディベート', discuss:'🗣️ ディスカッション',
+                best:'🏆 ベスト回答', p_debate:'🎭 ペルソナ討論', p_discuss:'🧠 ペルソナ議論',
+                p_report:'📊 マルチレポート', dm:'⚖️ 意思決定', chain:'🔗 チェーン分析',
+                vote:'🗳️ ペルソナ投票', history:'チャット履歴', new_chat:'+ 新規チャット',
+                workspace:'📂 ワークスペース', folders:'フォルダ', files:'ファイル', new_folder:'+ 新規',
+                select_folder:'フォルダを選択', logout:'ログアウト',
+                result:'📄 結果文書', ready:'✓ 準備完了', visualize:'📊 可視化',
+                copy:'コピー', clear:'クリア', empty_output:'AI分析結果が\nここに表示されます',
+                ph_chat:'メッセージを入力...', send:'送信', memory:'メモリ',
+                add_mem:'+ メモリ追加', clear_all:'🗑 全削除',
+                save_prompt:'📋 保存', load_prompt:'📂 読込', pdf:'📄 PDF',
+                dm_title:'⚖️ 意思決定マトリックス', dm_options:'選択肢 (カンマ区切り):',
+                dm_criteria:'基準 (カンマ区切り):', select_personas:'ペルソナ選択 (2+):',
+                select_eval:'評価者選択:', loading:'読込中...',
+            },
+            zh: {
+                mode:'模式', provider:'提供商', persona:'角色', custom:'+ 自定义',
+                chat:'💬 聊天', compare:'🔄 全部比较', debate:'⚔️ 辩论', discuss:'🗣️ 讨论',
+                best:'🏆 最佳答案', p_debate:'🎭 角色辩论', p_discuss:'🧠 角色讨论',
+                p_report:'📊 多角色报告', dm:'⚖️ 决策矩阵', chain:'🔗 链式分析',
+                vote:'🗳️ 角色投票', history:'聊天记录', new_chat:'+ 新对话',
+                workspace:'📂 工作空间', logout:'退出',
+                result:'📄 结果文档', ready:'✓ 就绪', visualize:'📊 可视化',
+                copy:'复制', clear:'清除', send:'发送', memory:'记忆',
+            },
+            es: {
+                mode:'Modo', provider:'Proveedor', persona:'Persona', custom:'+ Personalizar',
+                chat:'💬 Chat', compare:'🔄 Comparar', debate:'⚔️ Debate', discuss:'🗣️ Discusión',
+                best:'🏆 Mejor Respuesta', p_debate:'🎭 Debate Persona', p_discuss:'🧠 Discusión Persona',
+                p_report:'📊 Multi-Reporte', dm:'⚖️ Matriz', chain:'🔗 Análisis Cadena',
+                vote:'🗳️ Votación', history:'Historial', new_chat:'+ Nuevo Chat',
+                workspace:'📂 Espacio', logout:'Salir',
+                result:'📄 Documento', ready:'✓ Listo', visualize:'📊 Visualizar',
+                copy:'Copiar', clear:'Limpiar', send:'Enviar', memory:'Memoria',
+            },
+        };
+        function t(key) { return (I18N[LANG]||{})[key] || (I18N['en']||{})[key] || key; }
+        function applyLang() {
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n');
+                const val = t(key);
+                if (el.tagName === 'INPUT') el.placeholder = val;
+                else el.textContent = val;
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+                el.title = t(el.getAttribute('data-i18n-title'));
+            });
+        }
+        const PH_MAP = {
+            chat:t('ph_chat'), compare:t('ph_compare')||'Ask all AIs...', debate:t('ph_debate')||'Debate topic...',
+            discuss:t('ph_discuss')||'Discussion topic...', best:t('ph_best')||'Question for best answer...',
+            persona_debate:t('ph_p_debate')||'Persona debate topic...', persona_discuss:t('ph_p_discuss')||'Topic for group discussion...',
+            persona_report:t('ph_p_report')||'Topic for multi-persona report...', decision_matrix:t('ph_dm')||'(Configure options above)',
+            persona_chain:t('ph_chain')||'Topic for chain analysis...', persona_vote:t('ph_vote')||'Proposal to vote on...',
+        };
+
         let currentMode='chat', currentProvider='chatgpt', currentPersona='',
             uploadedFileContent='', uploadedFileName='',
             uploadedFiles=[];  // array of {name, content, size, chars}
@@ -790,12 +898,7 @@ MAIN_HTML = r"""
             const multiModes = ['persona_discuss','persona_report','persona_chain','persona_vote'];
             document.getElementById('personaMultiSelect').style.display = multiModes.includes(m) ? 'flex' : 'none';
             document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
-            const ph={chat:'Type your message...',compare:'Ask all AIs...',debate:'Debate topic...',
-                       discuss:'Discussion topic...',best:'Question for best answer...',persona_debate:'Persona debate topic...',
-                       persona_discuss:'Topic for group discussion...',persona_report:'Topic for multi-persona report...',
-                       decision_matrix:'(Configure options above, then type topic)',persona_chain:'Topic for chain analysis (select personas ↑)...',
-                       persona_vote:'Proposal to vote on (select personas ↑)...'};
-            document.getElementById('userInput').placeholder = ph[m] || 'Type...';
+            document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
         }
         function setProvider(p) {
             currentProvider=p;
@@ -1505,7 +1608,7 @@ MAIN_HTML = r"""
         const origSetProvider = setProvider;
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
-        initStatus(); initPersonas(); initHistory(); initDmCheckboxes();
+        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang();
 
         // ── Voice Support (Web Speech API) ──
         let recognition = null;
