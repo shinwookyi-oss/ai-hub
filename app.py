@@ -779,8 +779,8 @@ MAIN_HTML = r"""
             </div>
             <div class="admin-body">
                 <table class="admin-table">
-                    <thead><tr><th>User</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
-                    <tbody id="adminUserList"><tr><td colspan="8" style="color:var(--text2);">Loading...</td></tr></tbody>
+                    <thead><tr><th>User</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Temp PW</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <tbody id="adminUserList"><tr><td colspan="9" style="color:var(--text2);">Loading...</td></tr></tbody>
                 </table>
                 <div class="admin-add-form" id="adminAddForm">
                     <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
@@ -853,7 +853,7 @@ MAIN_HTML = r"""
             </div>
             <!-- Persona Section -->
             <div class="sidebar-section" id="sectionPersona">
-            <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></h3>
+            <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <span style="display:flex;gap:4px;"><button onclick="resetHiddenPersonas()" title="숨긴 페르소나 복원" style="font-size:10px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;">↺</button><button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button></span></h3>
             <div class="persona-grid" id="personaGrid"></div>
             <div class="persona-memory-panel" id="personaMemoryPanel">
                 <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span id="memCount">0</span></div>
@@ -1158,15 +1158,31 @@ MAIN_HTML = r"""
         }
         function deleteCustomPersona(key, event) {
             if(event) event.stopPropagation();
-            if(!confirm("Delete this custom persona?")) return;
+            if(!confirm("이 커스텀 페르소나를 삭제하겠습니까?\n(저장된 메모리/성향 기록도 함께 삭제됩니다)")) return;
             let pcs = getCustomPersonas();
             pcs = pcs.filter(p => p.key !== key);
             saveCustomPersonas(pcs);
             delete personas[key];
             if(currentPersona === key) togglePersona('');
+            // Also delete all memories for this persona from Supabase
+            fetch('/api/persona/' + key + '/memory/clear', {method:'DELETE'})
+                .catch(() => {}); // silently ignore if no memories
             initPersonas();
         }
-
+        function hidePersona(key, event) {
+            if(event) event.stopPropagation();
+            if(!confirm('이 페르소나를 목록에서 숨기겠습니까?\n(아래 Reset 버튼으로 복원 가능)')) return;
+            let hidden = JSON.parse(localStorage.getItem('hiddenPersonas') || '[]');
+            if(!hidden.includes(key)) hidden.push(key);
+            localStorage.setItem('hiddenPersonas', JSON.stringify(hidden));
+            if(currentPersona === key) togglePersona('');
+            initPersonas();
+        }
+        function resetHiddenPersonas() {
+            localStorage.removeItem('hiddenPersonas');
+            initPersonas();
+            addMessage('System', '숨긴 페르소나가 모두 복원됐습니다.', 'system-msg');
+        }
         function initPersonas() {
             const g=document.getElementById('personaGrid'),
                   f=document.getElementById('personaFor'),
@@ -1175,6 +1191,9 @@ MAIN_HTML = r"""
             const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
 
             let groupsToRender = JSON.parse(JSON.stringify(personaGroups));
+            const hiddenPersonas = JSON.parse(localStorage.getItem('hiddenPersonas') || '[]');
+            // Filter hidden built-in personas from each group
+            groupsToRender = groupsToRender.map(gr => ({...gr, personas: gr.personas.filter(p => !hiddenPersonas.includes(p.key))})).filter(gr => gr.personas.length > 0);
             const cps = getCustomPersonas();
             if (cps.length > 0) {
                 cps.forEach(p => { personas[p.key] = { name: p.name, prompt: p.prompt, icon: "👤", group: "custom" }; });
@@ -1189,7 +1208,9 @@ MAIN_HTML = r"""
                     + `<span class="pg-toggle" id="pgToggle_${group.key}">▼</span> ${group.icon} ${group.name}</div>`;
                 g.innerHTML += `<div class="persona-group-body" id="pgBody_${group.key}">`
                     + group.personas.map(function(p) {
-                        let delHtml = p.key.startsWith('custom_') ? `<span style="float:right;color:var(--red);padding-left:12px;cursor:pointer;" onclick="deleteCustomPersona('${p.key}', event)">×</span>` : '';
+                        const isCustom = p.key.startsWith('custom_');
+                        const delTitle = isCustom ? 'Delete persona' : 'Hide persona (can restore)';
+                        const delHtml = `<span title="${delTitle}" style="float:right;color:var(--red);padding-left:10px;cursor:pointer;opacity:0.6;" onclick="${isCustom ? `deleteCustomPersona('${p.key}',event)` : `hidePersona('${p.key}',event)`}">×</span>`;
                         return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">${p.name}${delHtml}</div>`;
                     }).join('') + '</div>';
                 // Populate debate selectors and checkboxes with group headers
@@ -1277,9 +1298,18 @@ MAIN_HTML = r"""
             document.querySelector(`.mode-btn[data-mode="${m}"]`)?.classList.add('active');
             document.getElementById('personaSelectors').classList.toggle('hidden', m!=='persona_debate');
             const multiModes = ['persona_discuss','persona_report','persona_chain','persona_vote'];
-            document.getElementById('personaMultiSelect').style.display = multiModes.includes(m) ? 'flex' : 'none';
+            const isMulti = multiModes.includes(m);
+            document.getElementById('personaMultiSelect').style.display = isMulti ? 'flex' : 'none';
             document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
             document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
+            // Auto-switch to Persona tab for multi-select & debate modes, Mode tab otherwise
+            if (isMulti || m === 'persona_debate') {
+                switchSidebarTab('persona');
+                setTimeout(() => {
+                    const ms = document.getElementById('personaMultiSelect');
+                    if (ms) ms.scrollIntoView({behavior:'smooth', block:'nearest'});
+                }, 100);
+            }
         }
         function setProvider(p) {
             currentProvider=p;
@@ -2049,6 +2079,11 @@ MAIN_HTML = r"""
                         <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:90px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
                         <td><input type="email" id="editEmail_${u.id}" value="${escapeHtml(u.email||'')}" style="width:120px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'email', this.value)"></td>
                         <td><input type="tel" id="editPhone_${u.id}" value="${escapeHtml(u.phone||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'phone', this.value)"></td>
+                        <td style="white-space:nowrap;">
+                          ${u.temp_password ? `<span id="tmpPwSpan_${u.id}" style="font-family:monospace;font-size:11px;cursor:pointer;color:var(--accent2);" title="클릭하면 표시됩니다" onclick="this.textContent=this.textContent==='●●●●'?'${escapeHtml(u.temp_password)}':'●●●●'">●●●●</span>` : '<span style="color:var(--text2);font-size:11px;">-</span>'}
+                          <button class="admin-btn-sm" onclick="adminSetTempPw('${u.id}','${u.username}')" title="임시 비밀번호 설정" style="margin-left:4px;">🔑</button>
+                          ${u.temp_password ? `<button class="admin-btn-sm" onclick="adminClearTempPw('${u.id}')" title="임시 비밀번호 삭제" style="margin-left:2px;color:var(--red);">✕</button>` : ''}
+                        </td>
                         <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
                             <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
                             <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
@@ -2060,7 +2095,7 @@ MAIN_HTML = r"""
                         <td><button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
                     </tr>`;
                 }).join('');
-            } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
+            } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
         }
         async function adminAddUser() {
             const username = document.getElementById('newUsername').value.trim();
@@ -2108,6 +2143,32 @@ MAIN_HTML = r"""
                     method:'PUT', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({tier})
                 });
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminSetTempPw(id, username) {
+            const pw = prompt(`"${username}" 의 임시 비밀번호를 입력하세요:`);
+            if (pw === null) return;
+            if (!pw.trim()) { alert('비밀번호를 입력해주세요.'); return; }
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({temp_password: pw.trim()})
+                });
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminClearTempPw(id) {
+            if (!confirm('임시 비밀번호를 삭제하겠습니까?')) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({temp_password: null})
+                });
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
             } catch(e) { alert('Error: ' + e.message); }
         }
 
@@ -3783,7 +3844,7 @@ def admin_list_users():
     if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     try:
-        res = supabase_admin.table("users").select("id,username,tier,display_name,is_active,created_at,last_login").order("created_at", desc=False).execute()
+        res = supabase_admin.table("users").select("id,username,tier,display_name,email,phone,is_active,created_at,last_login,temp_password").order("created_at", desc=False).execute()
         return jsonify({"success": True, "users": res.data or []})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3843,6 +3904,9 @@ def admin_update_user(user_id):
         updates["is_active"] = bool(data["is_active"])
     if "password" in data and data["password"].strip():
         updates["password_hash"] = _hash_password(data["password"].strip())
+    if "temp_password" in data:
+        # Store as plaintext for admin visibility; None = clear it
+        updates["temp_password"] = data["temp_password"]  # None clears it in Supabase
     if not updates:
         return jsonify({"success": False, "error": "No valid fields to update"}), 400
     try:
