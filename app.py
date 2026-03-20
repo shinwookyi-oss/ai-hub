@@ -250,30 +250,35 @@ def login_page():
         # Try Supabase users table first
         user_found = False
         if supabase_client:
-            try:
-                res = supabase_client.table("users").select("*").eq("username", username).eq("is_active", True).execute()
-                if res.data and len(res.data) > 0:
-                    db_user = res.data[0]
-                    if db_user["password_hash"] == pw_hash:
-                        session.permanent = True
-                        session["logged_in"] = True
-                        session["user_id"] = db_user["id"]
-                        session["username"] = db_user["username"]
-                        session["user_tier"] = db_user.get("tier", "free")
-                        session["display_name"] = db_user.get("display_name", username)
-                        session["last_active"] = datetime.utcnow().isoformat()
-                        session["login_time"] = datetime.utcnow().isoformat()
-                        session["must_change_password"] = bool(db_user.get("must_change_password"))
-                        # Update last_login
-                        try:
-                            supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
-                        except Exception:
-                            pass
-                        return redirect("/")
+            for _attempt in range(4):
+                try:
+                    res = supabase_client.table("users").select("*").eq("username", username).eq("is_active", True).execute()
+                    if res.data and len(res.data) > 0:
+                        db_user = res.data[0]
+                        if db_user["password_hash"] == pw_hash:
+                            session.permanent = True
+                            session["logged_in"] = True
+                            session["user_id"] = db_user["id"]
+                            session["username"] = db_user["username"]
+                            session["user_tier"] = db_user.get("tier", "free")
+                            session["display_name"] = db_user.get("display_name", username)
+                            session["last_active"] = datetime.utcnow().isoformat()
+                            session["login_time"] = datetime.utcnow().isoformat()
+                            session["must_change_password"] = bool(db_user.get("must_change_password"))
+                            try:
+                                supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
+                            except Exception:
+                                pass
+                            return redirect("/")
+                        else:
+                            user_found = True  # user exists but wrong password
+                    break  # query succeeded, no need to retry
+                except Exception as e:
+                    err = str(e)
+                    if ("PGRST002" in err or "schema cache" in err) and _attempt < 3:
+                        time.sleep(1.0)
                     else:
-                        user_found = True  # user exists but wrong password
-            except Exception:
-                pass  # Supabase error, fall through to env var
+                        break  # non-retryable error, fall through
         # Fallback: env var credentials
         if not user_found and username == APP_USERNAME and pw_hash == APP_PASSWORD_HASH:
             session.permanent = True
@@ -4032,14 +4037,15 @@ def admin_list_users():
     if not supabase_admin:
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     last_error = None
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             res = supabase_admin.table("users").select("id,username,tier,display_name,email,phone,is_active,created_at,last_login,temp_password").order("created_at", desc=False).execute()
             return jsonify({"success": True, "users": res.data or []})
         except Exception as e:
             last_error = e
-            if "PGRST002" in str(e) and attempt < 2:
-                time.sleep(0.5)
+            err_str = str(e)
+            if ("PGRST002" in err_str or "schema cache" in err_str) and attempt < 4:
+                time.sleep(1.0)
             else:
                 break
     return jsonify({"success": False, "error": "Database temporarily unavailable. Please retry."}), 503
