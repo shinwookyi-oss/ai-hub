@@ -141,7 +141,7 @@ def login_required(f):
         # Tiered rate limiting for API calls
         if request.path.startswith("/api/"):
             ip = request.remote_addr or "unknown"
-            tier = session.get("user_tier", os.getenv("USER_TIER", "admin"))
+            tier = session.get("user_tier", os.getenv("USER_TIER", "owner"))
             if not api_limiter.is_allowed(ip, tier):
                 info = api_limiter.tier_info(tier)
                 return jsonify({
@@ -278,8 +278,8 @@ def login_page():
             session["logged_in"] = True
             session["user_id"] = "env_admin"
             session["username"] = username
-            session["user_tier"] = "admin"
-            session["display_name"] = "Administrator"
+            session["user_tier"] = "owner"
+            session["display_name"] = "Owner"
             session["last_active"] = datetime.utcnow().isoformat()
             session["login_time"] = datetime.utcnow().isoformat()
             return redirect("/")
@@ -292,13 +292,13 @@ def _seed_admin_user():
     if not supabase_client:
         return
     try:
-        res = supabase_client.table("users").select("id").eq("tier", "admin").limit(1).execute()
+        res = supabase_client.table("users").select("id").eq("tier", "owner").limit(1).execute()
         if not res.data:
             supabase_client.table("users").insert({
                 "username": APP_USERNAME,
                 "password_hash": APP_PASSWORD_HASH,
-                "tier": "admin",
-                "display_name": "Administrator",
+                "tier": "owner",
+                "display_name": "System Owner",
                 "is_active": True,
             }).execute()
             print("  ✅ Admin user seeded in Supabase")
@@ -310,8 +310,8 @@ def _seed_admin_user():
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get("user_tier") != "admin":
-            return jsonify({"success": False, "error": "Admin access required"}), 403
+        if session.get("user_tier") != "owner":
+            return jsonify({"success": False, "error": "Owner access required"}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -691,7 +691,8 @@ MAIN_HTML = r"""
         .admin-table td { padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.05); vertical-align:middle; }
         .admin-table tr:hover { background:rgba(255,255,255,0.03); }
         .tier-badge { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
-        .tier-admin { background:#2d1f5e; color:#a78bfa; }
+        .tier-owner { background:#2d1f5e; color:#a78bfa; }
+        .tier-admin { background:#374151; color:#d1d5db; }
         .tier-premium { background:#1f3a2d; color:#6ee7b7; }
         .tier-free { background:#1f2937; color:#9ca3af; }
         .admin-add-form { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
@@ -775,7 +776,7 @@ MAIN_HTML = r"""
                     <input type="text" id="newUsername" placeholder="Username">
                     <input type="password" id="newPassword" placeholder="Password">
                     <input type="text" id="newDisplayName" placeholder="Display Name">
-                    <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option></select>
+                    <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option><option value="owner">Owner</option></select>
                     <button onclick="adminAddUser()">+ Add User</button>
                 </div>
             </div>
@@ -810,7 +811,7 @@ MAIN_HTML = r"""
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
             <div id="modeBasic">
-                <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
+                <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
                 <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
                 <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
@@ -1877,7 +1878,7 @@ MAIN_HTML = r"""
         // ── Admin Panel ──
         const USER_TIER = 'USER_TIER_DATA';
         function initAdmin() {
-            if (USER_TIER === 'admin') {
+            if (USER_TIER === 'owner') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
             }
         }
@@ -3545,7 +3546,7 @@ def admin_create_user():
         return jsonify({"success": False, "error": "Username and password are required"}), 400
     if len(password) < 4:
         return jsonify({"success": False, "error": "Password must be at least 4 characters"}), 400
-    if tier not in ("admin", "premium", "free"):
+    if tier not in ("owner", "admin", "premium", "free"):
         return jsonify({"success": False, "error": "Invalid tier"}), 400
     try:
         # Check if username exists
@@ -3572,7 +3573,7 @@ def admin_update_user(user_id):
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     data = request.json
     updates = {}
-    if "tier" in data and data["tier"] in ("admin", "premium", "free"):
+    if "tier" in data and data["tier"] in ("owner", "admin", "premium", "free"):
         updates["tier"] = data["tier"]
     if "display_name" in data:
         updates["display_name"] = data["display_name"]
