@@ -1336,7 +1336,8 @@ MAIN_HTML = r"""
             var name = prompt('Folder name:');
             if (!name) return;
             var icon = prompt('Folder icon (emoji):', '\uD83D\uDCC1') || '\uD83D\uDCC1';
-            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon})});
+            var desc = prompt('Folder description (optional):', '') || '';
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:desc})});
             loadFolders();
         }
 
@@ -1362,26 +1363,59 @@ MAIN_HTML = r"""
             html += '<button class="ws-btn" onclick="saveCurrentChat()">Save Chat</button>';
             html += '<button class="ws-btn" onclick="saveCurrentSlides()">Save Slides</button>';
             html += '</div>';
-            (r.files || []).forEach(function(f) {
+            var files = r.files || [];
+            // Sort: pinned first, then by date
+            files.sort(function(a,b) {
+                var pa = (a.metadata && a.metadata.pinned) ? 1 : 0;
+                var pb = (b.metadata && b.metadata.pinned) ? 1 : 0;
+                if (pa !== pb) return pb - pa;
+                return 0;
+            });
+            files.forEach(function(f) {
                 var icon = {note:'\uD83D\uDCDD',conversation:'\uD83D\uDCAC',slides:'\uD83D\uDCCA',file:'\uD83D\uDCC4'}[f.type] || '\uD83D\uDCC4';
                 var date = f.updated_at ? new Date(f.updated_at).toLocaleDateString() : '';
-                html += '<div class="ws-file-item" onclick="openFile(\'' + f.id + '\',\'' + f.type + '\')">';
-                html += '<div class="ws-file-type">' + icon + ' ' + f.type + '  <button class="ws-close" onclick="event.stopPropagation();deleteFile(\'' + f.id + '\')" title="Delete">\u00D7</button></div>';
+                var pinned = f.metadata && f.metadata.pinned;
+                var pinIcon = pinned ? '\uD83D\uDCCC' : '\uD83D\uDCCC';
+                var pinStyle = pinned ? 'color:var(--green);opacity:1;' : 'opacity:0.3;';
+                var aiBtn = {note:'Ask AI',conversation:'Continue',slides:'Develop'}[f.type] || 'Ask AI';
+                var border = pinned ? 'border-color:var(--green);' : '';
+                html += '<div class="ws-file-item" style="'+border+'">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+                html += '<div onclick="openFile(\'' + f.id + '\',\'' + f.type + '\')" style="cursor:pointer;flex:1;">';
+                if (pinned) html += '<span style="font-size:10px;color:var(--green);font-weight:600;">PINNED </span>';
+                html += '<div class="ws-file-type">' + icon + ' ' + f.type + '</div>';
                 html += '<div class="ws-file-name">' + f.name + '</div>';
                 html += '<div class="ws-file-date">' + date + '</div></div>';
+                html += '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">';
+                html += '<button class="ws-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent2);" onclick="event.stopPropagation();askAiAboutFile(\'' + f.id + '\',\'' + f.type + '\')">\uD83E\uDD16 ' + aiBtn + '</button>';
+                html += '<button style="border:none;background:none;cursor:pointer;font-size:14px;'+pinStyle+'" onclick="event.stopPropagation();togglePin(\'' + f.id + '\',' + (pinned?'false':'true') + ')" title="Pin">' + pinIcon + '</button>';
+                html += '<button class="ws-close" onclick="event.stopPropagation();deleteFile(\'' + f.id + '\')" title="Delete">\u00D7</button>';
+                html += '</div></div></div>';
             });
+            if (!files.length) html += '<div style="color:var(--text2);font-size:13px;text-align:center;padding:20px;">No files yet. Create a note or save a chat!</div>';
             el.innerHTML = html;
+        }
+
+        async function togglePin(fileId, pin) {
+            var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
+            var f = r.file;
+            if (!f) return;
+            var meta = f.metadata || {};
+            meta.pinned = pin;
+            await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({metadata:meta})});
+            if (wsCurrentFolder) loadFiles(wsCurrentFolder);
         }
 
         async function saveNote() {
             if (!wsCurrentFolder) return;
             var name = prompt('Note title:');
             if (!name) return;
-            await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+            var r = await fetch('/api/folders/'+wsCurrentFolder+'/files', {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body:JSON.stringify({name:name, type:'note', content:''})
-            });
+            }).then(function(r){return r.json();});
             loadFiles(wsCurrentFolder);
+            if (r.file && r.file.id) { closeWorkspace(); openFile(r.file.id, 'note'); }
         }
 
         async function saveCurrentChat() {
@@ -1421,10 +1455,14 @@ MAIN_HTML = r"""
                 if (outputArea) {
                     var html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
                     html += '<span style="font-size:16px;font-weight:700;color:var(--accent2);">\uD83D\uDCDD ' + f.name + '</span>';
+                    html += '<button class="ws-btn ws-btn-green" style="font-size:11px;" onclick="saveNoteContent(\'' + fileId + '\')">Save</button>';
                     html += '<button class="ws-btn" style="font-size:11px;" onclick="askAiAboutFile(\'' + fileId + '\',\'note\')">\uD83E\uDD16 Ask AI</button>';
-                    html += '<button class="ws-btn" style="font-size:11px;" onclick="editNote(\'' + fileId + '\')">Edit</button>';
                     html += '</div>';
-                    html += '<div style="white-space:pre-wrap;color:var(--text);font-size:14px;line-height:1.8;background:#12121f;padding:16px;border-radius:12px;">' + (f.content||'(empty)').replace(/</g,'&lt;') + '</div>';
+                    html += '<textarea id="noteEditor" class="ws-editor" style="min-height:300px;" placeholder="Write your note here...">' + (f.content||'').replace(/</g,'&lt;') + '</textarea>';
+                    html += '<div style="margin-top:8px;display:flex;gap:8px;">';
+                    html += '<button class="ws-btn ws-btn-green" onclick="saveNoteContent(\'' + fileId + '\')">Save Note</button>';
+                    html += '<span id="noteSaveStatus" style="font-size:12px;color:var(--text2);line-height:32px;"></span>';
+                    html += '</div>';
                     outputArea.innerHTML = html;
                 }
                 if (window.innerWidth <= 768) showMobilePanel('output');
@@ -1449,16 +1487,16 @@ MAIN_HTML = r"""
             }
         }
 
-        async function editNote(fileId) {
-            var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
-            var f = r.file;
-            if (!f) return;
-            var newContent = prompt('Edit note: ' + f.name, f.content || '');
-            if (newContent !== null) {
-                await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:newContent})});
-                openFile(fileId, 'note');
-            }
+        async function saveNoteContent(fileId) {
+            var editor = document.getElementById('noteEditor');
+            if (!editor) return;
+            var status = document.getElementById('noteSaveStatus');
+            if (status) status.textContent = 'Saving...';
+            await fetch('/api/files/'+fileId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:editor.value})});
+            if (status) { status.textContent = 'Saved!'; setTimeout(function(){status.textContent='';}, 2000); }
         }
+
+        async function editNote(fileId) { openFile(fileId, 'note'); }
 
         async function askAiAboutFile(fileId, type) {
             var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
@@ -1475,8 +1513,8 @@ MAIN_HTML = r"""
                 try {
                     var slides = JSON.parse(content);
                     var summary = slides.map(function(s,i){return 'Slide '+(i+1)+': '+s.title;}).join(', ');
-                    input.value = 'I have a presentation about "' + ((f.metadata && f.metadata.topic) || f.name) + '" with slides: ' + summary + '. Please suggest improvements, additional content, and ways to make it more impactful.';
-                } catch(e) { input.value = 'Analyze and improve this presentation: ' + content.substring(0, 2000); }
+                    input.value = 'I have a presentation about "' + ((f.metadata && f.metadata.topic) || f.name) + '" with slides: ' + summary + '. Please suggest improvements.';
+                } catch(e) { input.value = 'Analyze and improve this: ' + content.substring(0, 2000); }
             }
             addMessage('System', 'Loaded from workspace: ' + f.name, 'system-msg');
             send();
