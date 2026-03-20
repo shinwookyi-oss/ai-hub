@@ -52,7 +52,7 @@ APP_PASSWORD_HASH = _hash_password(_raw_password)
 class RateLimiter:
     """In-memory tiered rate limiter per IP."""
     TIERS = {
-        "admin":   {"requests": 120, "window": 60},   # 120 req/min
+        "admin":   None,                               # unlimited
         "premium": {"requests": 60,  "window": 60},   # 60 req/min
         "free":    {"requests": 20,  "window": 60},   # 20 req/min
     }
@@ -62,6 +62,8 @@ class RateLimiter:
 
     def is_allowed(self, ip: str, tier: str = "free") -> bool:
         cfg = self.TIERS.get(tier, self.TIERS["free"])
+        if cfg is None:
+            return True  # admin: unlimited
         now = time.time()
         self.requests[ip] = [t for t in self.requests[ip] if now - t < cfg["window"]]
         if len(self.requests[ip]) >= cfg["requests"]:
@@ -71,12 +73,16 @@ class RateLimiter:
 
     def remaining(self, ip: str, tier: str = "free") -> int:
         cfg = self.TIERS.get(tier, self.TIERS["free"])
+        if cfg is None:
+            return -1  # unlimited
         now = time.time()
         self.requests[ip] = [t for t in self.requests[ip] if now - t < cfg["window"]]
         return max(0, cfg["requests"] - len(self.requests[ip]))
 
     def tier_info(self, tier: str = "free") -> dict:
         cfg = self.TIERS.get(tier, self.TIERS["free"])
+        if cfg is None:
+            return {"tier": tier, "max_requests": "unlimited", "window_seconds": 0}
         return {"tier": tier, "max_requests": cfg["requests"], "window_seconds": cfg["window"]}
 
 

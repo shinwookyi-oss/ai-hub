@@ -70,7 +70,7 @@ Each persona **accumulates knowledge** over conversations through two systems:
 | Feature | Description |
 |---------|-------------|
 | **Password Hashing** | SHA-256 with configurable salt — no plaintext passwords stored |
-| **Tiered Rate Limiting** | `admin`: 120 req/min, `premium`: 60 req/min, `free`: 20 req/min |
+| **Tiered Rate Limiting** | `admin`: **unlimited**, `premium`: 60 req/min, `free`: 20 req/min |
 | **Login Rate Limiting** | 20 attempts/min per IP to prevent brute force |
 | **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
 | **Session Management** | Permanent sessions with `last_active` tracking |
