@@ -532,14 +532,15 @@ MAIN_HTML = r"""
             background: var(--surface2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px;
         }
         .persona-selectors label { font-size: 12px; color: var(--text2); margin-bottom: 3px; display: block; }
-        .input-row { display: flex; gap: 10px; }
-        .input-row input {
-            flex: 1; padding: 22px 16px; border: 1px solid var(--border); border-radius: 10px;
+        .input-row { display: flex; gap: 10px; align-items: flex-end; }
+        .input-row textarea {
+            flex: 1; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px;
             background: var(--surface2); color: var(--text); font-size: 14px;
             font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
+            resize: vertical; min-height: 50px; height: 80px; max-height: 400px; line-height: 1.5;
         }
-        .input-row input:focus { border-color: var(--accent); }
-        .input-row input::placeholder { color: var(--text2); }
+        .input-row textarea:focus { border-color: var(--accent); }
+        .input-row textarea::placeholder { color: var(--text2); }
         .send-btn {
             padding: 11px 22px; border: none; border-radius: 10px;
             background: linear-gradient(135deg, var(--accent), #5a4bd1);
@@ -903,7 +904,7 @@ MAIN_HTML = r"""
                 </div>
                 </div>
                 <div class="input-row">
-                    <input type="text" id="userInput" placeholder="Type your message..." autofocus>
+                    <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
