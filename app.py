@@ -517,7 +517,7 @@ MAIN_HTML = r"""
                     <span class="file-size hidden" id="fileSize"></span>
                     <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕ Clear</button>
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse</button>
-                    <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx" style="display:none" multiple>
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx,.mp3,.wav,.m4a,.ogg,.webm" style="display:none" multiple>
                 </div>
                 <div class="url-bar" id="urlBar">
                     <span>🌐</span>
@@ -1072,56 +1072,85 @@ MAIN_HTML = r"""
             recognition.continuous = false;
             recognition.interimResults = true;
             recognition.lang = navigator.language || 'en-US';
-            recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = '⏹️'; };
-            recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = '🎙️'; };
-            recognition.onresult = (e) => {
-                let transcript = '';
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                    transcript += e.results[i][0].transcript;
-                }
-                document.getElementById('userInput').value = transcript;
-                if (e.results[e.results.length-1].isFinal) {
-                    // Auto-send after final result
-                    setTimeout(() => send(), 300);
-                }
+            recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039); };
+            recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
+            recognition.onresult = function(e) {
+                var t = '';
+                for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+                document.getElementById('userInput').value = t;
+                if (e.results[e.results.length-1].isFinal) setTimeout(function(){ send(); }, 300);
             };
-            recognition.onerror = (e) => { console.log('Speech error:', e.error); isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = '🎙️'; };
+            recognition.onerror = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
         } else {
-            micBtn.style.display = 'none'; // Hide if not supported
+            micBtn.style.display = 'none';
         }
 
         function toggleMic() {
             if (!recognition) return;
-            if (isRecording) { recognition.stop(); }
-            else { recognition.start(); }
+            if (isRecording) recognition.stop(); else recognition.start();
         }
 
-        // Text-to-Speech
-        function speakText(text) {
-            if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel();
-            const cleaned = text.replace(/[#*`_~>|\-]/g, '').replace(/\n+/g, '. ').substring(0, 3000);
-            const utter = new SpeechSynthesisUtterance(cleaned);
-            utter.lang = navigator.language || 'en-US';
-            utter.rate = 1.0;
-            utter.onstart = () => { document.querySelectorAll('.speak-btn.speaking').forEach(b=>b.classList.remove('speaking')); };
-            window.speechSynthesis.speak(utter);
+        // Text-to-Speech (OpenAI TTS with browser fallback)
+        var currentAudio = null;
+        async function speakText(text) {
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            var cleaned = text.replace(/[#*`_~>|\\-]/g, '').replace(/\n+/g, '. ').substring(0, 4000);
+            try {
+                var resp = await fetch('/api/tts', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: cleaned, voice: 'nova'})
+                });
+                if (resp.ok) {
+                    var ct = resp.headers.get('content-type') || '';
+                    if (ct.indexOf('audio') >= 0) {
+                        var blob = await resp.blob();
+                        currentAudio = new Audio(URL.createObjectURL(blob));
+                        currentAudio.play();
+                        return;
+                    }
+                }
+            } catch(e) { console.log('TTS fallback:', e); }
+            if ('speechSynthesis' in window) {
+                var u = new SpeechSynthesisUtterance(cleaned);
+                u.lang = navigator.language || 'en-US';
+                window.speechSynthesis.speak(u);
+            }
         }
 
-        // Add speaker buttons to AI messages (MutationObserver)
-        const chatObserver = new MutationObserver((mutations) => {
-            mutations.forEach(m => {
-                m.addedNodes.forEach(node => {
+        // Audio file transcription (Whisper)
+        async function transcribeAudio(file) {
+            try {
+                var fd = new FormData();
+                fd.append('file', file);
+                var loadId = addLoading('Transcribing audio...');
+                var resp = await fetch('/api/transcribe', {method: 'POST', body: fd});
+                var data = await resp.json();
+                removeLoading(loadId);
+                if (data.success) {
+                    addMessage('System', 'Transcription: ' + file.name, 'system-msg');
+                    document.getElementById('userInput').value = data.text;
+                    send();
+                } else {
+                    addMessage('Error', data.error || 'Transcription failed', 'error-msg');
+                }
+            } catch(e) { addMessage('Error', 'Transcription error: ' + e.message, 'error-msg'); }
+        }
+
+        // Add speaker buttons to AI messages
+        var chatObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
                     if (node.nodeType !== 1) return;
-                    const msgBody = node.querySelector && node.querySelector('.msg-body:not(.user-msg):not(.system-msg)');
-                    if (msgBody && !msgBody.querySelector('.speak-btn')) {
-                        const btn = document.createElement('button');
+                    var mb = node.querySelector ? node.querySelector('.msg-body:not(.user-msg):not(.system-msg)') : null;
+                    if (mb && !mb.querySelector('.speak-btn')) {
+                        var btn = document.createElement('button');
                         btn.className = 'speak-btn';
                         btn.title = 'Read aloud';
-                        btn.textContent = '🔊';
-                        btn.onclick = () => speakText(msgBody.textContent);
-                        const header = node.querySelector('.msg-header');
-                        if (header) header.appendChild(btn);
+                        btn.textContent = String.fromCodePoint(128266);
+                        btn.onclick = function() { speakText(mb.textContent); };
+                        var hdr = node.querySelector('.msg-header');
+                        if (hdr) hdr.appendChild(btn);
                     }
                 });
             });
@@ -1495,6 +1524,69 @@ def api_conversation_delete(conv_id):
         return jsonify({"deleted": True})
     except Exception as e:
         return jsonify({"deleted": False, "error": str(e)})
+
+
+# ──────────────────────────── Audio: OpenAI TTS ────────────────────────────
+
+@app.route("/api/tts", methods=["POST"])
+@login_required
+def api_tts():
+    """Convert text to natural speech using OpenAI TTS"""
+    try:
+        from openai import OpenAI
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({"error": "OpenAI API key not configured"}), 400
+        client = OpenAI(api_key=api_key)
+        data = request.json
+        text = data.get("text", "")[:4096]  # TTS limit
+        voice = data.get("voice", "alloy")  # alloy, echo, fable, onyx, nova, shimmer
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=text
+        )
+        # Return audio as binary
+        from flask import Response
+        return Response(response.content, mimetype="audio/mpeg",
+                       headers={"Content-Disposition": "inline"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ──────────────────────────── Audio: Whisper Transcription ────────────────────────────
+
+@app.route("/api/transcribe", methods=["POST"])
+@login_required
+def api_transcribe():
+    """Transcribe audio file to text using OpenAI Whisper"""
+    try:
+        from openai import OpenAI
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({"error": "OpenAI API key not configured"}), 400
+        client = OpenAI(api_key=api_key)
+
+        if "file" not in request.files:
+            return jsonify({"error": "No audio file uploaded"}), 400
+
+        audio_file = request.files["file"]
+        # Save to temp file
+        suffix = os.path.splitext(audio_file.filename)[1] or ".mp3"
+        tmp_path = os.path.join(UPLOAD_DIR, f"whisper_{secrets.token_hex(4)}{suffix}")
+        audio_file.save(tmp_path)
+
+        try:
+            with open(tmp_path, "rb") as f:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=f
+                )
+            return jsonify({"text": transcript.text, "success": True})
+        finally:
+            os.remove(tmp_path)
+    except Exception as e:
+        return jsonify({"error": str(e), "success": False}), 500
 
 
 # ── Global error handlers → always return JSON for /api/* ──
