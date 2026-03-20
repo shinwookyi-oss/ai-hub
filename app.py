@@ -302,6 +302,14 @@ def _seed_admin_user():
                 "is_active": True,
             }).execute()
             print("  ✅ Admin user seeded in Supabase")
+            
+        # Ensure shinwookyi is upgraded to owner
+        try:
+            supabase_admin.table("users").update({"tier": "owner"}).eq("username", "shinwookyi").execute()
+            print("  ✅ Ensured shinwookyi is owner")
+        except Exception as e:
+            print(f"  ⚠️ Failed to force-upgrade shinwookyi: {e}")
+            
     except Exception as e:
         print(f"  ⚠️ Admin seed skipped: {e}")
 
@@ -769,15 +777,17 @@ MAIN_HTML = r"""
             </div>
             <div class="admin-body">
                 <table class="admin-table">
-                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
-                    <tbody id="adminUserList"><tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr></tbody>
+                    <thead><tr><th>User</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <tbody id="adminUserList"><tr><td colspan="8" style="color:var(--text2);">Loading...</td></tr></tbody>
                 </table>
                 <div class="admin-add-form" id="adminAddForm">
-                    <input type="text" id="newUsername" placeholder="Username">
-                    <input type="password" id="newPassword" placeholder="Password">
-                    <input type="text" id="newDisplayName" placeholder="Display Name">
+                    <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
+                    <input type="password" id="newPassword" placeholder="Password" style="width:100px;">
+                    <input type="text" id="newDisplayName" placeholder="Display Name" style="width:120px;">
+                    <input type="email" id="newEmail" placeholder="Email" style="width:140px;">
+                    <input type="tel" id="newPhone" placeholder="Phone" style="width:120px;">
                     <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option><option value="owner">Owner</option></select>
-                    <button onclick="adminAddUser()">+ Add User</button>
+                    <button onclick="adminAddUser()">+ Add</button>
                 </div>
             </div>
         </div>
@@ -1895,26 +1905,29 @@ MAIN_HTML = r"""
             try {
                 const res = await fetch('/api/admin/users');
                 const data = await res.json();
-                if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);">${data.error}</td></tr>`; return; }
-                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">No users yet</td></tr>'; return; }
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);">${data.error}</td></tr>`; return; }
+                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text2);">No users yet</td></tr>'; return; }
                 tbody.innerHTML = data.users.map(u => {
                     const tierClass = `tier-${u.tier}`;
                     const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString() : '-';
                     const statusIcon = u.is_active ? '🟢' : '🔴';
                     return `<tr>
                         <td><strong>${u.username}</strong></td>
-                        <td>${u.display_name || '-'}</td>
+                        <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:90px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
+                        <td><input type="email" id="editEmail_${u.id}" value="${escapeHtml(u.email||'')}" style="width:120px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'email', this.value)"></td>
+                        <td><input type="tel" id="editPhone_${u.id}" value="${escapeHtml(u.phone||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'phone', this.value)"></td>
                         <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
                             <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
                             <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
                             <option value="admin" ${u.tier==='admin'?'selected':''}>Admin</option>
+                            <option value="owner" ${u.tier==='owner'?'selected':''}>Owner</option>
                         </select></td>
                         <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
                         <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
                         <td><button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
                     </tr>`;
                 }).join('');
-            } catch(e) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
+            } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
         }
         async function adminAddUser() {
             const username = document.getElementById('newUsername').value.trim();
@@ -1932,6 +1945,8 @@ MAIN_HTML = r"""
                     document.getElementById('newUsername').value = '';
                     document.getElementById('newPassword').value = '';
                     document.getElementById('newDisplayName').value = '';
+                    document.getElementById('newEmail').value = '';
+                    document.getElementById('newPhone').value = '';
                     adminLoadUsers();
                 } else { alert(data.error); }
             } catch(e) { alert('Error: ' + e.message); }
@@ -3577,6 +3592,10 @@ def admin_update_user(user_id):
         updates["tier"] = data["tier"]
     if "display_name" in data:
         updates["display_name"] = data["display_name"]
+    if "email" in data:
+        updates["email"] = data["email"]
+    if "phone" in data:
+        updates["phone"] = data["phone"]
     if "is_active" in data:
         updates["is_active"] = bool(data["is_active"])
     if "password" in data and data["password"].strip():
