@@ -1065,6 +1065,7 @@ MAIN_HTML = r"""
         let personas = PERSONA_DATA;
         let personaGroups = PERSONA_GROUPS_DATA;
         const CURRENT_USERNAME = 'USERNAME_DATA';
+        const USER_TIER = 'USER_TIER_DATA';
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
 
@@ -1084,17 +1085,61 @@ MAIN_HTML = r"""
         function saveCustomPersonas(pcs) {
             localStorage.setItem('customPersonas_' + CURRENT_USERNAME, JSON.stringify(pcs));
         }
+        }
         function addCustomPersona() {
+            let limit = 0;
+            if (USER_TIER === 'premium') limit = 5;
+            else if (USER_TIER === 'admin') limit = 10;
+            else if (USER_TIER === 'owner') limit = Infinity;
+            
+            let pcs = getCustomPersonas();
+            if (pcs.length >= limit) {
+                alert(`Your tier (${USER_TIER}) allows up to ${limit} custom personas.`);
+                return;
+            }
+
             const name = prompt(t('new_persona_name') || "Enter Custom Persona Name (e.g. My AI):");
             if (!name) return;
-            const promptText = prompt(t('new_persona_prompt') || "Enter Persona Instructions:");
-            if (!promptText) return;
+            
+            const traits = prompt("Enter Persona traits to Auto-Generate instructions using AI.\n(Or leave blank to write manually)");
+            
+            if (traits && traits.trim() !== '') {
+                generateCustomPersonaPrompt(name, traits);
+            } else {
+                const promptText = prompt(t('new_persona_prompt') || "Enter Persona Instructions:");
+                if (!promptText) return;
+                saveAndRenderNewPersona(name, promptText);
+            }
+        }
+        async function generateCustomPersonaPrompt(name, traits) {
+            var loadId = addLoading('Generating Persona Instructions...');
+            try {
+                var ai_req = `You are an expert prompt engineer. Create a system instruction for an AI assistant based on the following traits: "${traits}". Output ONLY the raw system instructions, no conversational text, no markdown.`;
+                var resp = await fetch('/api/chat', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: ai_req, provider: currentProvider || 'chatgpt', mode: 'chat'})
+                });
+                var data = await resp.json();
+                removeLoading(loadId);
+                var aiText = data.response || data.responses?.[0]?.response || '';
+                if (!aiText) { alert("Failed to generate instructions."); return; }
+                
+                var finalPrompt = prompt("Generated prompt (you can edit):", aiText.trim());
+                if (!finalPrompt) return;
+                saveAndRenderNewPersona(name, finalPrompt);
+            } catch(e) { 
+                removeLoading(loadId); 
+                alert('Error generating: ' + e.message); 
+            }
+        }
+        function saveAndRenderNewPersona(name, promptText) {
             const newKey = 'custom_' + Date.now();
             let pcs = getCustomPersonas();
             pcs.push({ key: newKey, name: name, prompt: promptText });
             saveCustomPersonas(pcs);
             initPersonas();
             togglePersona(newKey);
+            addMessage('System', `Custom persona "${name}" added!`, 'system-msg');
         }
         function deleteCustomPersona(key, event) {
             if(event) event.stopPropagation();
@@ -1930,7 +1975,6 @@ MAIN_HTML = r"""
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
         // ── Admin Panel ──
-        const USER_TIER = 'USER_TIER_DATA';
         function initAdmin() {
             if (USER_TIER === 'owner') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
