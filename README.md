@@ -71,7 +71,9 @@ Each persona **accumulates knowledge** over conversations through two systems:
 | 📋 **Prompt Library** | Save, load, and manage reusable prompt templates |
 
 ### 🛠️ Convenience Features
-- **+ Custom Persona** — create user-defined personas on the fly
+- **+ Custom Persona** — create user-defined personas on the fly.
+  - **AI-Assisted Persona Generation**: Describe traits (e.g., "friendly math teacher") and AI will automatically generate a highly optimized system prompt.
+  - **Tier-based Limits**: Control how many custom personas users can create (Free: 0, Premium: 5, Admin: 10, Owner: Unlimited).
 - **📄 PDF Export** — export output panel to print-friendly PDF
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
@@ -138,10 +140,11 @@ export PASSWORD_SALT=your_salt  # Custom salt for password hashing
 
 ### 📂 Personal Workspace
 - Create **folders** with custom icons and descriptions to organize projects
+  - **Nested Folders**: Supports folder hierarchy up to 3 levels deep (`Root → Folder → Subfolder`).
 - **Rich Note Editor** — Multi-line textarea in the Output panel with Save button
 - **Save Chat** — Save current AI conversation to a folder for later use
 - **Save Slides** — Save generated presentations to a folder
-- 💾 **Save File** — Save uploaded PDF/DOCX/Excel/CSV files to workspace folders
+- 💾 **Save & Direct Upload Files** — Save uploaded PDFs/CSV/DOCX from chat, or directly upload files into workspace folders using the `+ Upload File` button.
   - Extracted text content is stored with original file metadata (name, size, character count)
   - Supports single and multi-file batch saving
 - 📌 **Pin files** — Pin important files to the top of the list
