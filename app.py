@@ -424,12 +424,14 @@ MAIN_HTML = r"""
         .persona-group-body { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; }
         .persona-group-body.collapsed { display: none; }
         .persona-chip {
-            padding: 6px 8px; border-radius: 8px; font-size: 11px;
+            padding: 5px 8px; border-radius: 8px; font-size: 11px;
             border: 1px solid var(--border); cursor: pointer;
-            text-align: center; transition: all 0.2s; color: var(--text2);
-            background: var(--surface2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            transition: all 0.2s; color: var(--text2);
+            background: var(--surface2);
+            display: flex; align-items: center; justify-content: space-between; gap: 4px;
         }
         .persona-chip:hover { border-color: var(--accent); }
+        .persona-chip:hover .persona-del { opacity: 1 !important; }
         .persona-chip.selected { border-color: var(--green); background: #1a3a2a; color: var(--green); }
         .persona-chip .mem-badge {
             display: inline-block; background: var(--accent); color: #fff; font-size: 8px;
@@ -1209,7 +1211,7 @@ MAIN_HTML = r"""
                         const isCustom = p.key.startsWith('custom_');
                         const delTitle = isCustom ? 'Delete persona' : 'Hide persona (can restore)';
                         const delHtml = `<span title="${delTitle}" style="float:right;color:var(--red);padding-left:10px;cursor:pointer;opacity:0.6;" onclick="${isCustom ? `deleteCustomPersona('${p.key}',event)` : `hidePersona('${p.key}',event)`}">×</span>`;
-                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">${p.name}${delHtml}</div>`;
+                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span><span class="persona-del" title="${delTitle}" style="flex-shrink:0;color:var(--red);cursor:pointer;opacity:0;font-size:13px;line-height:1;" onclick="${isCustom ? `deleteCustomPersona('${p.key}',event)` : `hidePersona('${p.key}',event)`}">×</span></div>`;
                     }).join('') + '</div>';
                 // Populate debate selectors and checkboxes with group headers
                 f.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
