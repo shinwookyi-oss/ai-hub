@@ -262,6 +262,7 @@ def login_page():
                         session["display_name"] = db_user.get("display_name", username)
                         session["last_active"] = datetime.utcnow().isoformat()
                         session["login_time"] = datetime.utcnow().isoformat()
+                        session["must_change_password"] = bool(db_user.get("must_change_password"))
                         # Update last_login
                         try:
                             supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
@@ -2266,7 +2267,45 @@ MAIN_HTML = r"""
                     sessionStartSecs++;
                     document.getElementById('infoSession').textContent = fmtDuration(sessionStartSecs);
                 }, 1000);
+                // Force password change if temp password was set by admin
+                if (d.must_change_password) showForcedPasswordChange();
             }).catch(()=>{});
+        }
+        function showForcedPasswordChange() {
+            const overlay = document.createElement('div');
+            overlay.id = 'forcedPwOverlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#12121a;border:1px solid #a29bfe;border-radius:16px;padding:32px;width:360px;text-align:center;">
+                    <div style="font-size:32px;margin-bottom:12px;">🔑</div>
+                    <h3 style="color:#a29bfe;margin-bottom:8px;">임시 비밀번호 변경 필요</h3>
+                    <p style="color:#8888aa;font-size:13px;margin-bottom:20px;">관리자가 임시 비밀번호를 설정했습니다.<br>계속하려면 새 비밀번호를 설정해주세요.</p>
+                    <input id="fpCurrentPw" type="password" placeholder="현재 (임시) 비밀번호" style="width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <input id="fpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)" style="width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <input id="fpConfirmPw" type="password" placeholder="새 비밀번호 확인" style="width:100%;padding:10px;margin-bottom:16px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <div id="fpError" style="color:#ff6b6b;font-size:12px;margin-bottom:10px;display:none;"></div>
+                    <button onclick="submitForcedPasswordChange()" style="width:100%;padding:12px;background:linear-gradient(135deg,#a29bfe,#74b9ff);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">비밀번호 변경</button>
+                </div>`;
+            document.body.appendChild(overlay);
+        }
+        async function submitForcedPasswordChange() {
+            const cur = document.getElementById('fpCurrentPw').value;
+            const np = document.getElementById('fpNewPw').value;
+            const cp = document.getElementById('fpConfirmPw').value;
+            const err = document.getElementById('fpError');
+            if (np !== cp) { err.textContent = '새 비밀번호가 일치하지 않습니다.'; err.style.display='block'; return; }
+            if (np.length < 4) { err.textContent = '비밀번호는 4자 이상이어야 합니다.'; err.style.display='block'; return; }
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({current_password: cur, new_password: np})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('forcedPwOverlay').remove();
+                    addMessage('System', '✅ 비밀번호가 변경됐습니다. 이제 새 비밀번호로 로그인하세요.', 'system-msg');
+                } else { err.textContent = data.error || '오류가 발생했습니다.'; err.style.display='block'; }
+            } catch(e) { err.textContent = '네트워크 오류: ' + e.message; err.style.display='block'; }
         }
 
         initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin(); initSessionInfo();
@@ -3905,8 +3944,16 @@ def admin_update_user(user_id):
     if "password" in data and data["password"].strip():
         updates["password_hash"] = _hash_password(data["password"].strip())
     if "temp_password" in data:
-        # Store as plaintext for admin visibility; None = clear it
-        updates["temp_password"] = data["temp_password"]  # None clears it in Supabase
+        tp = data["temp_password"]
+        if tp:
+            # Setting temp password: also update actual login password and flag for forced change
+            updates["temp_password"] = tp
+            updates["password_hash"] = _hash_password(tp)
+            updates["must_change_password"] = True
+        else:
+            # Clearing temp password: remove flag too
+            updates["temp_password"] = None
+            updates["must_change_password"] = False
     if not updates:
         return jsonify({"success": False, "error": "No valid fields to update"}), 400
     try:
@@ -3951,7 +3998,12 @@ def change_own_password():
         res = supabase_client.table("users").select("password_hash").eq("id", user_id).execute()
         if not res.data or res.data[0]["password_hash"] != _hash_password(current_pw):
             return jsonify({"success": False, "error": "Current password is incorrect"}), 401
-        supabase_client.table("users").update({"password_hash": _hash_password(new_pw)}).eq("id", user_id).execute()
+        supabase_client.table("users").update({
+            "password_hash": _hash_password(new_pw),
+            "temp_password": None,        # clear temp password
+            "must_change_password": False  # clear forced-change flag
+        }).eq("id", user_id).execute()
+        session["must_change_password"] = False  # update session immediately
         return jsonify({"success": True, "message": "Password changed successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4004,6 +4056,7 @@ def session_info():
             info["location"] = f"{geo['city']}, {geo.get('regionName', '')} {geo.get('country', '')}"
     except Exception:
         pass
+    info["must_change_password"] = session.get("must_change_password", False)
     return jsonify(info)
 
 
