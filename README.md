@@ -39,14 +39,14 @@
 - 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous
 - 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal
 
-### 👤 67 Persona System (4 Groups)
+### 👤 75 Persona System (4 Groups)
 Role-based personas for **multi-stakeholder decision-making** — gather diverse perspectives before making major decisions:
 
 | Group | Personas |
 |-------|----------|
-| 🏢 **역할별 (Corporate)** | 전략기획실, HR, CPA, Finance, Marketing, Compliance, Medical, Manager, Director, 외부이사, 찬성자, 반대자, Senior, 남성, 여성, 투자단, 영양사, 요리사, 서버, 기자, 편집자, 간병인, 코디네이터, 소셜워커, 홈케어 환자, 음식점 고객, 회계사무실 고객 |
+| 🏢 **역할별 (Corporate)** | 전략기획실, HR, CPA, Finance, Marketing, Compliance, Medical, Manager, Director, 외부이사, 찬성자, 반대자, Senior, 남성, 여성, 투자단, 영양사, 요리사, 서버, 기자, 편집자, 간병인, 코디네이터, 소셜워커, 홈케어 환자, 음식점 고객, 회계사무실 고객, 광고기획실, **IT개발자**, **로봇엔지니어**, **운전사**, **건물관리인** |
 | 🔍 **기능별 (Function)** | FBI Profiler, 사주전문가, 관상전문가, 심리전문가 |
-| 👑 **자문 그룹 (Advisory)** | Rockefeller, Elon Musk, Trump, Sam Walton, J.P. Morgan, 조조, 사마의, 제갈량, Thomas Jefferson, 무사시, 토쿠가와, 손정의, 정주영, 이병철, 테슬라, 에디슨, 정약용, 손자, 오자서, 삼국지 전략가, 로마인 이야기, E.H. 카, 니체, 쇼펜하우어 |
+| 👑 **자문 그룹 (Advisory)** | Rockefeller, Elon Musk, Trump, Sam Walton, J.P. Morgan, 조조, 사마의, 제갈량, Thomas Jefferson, 무사시, 토쿠가와, 손정의, 정주영, 이병철, 테슬라, 에디슨, 정약용, 손자, 오자서, 삼국지 전략가, 로마인 이야기, E.H. 카, 니체, 쇼펜하우어, **마키아벨리**, **로스차일드**, **다빈치** |
 | 🏢 **오너 그룹 (Owner)** | 회계법인, 신문사, 홈케어, 데이케어, 한식당, 도시락, 로봇회사, 자선단체, 역노화클리닉, 재벌, 소규모사장, 벤처대표 |
 
 ### 🧠 Persona Memory & Learning
