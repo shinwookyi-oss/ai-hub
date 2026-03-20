@@ -81,9 +81,13 @@ Each persona **accumulates knowledge** over conversations through two systems:
 - Browse and reload past conversations
 - Auto-save on every message
 
-### 🌐 Auto Language Detection
-- Automatically detects user language (Korean, English, Japanese, etc.)
-- Responds in the same language
+### 🌐 Dual Language System
+**UI Auto-Translation** — Browser language detected via `navigator.language`, UI elements auto-translate:
+- 🇺🇸 English · 🇰🇷 한국어 · 🇯🇵 日本語 · 🇨🇳 中文 · 🇪🇸 Español
+
+**AI Response Language** — Two rules:
+1. **Default**: AI responds in the same language as your message
+2. **Override**: If you explicitly request a language (e.g. "answer in English", "한국어로 해줘"), AI uses that language regardless of input
 
 ### 🎤 Voice Support
 - 🎙️ **Speech-to-Text** — Click the mic button, speak, and auto-send
