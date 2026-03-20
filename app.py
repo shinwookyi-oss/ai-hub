@@ -1394,6 +1394,7 @@ MAIN_HTML = r"""
             loadPersonaMemory(currentPersona);
         }
         function setMode(m) {
+            if (currentMode === m && m !== 'chat') { m = 'chat'; } // toggle off
             currentMode=m;
             document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
             document.querySelector(`.mode-btn[data-mode="${m}"]`)?.classList.add('active');
