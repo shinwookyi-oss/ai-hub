@@ -253,6 +253,7 @@ def login_page():
                         session["user_tier"] = db_user.get("tier", "free")
                         session["display_name"] = db_user.get("display_name", username)
                         session["last_active"] = datetime.utcnow().isoformat()
+                        session["login_time"] = datetime.utcnow().isoformat()
                         # Update last_login
                         try:
                             supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
@@ -272,6 +273,7 @@ def login_page():
             session["user_tier"] = "admin"
             session["display_name"] = "Administrator"
             session["last_active"] = datetime.utcnow().isoformat()
+            session["login_time"] = datetime.utcnow().isoformat()
             return redirect("/")
         return LOGIN_HTML.replace("ERROR_MSG", '<p class="error">Invalid credentials</p>')
     return LOGIN_HTML.replace("ERROR_MSG", "")
@@ -363,6 +365,11 @@ MAIN_HTML = r"""
         .header-tab.active { border-color:var(--accent); background:#2a2058; color:var(--accent2); }
         .sidebar-toggle { border:none; background:none; color:var(--text2); cursor:pointer; font-size:18px; padding:2px 6px; transition:all 0.2s; }
         .sidebar-toggle:hover { color:var(--accent2); }
+        /* Session info strip */
+        .info-strip { display:flex; gap:16px; align-items:center; padding:3px 20px; background:#0d0d18; border-bottom:1px solid #1a1a2e; font-size:10px; color:var(--text2); flex-shrink:0; overflow-x:auto; }
+        .info-strip span { white-space:nowrap; }
+        .info-strip .label { color:#666; }
+        .info-strip .value { color:var(--accent2); margin-left:3px; }
         /* 3-column layout */
         .container { display: flex; flex: 1; overflow: hidden; }
         .sidebar {
@@ -729,6 +736,14 @@ MAIN_HTML = r"""
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
         </div>
+    </div>
+    <div class="info-strip" id="infoStrip">
+        <span><span class="label">First:</span><span class="value" id="infoFirst">—</span></span>
+        <span><span class="label">Last:</span><span class="value" id="infoLast">—</span></span>
+        <span><span class="label">Total:</span><span class="value" id="infoTotal">—</span></span>
+        <span><span class="label">Session:</span><span class="value" id="infoSession">0:00</span></span>
+        <span><span class="label">IP:</span><span class="value" id="infoIp">—</span></span>
+        <span><span class="label">Location:</span><span class="value" id="infoLocation">—</span></span>
     </div>
     <div class="mobile-panel-tabs" id="mobileTabs">
         <button class="active" onclick="showMobilePanel('chat')">💬 Chat</button>
@@ -2001,7 +2016,41 @@ MAIN_HTML = r"""
             document.getElementById('tabProvider').textContent = PROVIDER_LABELS[p] || p;
         };
 
-        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin();
+        // ── Session Info ──
+        let sessionStartSecs = 0;
+        function fmtDuration(secs) {
+            const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+            return h > 0 ? h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+                         : m + ':' + String(s).padStart(2,'0');
+        }
+        function fmtDate(iso) {
+            if (!iso || iso === 'N/A (env admin)') return iso || '—';
+            try { const d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+            catch(e) { return iso; }
+        }
+        function fmtTotalTime(mins) {
+            if (!mins) return '0m';
+            const h = Math.floor(mins / 60), m = mins % 60;
+            return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        }
+        function initSessionInfo() {
+            fetch('/api/user/session-info').then(r=>r.json()).then(d => {
+                document.getElementById('infoFirst').textContent = fmtDate(d.first_login);
+                document.getElementById('infoLast').textContent = fmtDate(d.last_login);
+                document.getElementById('infoTotal').textContent = fmtTotalTime(d.total_time_minutes);
+                document.getElementById('infoIp').textContent = d.ip || '—';
+                document.getElementById('infoLocation').textContent = d.location || '—';
+                sessionStartSecs = d.current_session_seconds || 0;
+                document.getElementById('infoSession').textContent = fmtDuration(sessionStartSecs);
+                // Live timer
+                setInterval(function() {
+                    sessionStartSecs++;
+                    document.getElementById('infoSession').textContent = fmtDuration(sessionStartSecs);
+                }, 1000);
+            }).catch(()=>{});
+        }
+
+        initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin(); initSessionInfo();
 
         // ── Voice Support (Web Speech API) ──
         let recognition = null;
@@ -3570,6 +3619,56 @@ def change_own_password():
         return jsonify({"success": True, "message": "Password changed successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/session-info")
+@login_required
+def session_info():
+    """Return user session stats for header display."""
+    import requests as http_req
+    user_id = session.get("user_id")
+    login_time = session.get("login_time", datetime.utcnow().isoformat())
+    now = datetime.utcnow()
+    # Calculate current session duration
+    try:
+        lt = datetime.fromisoformat(login_time)
+        session_secs = int((now - lt).total_seconds())
+    except Exception:
+        session_secs = 0
+    info = {
+        "first_login": None,
+        "last_login": None,
+        "total_time_minutes": 0,
+        "current_session_seconds": session_secs,
+        "ip": request.remote_addr or "unknown",
+        "location": "—",
+    }
+    # Get data from Supabase
+    if supabase_client and user_id and user_id != "env_admin":
+        try:
+            res = supabase_client.table("users").select("created_at,last_login,total_time_minutes").eq("id", user_id).execute()
+            if res.data:
+                u = res.data[0]
+                info["first_login"] = u.get("created_at")
+                info["last_login"] = u.get("last_login")
+                info["total_time_minutes"] = u.get("total_time_minutes") or 0
+        except Exception:
+            pass
+    elif user_id == "env_admin":
+        info["first_login"] = "N/A (env admin)"
+        info["last_login"] = login_time
+    # Get IP geolocation
+    try:
+        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        if client_ip:
+            client_ip = client_ip.split(",")[0].strip()
+            info["ip"] = client_ip
+        geo = http_req.get(f"http://ip-api.com/json/{client_ip}?fields=city,regionName,country", timeout=3).json()
+        if geo.get("city"):
+            info["location"] = f"{geo['city']}, {geo.get('regionName', '')} {geo.get('country', '')}"
+    except Exception:
+        pass
+    return jsonify(info)
 
 
 # ──────────────────────────── Error Handlers ────────────────────────────
