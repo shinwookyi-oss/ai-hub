@@ -1532,7 +1532,7 @@ class AIHub:
         All selected personas analyse a topic, then a synthesis report is generated.
         """
         available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
-                     if p in self.providers]
+                     if p in self.available_providers()]
         if not available:
             return {"error": "No AI providers available"}
 
@@ -1589,7 +1589,7 @@ class AIHub:
         Sequential analysis: each persona builds on the previous one's output.
         """
         available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
-                     if p in self.providers]
+                     if p in self.available_providers()]
         if not available:
             return {"error": "No AI providers available"}
 
@@ -1650,7 +1650,7 @@ class AIHub:
         All personas vote on a proposal: APPROVE / OPPOSE / CONDITIONAL.
         """
         available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
-                     if p in self.providers]
+                     if p in self.available_providers()]
         if not available:
             return {"error": "No AI providers available"}
 
