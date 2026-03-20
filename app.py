@@ -958,7 +958,7 @@ MAIN_HTML = r"""
                     <div><label data-i18n="lbl_against">AGAINST</label><select id="personaAgainst"></select></div>
                 </div>
                 <div id="personaMultiSelect" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px;">
-                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;" data-i18n="select_personas">Select personas (2+):</div>
+                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span data-i18n="select_personas">Select personas (2+):</span><button onclick="setMode('chat')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;padding:2px 8px;border-radius:5px;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">Close ✕</button></div>
                     <div id="personaCheckboxes" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
                 </div>
                 <div id="dmPanel" style="display:none; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px; font-size:11px;">
