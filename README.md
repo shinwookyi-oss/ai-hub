@@ -1,4 +1,4 @@
-# ⚡ AI Hub
+# ⚡ AI Hub — By Shinwook Yi
 
 **Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface.
 

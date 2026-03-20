@@ -137,6 +137,7 @@ LOGIN_HTML = """
 <body>
     <div class="login-box">
         <h1>AI Hub</h1>
+        <p style="font-size:13px;color:#888;margin-top:4px;">By Shinwook Yi</p>
         <p class="subtitle">ChatGPT | Gemini | Azure | Claude | Grok</p>
         ERROR_MSG
         <form method="POST">
@@ -485,7 +486,7 @@ MAIN_HTML = r"""
     <div class="header">
         <div style="display:flex;align-items:center;gap:10px;">
             <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-            <h1>⚡ AI Hub</h1>
+            <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi</span></h1>
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
