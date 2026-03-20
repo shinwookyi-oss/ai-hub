@@ -376,6 +376,8 @@ MAIN_HTML = r"""
         }
         .mode-btn:hover { border-color: var(--accent); background: #1e1e3a; }
         .mode-btn.active { border-color: var(--accent); background: #2a2058; }
+        .collapsed { display: none; }
+        .collapsed.open { display: block; }
         .persona-grid { margin-bottom: 8px; }
         .persona-group-header {
             font-size: 11px; color: var(--accent2); padding: 6px 0 4px; margin-top: 6px;
@@ -764,18 +766,26 @@ MAIN_HTML = r"""
     </div>
         <div class="sidebar">
             <button class="mode-btn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
-            <h3 data-i18n="mode">Mode</h3>
-            <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
-            <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
-            <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
-            <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
-            <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
-            <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
-            <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
-            <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
-            <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
-            <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
-            <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
+            <h3 data-i18n="mode" style="cursor:pointer;" onclick="document.getElementById('modeBasic').classList.toggle('collapsed')">Mode <span style="font-size:10px;color:var(--text2);float:right;">▼</span></h3>
+            <div id="modeBasic">
+                <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
+                <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
+                <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
+                <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
+                <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
+            </div>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modePersona')">🎭 Persona Modes <span id="modePersonaArrow" style="float:right;">▶</span></h3>
+            <div id="modePersona" class="collapsed">
+                <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
+                <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
+                <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
+                <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
+            </div>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeAnalysis')">📐 Analysis Modes <span id="modeAnalysisArrow" style="float:right;">▶</span></h3>
+            <div id="modeAnalysis" class="collapsed">
+                <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')" data-i18n="dm">⚖️ Decision Matrix</button>
+                <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
+            </div>
             <h3 data-i18n="provider">Provider</h3>
             <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
             <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
@@ -820,9 +830,13 @@ MAIN_HTML = r"""
                     <div style="display:flex;flex-wrap:wrap;gap:6px;" id="dmPersonaCheckboxes"></div>
                 </div>
                 <div style="display:flex;gap:4px;margin-bottom:6px;">
+                    <button onclick="toggleInputTools()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="Show/hide tools">📎 Tools ▾</button>
+                    <button onclick="exportPDF()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Export output to PDF">📄 PDF</button>
+                </div>
+                <div id="inputToolsPanel" style="display:none;">
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
                     <button onclick="savePrompt()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Save current input as prompt template">📋 Save Prompt</button>
                     <button onclick="loadPrompts()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Load saved prompts">📂 Load Prompt</button>
-                    <button onclick="exportPDF()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Export output to PDF">📄 PDF</button>
                 </div>
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
@@ -837,6 +851,7 @@ MAIN_HTML = r"""
                     <span>🌐</span>
                     <input type="text" id="urlInput" placeholder="https://... 웹사이트 URL 입력 후 Enter" style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;font-family:'Inter',sans-serif;">
                     <button class="upload-btn" id="urlFetchBtn" onclick="fetchUrl()">Fetch</button>
+                </div>
                 </div>
                 <div class="input-row">
                     <input type="text" id="userInput" placeholder="Type your message..." autofocus>
@@ -1884,6 +1899,33 @@ MAIN_HTML = r"""
                 });
             } catch(e) { alert('Error: ' + e.message); }
         }
+
+        // ── UI Toggle Functions ──
+        function toggleModeGroup(id) {
+            const el = document.getElementById(id);
+            const arrow = document.getElementById(id + 'Arrow');
+            el.classList.toggle('collapsed');
+            if (arrow) arrow.textContent = el.classList.contains('collapsed') ? '▶' : '▼';
+        }
+        function toggleInputTools() {
+            const p = document.getElementById('inputToolsPanel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        }
+        // Auto-expand group when selecting a mode from collapsed group
+        const origSetMode2 = setMode;
+        setMode = function(m) {
+            origSetMode2(m);
+            const personaModes = ['persona_debate','persona_discuss','persona_report','persona_vote'];
+            const analysisModes = ['decision_matrix','persona_chain'];
+            if (personaModes.includes(m)) {
+                document.getElementById('modePersona').classList.remove('collapsed');
+                document.getElementById('modePersonaArrow').textContent = '▼';
+            }
+            if (analysisModes.includes(m)) {
+                document.getElementById('modeAnalysis').classList.remove('collapsed');
+                document.getElementById('modeAnalysisArrow').textContent = '▼';
+            }
+        };
 
         initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin();
 
