@@ -61,8 +61,15 @@ Historical figures and expert personas that shape AI responses:
 
 ### 🎤 Voice Support
 - 🎙️ **Speech-to-Text** — Click the mic button, speak, and auto-send
-- 🔊 **Text-to-Speech** — Click the speaker icon on any AI response to hear it read aloud
-- Supports multiple languages via Web Speech API
+- 🔊 **Text-to-Speech (OpenAI TTS)** — Natural AI voice (Nova) with browser TTS fallback
+- 🎧 **Audio File Transcription (Whisper)** — Upload MP3/WAV/M4A → auto-transcribe and analyze
+- Supports multiple languages
+
+### 📊 AI Slide Generation
+- Type `/slides [topic]` in chat to auto-generate 6-10 slide presentations
+- **Output Panel Preview** — View slides as styled cards
+- **Download PPTX** — Export as PowerPoint file (dark theme)
+- **Slideshow Mode** — Full-screen browser presentation using reveal.js
 
 ### 📱 Mobile Responsive
 - Hamburger menu for sidebar navigation
@@ -154,6 +161,8 @@ ai-hub/
 | Backend | Python, Flask |
 | Frontend | Vanilla HTML/CSS/JS (Genspark-style split panel) |
 | AI SDKs | OpenAI, Google GenAI, Anthropic |
+| Voice | OpenAI TTS (Nova), OpenAI Whisper, Web Speech API |
+| Slides | python-pptx, reveal.js |
 | Database | Supabase (PostgreSQL) |
 | Hosting | Render |
 | Visualization | Mermaid.js, Chart.js, Marked.js |
