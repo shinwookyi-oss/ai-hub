@@ -71,6 +71,17 @@ Historical figures and expert personas that shape AI responses:
 - **Download PPTX** — Export as PowerPoint file (dark theme)
 - **Slideshow Mode** — Full-screen browser presentation using reveal.js
 
+### 📂 Personal Workspace
+- Create **folders** with custom icons and descriptions to organize projects
+- **Rich Note Editor** — Multi-line textarea in the Output panel with Save button
+- **Save Chat** — Save current AI conversation to a folder for later use
+- **Save Slides** — Save generated presentations to a folder
+- 📌 **Pin files** — Pin important files to the top of the list
+- 🤖 **One-click AI** — Ask AI / Continue / Develop buttons per file
+  - Notes → AI analyzes, expands, and suggests improvements
+  - Conversations → AI continues the discussion
+  - Slides → AI suggests improvements and additional content
+
 ### 📱 Mobile Responsive
 - Hamburger menu for sidebar navigation
 - Single-panel view with Chat/Output tab switcher
