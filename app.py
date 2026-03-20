@@ -227,21 +227,56 @@ MAIN_HTML = r"""
         .sidebar h3:first-child { margin-top: 0; }
         .mode-btn {
             width: 100%; padding: 9px 12px; border: 1px solid var(--border);
-            border-radius: 8px; background: var(--surface2); color: var(--text);
-            font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
+            border-radius: 8px; background: var(--surface2);
+            color: var(--text); font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
             margin-bottom: 5px; text-align: left; transition: all 0.2s;
         }
         .mode-btn:hover { border-color: var(--accent); background: #1e1e3a; }
         .mode-btn.active { border-color: var(--accent); background: #2a2058; }
-        .persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .persona-grid { margin-bottom: 8px; }
+        .persona-group-header {
+            font-size: 11px; color: var(--accent2); padding: 6px 0 4px; margin-top: 6px;
+            border-bottom: 1px solid #2a2a3e; margin-bottom: 5px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 4px;
+        }
+        .persona-group-header:hover { color: var(--green); }
+        .persona-group-header .pg-toggle { font-size: 9px; transition: transform 0.2s; }
+        .persona-group-header .pg-toggle.collapsed { transform: rotate(-90deg); }
+        .persona-group-body { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; }
+        .persona-group-body.collapsed { display: none; }
         .persona-chip {
-            padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px;
-            background: var(--surface2); font-size: 10px; cursor: pointer;
-            transition: all 0.2s; text-align: center; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap;
+            padding: 6px 8px; border-radius: 8px; font-size: 11px;
+            border: 1px solid var(--border); cursor: pointer;
+            text-align: center; transition: all 0.2s; color: var(--text2);
+            background: var(--surface2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .persona-chip:hover { border-color: var(--accent); }
         .persona-chip.selected { border-color: var(--green); background: #1a3a2a; color: var(--green); }
+        .persona-chip .mem-badge {
+            display: inline-block; background: var(--accent); color: #fff; font-size: 8px;
+            padding: 1px 4px; border-radius: 8px; margin-left: 3px; vertical-align: top;
+        }
+        .persona-memory-panel {
+            display: none; margin-top: 6px; padding: 8px; background: #12121a;
+            border: 1px solid #2a2a3e; border-radius: 8px; font-size: 11px;
+        }
+        .persona-memory-panel.active { display: block; }
+        .mem-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--accent2); }
+        .mem-header span { font-weight: 600; }
+        .mem-list { max-height: 150px; overflow-y: auto; }
+        .mem-item {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;
+            padding: 4px 6px; margin-bottom: 3px; background: #1a1a2e; border-radius: 5px;
+            color: var(--text2); line-height: 1.3;
+        }
+        .mem-item .mem-del { cursor: pointer; color: #666; font-size: 10px; flex-shrink: 0; }
+        .mem-item .mem-del:hover { color: var(--red); }
+        .mem-actions { display: flex; gap: 4px; margin-top: 6px; }
+        .mem-actions button {
+            flex: 1; padding: 4px; font-size: 10px; border: 1px solid #2a2a3e;
+            background: var(--surface2); color: var(--text2); border-radius: 5px; cursor: pointer;
+        }
+        .mem-actions button:hover { border-color: var(--accent); }
         .main-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); }
         .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
         /* Output panel */
@@ -398,6 +433,23 @@ MAIN_HTML = r"""
         /* ── Chart ── */
         .chart-container{background:#12121a;border:1px solid var(--border);border-radius:10px;padding:16px;margin:10px 0;}
         .chart-container canvas{max-height:350px;}
+        /* ── Spreadsheet ── */
+        .ss-wrapper{background:#0d0d14;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:10px 0;}
+        .ss-toolbar{display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface);align-items:center;flex-wrap:wrap;}
+        .ss-toolbar span{font-size:13px;font-weight:600;color:var(--accent2);}
+        .ss-toolbar .ss-info{font-size:11px;color:var(--text2);margin-left:auto;}
+        .ss-scroll{overflow:auto;max-height:65vh;}
+        .ss-table{border-collapse:collapse;width:100%;font-size:12px;font-family:'Inter',monospace;}
+        .ss-table th,.ss-table td{border:1px solid #2a2a3e;padding:5px 8px;text-align:left;white-space:nowrap;min-width:60px;}
+        .ss-table thead th{background:#1a1a2e;color:var(--accent2);font-weight:600;position:sticky;top:0;z-index:2;font-size:11px;text-align:center;}
+        .ss-table thead th.ss-corner{z-index:3;min-width:40px;width:40px;}
+        .ss-table .ss-rownum{background:#14141e;color:var(--text2);font-size:10px;text-align:center;min-width:40px;width:40px;position:sticky;left:0;z-index:1;font-weight:600;}
+        .ss-table tbody td{color:var(--text);background:#0d0d14;cursor:text;transition:background 0.15s;}
+        .ss-table tbody td:hover{background:#1a1a2e;}
+        .ss-table tbody td:focus{outline:2px solid var(--accent);outline-offset:-2px;background:#1e1e3a;}
+        .ss-table tbody tr:nth-child(even) td:not(.ss-rownum){background:#10101a;}
+        .ss-table tbody tr:nth-child(even) td:hover{background:#1a1a2e;}
+        @media(max-width:768px){.ss-scroll{max-height:55vh;} .ss-table{font-size:11px;} .ss-table th,.ss-table td{padding:4px 6px;min-width:50px;}}
         /* ── Mobile Toggle ── */
         .mobile-menu-btn {
             display: none; border: none; background: none; color: var(--text);
@@ -438,7 +490,7 @@ MAIN_HTML = r"""
             .input-area { padding: 10px 14px; }
             .chat-area { padding: 10px; }
             .compare-grid { grid-template-columns: 1fr; }
-            .persona-grid { grid-template-columns: 1fr 1fr 1fr; }
+            .persona-group-body { grid-template-columns: 1fr 1fr 1fr; }
         }
         /* ── Voice Buttons ── */
         .mic-btn {
@@ -531,14 +583,26 @@ MAIN_HTML = r"""
             <button class="mode-btn" data-mode="best" onclick="setMode('best')">🏆 Best Answer</button>
             <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')">🎭 Persona Debate</button>
             <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')">🧠 Persona Discussion</button>
+            <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')">📊 Multi-Report</button>
+            <button class="mode-btn" data-mode="decision_matrix" onclick="setMode('decision_matrix')">⚖️ Decision Matrix</button>
+            <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')">🔗 Chain Analysis</button>
+            <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')">🗳️ Persona Vote</button>
             <h3>Provider</h3>
             <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
             <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
             <button class="mode-btn" data-provider="azure" onclick="setProvider('azure')">Azure OpenAI</button>
             <button class="mode-btn" data-provider="claude" onclick="setProvider('claude')">Claude</button>
             <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
-            <h3>Persona</h3>
+            <h3 style="display:flex;justify-content:space-between;align-items:center;">Persona <button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;">+ Custom</button></h3>
             <div class="persona-grid" id="personaGrid"></div>
+            <div class="persona-memory-panel" id="personaMemoryPanel">
+                <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span id="memCount">0</span></div>
+                <div class="mem-list" id="memList"></div>
+                <div class="mem-actions">
+                    <button onclick="addPersonaMemory()">+ Add Memory</button>
+                    <button onclick="clearPersonaMemory()">🗑 Clear All</button>
+                </div>
+            </div>
             <div class="history-section">
                 <h3>Chat History</h3>
                 <button class="new-chat-btn" onclick="newConversation()">+ New Chat</button>
@@ -555,8 +619,21 @@ MAIN_HTML = r"""
                     <div><label>AGAINST</label><select id="personaAgainst"></select></div>
                 </div>
                 <div id="personaMultiSelect" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px;">
-                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;">Select personas for group discussion (2+):</div>
+                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px;">Select personas (2+):</div>
                     <div id="personaCheckboxes" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
+                <div id="dmPanel" style="display:none; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px; font-size:11px;">
+                    <div style="color:#8888aa; margin-bottom:4px;">⚖️ Decision Matrix Setup</div>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);">Options (comma-sep):</label>
+                        <input id="dmOptions" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Option A, Option B, Option C"></div>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);">Criteria (comma-sep):</label>
+                        <input id="dmCriteria" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Cost, Risk, Revenue, Feasibility"></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;" id="dmPersonaCheckboxes"></div>
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
+                    <button onclick="savePrompt()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Save current input as prompt template">📋 Save Prompt</button>
+                    <button onclick="loadPrompts()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Load saved prompts">📂 Load Prompt</button>
+                    <button onclick="exportPDF()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Export output to PDF">📄 PDF</button>
                 </div>
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
@@ -601,6 +678,7 @@ MAIN_HTML = r"""
             uploadedFileContent='', uploadedFileName='',
             uploadedFiles=[];  // array of {name, content, size, chars}
         const personas = PERSONA_DATA;
+        const personaGroups = PERSONA_GROUPS_DATA;
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
 
@@ -618,23 +696,105 @@ MAIN_HTML = r"""
                   a=document.getElementById('personaAgainst');
             g.innerHTML=''; f.innerHTML=''; a.innerHTML='';
             const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
-            for (const [k,n] of Object.entries(personas)) {
-                g.innerHTML += `<div class="persona-chip" data-key="${k}" onclick="togglePersona('${k}')">${n}</div>`;
-                f.innerHTML += `<option value="${k}">${n}</option>`;
-                a.innerHTML += `<option value="${k}">${n}</option>`;
-                cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${k}" class="persona-cb"> ${n}</label>`;
-            }
+            personaGroups.forEach(function(group) {
+                g.innerHTML += `<div class="persona-group-header" onclick="togglePersonaGroup('${group.key}')">`
+                    + `<span class="pg-toggle" id="pgToggle_${group.key}">▼</span> ${group.icon} ${group.name}</div>`;
+                g.innerHTML += `<div class="persona-group-body" id="pgBody_${group.key}">`
+                    + group.personas.map(function(p) {
+                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">${p.name}</div>`;
+                    }).join('') + '</div>';
+                // Populate debate selectors and checkboxes with group headers
+                f.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
+                    + group.personas.map(function(p) { return `<option value="${p.key}">${p.name}</option>`; }).join('')
+                    + '</optgroup>';
+                a.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
+                    + group.personas.map(function(p) { return `<option value="${p.key}">${p.name}</option>`; }).join('')
+                    + '</optgroup>';
+                cb.innerHTML += `<div style="width:100%;font-size:10px;color:var(--accent2);margin-top:6px;">${group.icon} ${group.name}</div>`;
+                group.personas.forEach(function(p) {
+                    cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${p.key}" class="persona-cb"> ${p.name}</label>`;
+                });
+            });
             const keys=Object.keys(personas);
             if (keys.length>=2) a.value=keys[1];
+        }
+        function togglePersonaGroup(key) {
+            var body = document.getElementById('pgBody_' + key);
+            var toggle = document.getElementById('pgToggle_' + key);
+            if (body) body.classList.toggle('collapsed');
+            if (toggle) toggle.classList.toggle('collapsed');
+        }
+        async function loadPersonaMemory(personaKey) {
+            const panel = document.getElementById('personaMemoryPanel');
+            if (!personaKey) { panel.classList.remove('active'); return; }
+            try {
+                const [memRes, convRes] = await Promise.all([
+                    fetch('/api/persona/' + personaKey + '/memory').then(r=>r.json()),
+                    fetch('/api/persona/' + personaKey + '/conversations').then(r=>r.json()).catch(()=>({conversations:[]}))
+                ]);
+                const list = document.getElementById('memList');
+                const name = personas[personaKey] || personaKey;
+                const memCount = (memRes.memories||[]).length;
+                const convCount = (convRes.conversations||[]).length;
+                document.getElementById('memPersonaName').textContent = name;
+                document.getElementById('memCount').textContent = memCount + convCount;
+                list.innerHTML = '';
+                // Show insights
+                if (memRes.memories && memRes.memories.length > 0) {
+                    list.innerHTML += '<div style="color:var(--accent);font-size:10px;font-weight:600;margin:4px 0;">💡 Insights (' + memCount + ')</div>';
+                    memRes.memories.forEach(function(m) {
+                        list.innerHTML += '<div class="mem-item"><span>' + escapeHtml(m.content) + '</span>'
+                            + '<span class="mem-del" onclick="deleteMemory(\'' + m.id + '\')">&times;</span></div>';
+                    });
+                }
+                // Show Q&A history
+                if (convRes.conversations && convRes.conversations.length > 0) {
+                    list.innerHTML += '<div style="color:var(--accent2);font-size:10px;font-weight:600;margin:6px 0 4px;">💬 Q&A History (' + convCount + ')</div>';
+                    convRes.conversations.forEach(function(c) {
+                        list.innerHTML += '<div class="mem-item" style="flex-direction:column;gap:2px;">'
+                            + '<div style="color:var(--accent);font-size:9px;">Q: ' + escapeHtml((c.question||'').slice(0,100)) + '</div>'
+                            + '<div style="font-size:9px;">A: ' + escapeHtml((c.answer||'').slice(0,150)) + '</div></div>';
+                    });
+                }
+                if (!memCount && !convCount) {
+                    list.innerHTML = '<div style="color:#555;padding:8px;text-align:center;">No memories yet. Conversations will auto-generate memories.</div>';
+                }
+                panel.classList.add('active');
+            } catch(e) { panel.classList.remove('active'); }
+        }
+        async function addPersonaMemory() {
+            if (!currentPersona) return;
+            var content = prompt('Add memory for ' + (personas[currentPersona]||currentPersona) + ':');
+            if (!content) return;
+            await fetch('/api/persona/' + currentPersona + '/memory', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({content: content})
+            });
+            loadPersonaMemory(currentPersona);
+        }
+        async function deleteMemory(memId) {
+            await fetch('/api/persona/memory/' + memId, {method:'DELETE'});
+            loadPersonaMemory(currentPersona);
+        }
+        async function clearPersonaMemory() {
+            if (!currentPersona) return;
+            if (!confirm('Clear all memories for ' + (personas[currentPersona]||currentPersona) + '?')) return;
+            await fetch('/api/persona/' + currentPersona + '/memory/clear', {method:'DELETE'});
+            loadPersonaMemory(currentPersona);
         }
         function setMode(m) {
             currentMode=m;
             document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
             document.querySelector(`.mode-btn[data-mode="${m}"]`)?.classList.add('active');
             document.getElementById('personaSelectors').classList.toggle('hidden', m!=='persona_debate');
-            document.getElementById('personaMultiSelect').style.display = (m==='persona_discuss') ? 'flex' : 'none';
+            const multiModes = ['persona_discuss','persona_report','persona_chain','persona_vote'];
+            document.getElementById('personaMultiSelect').style.display = multiModes.includes(m) ? 'flex' : 'none';
+            document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
             const ph={chat:'Type your message...',compare:'Ask all AIs...',debate:'Debate topic...',
-                       discuss:'Discussion topic...',best:'Question for best answer...',persona_debate:'Persona debate topic...',persona_discuss:'Topic for persona group discussion...'};
+                       discuss:'Discussion topic...',best:'Question for best answer...',persona_debate:'Persona debate topic...',
+                       persona_discuss:'Topic for group discussion...',persona_report:'Topic for multi-persona report...',
+                       decision_matrix:'(Configure options above, then type topic)',persona_chain:'Topic for chain analysis (select personas ↑)...',
+                       persona_vote:'Proposal to vote on (select personas ↑)...'};
             document.getElementById('userInput').placeholder = ph[m] || 'Type...';
         }
         function setProvider(p) {
@@ -644,8 +804,8 @@ MAIN_HTML = r"""
         }
         function togglePersona(k) {
             const chips=document.querySelectorAll('.persona-chip');
-            if(currentPersona===k){currentPersona='';chips.forEach(c=>c.classList.remove('selected'));}
-            else{currentPersona=k;chips.forEach(c=>c.classList.toggle('selected',c.dataset.key===k));}
+            if(currentPersona===k){currentPersona='';chips.forEach(c=>c.classList.remove('selected'));loadPersonaMemory('');}
+            else{currentPersona=k;chips.forEach(c=>c.classList.toggle('selected',c.dataset.key===k));loadPersonaMemory(k);}
         }
         function addMessage(h,b,cls='',badge='',time='') {
             const m=document.createElement('div');m.className='message';
@@ -692,6 +852,106 @@ MAIN_HTML = r"""
             outputArea.innerHTML = '<div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">Result will appear here</p></div>';
             document.getElementById('outputBadge').style.display = 'none';
             if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        }
+        // ── Spreadsheet ──
+        var ssData = null;
+        function parseTabularData(text) {
+            if (!text || !text.trim()) return null;
+            var lines = text.split('\n').filter(function(l){return l.trim();});
+            if (lines.length < 2) return null;
+            var sep = '\t';
+            if (lines[0].indexOf('\t') < 0 && lines[0].indexOf(',') >= 0) sep = ',';
+            var rows = [];
+            for (var i = 0; i < lines.length; i++) {
+                var cells;
+                if (sep === ',') {
+                    cells = []; var cur = ''; var inQ = false;
+                    for (var c = 0; c < lines[i].length; c++) {
+                        var ch = lines[i][c];
+                        if (ch === '"') { inQ = !inQ; }
+                        else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+                        else { cur += ch; }
+                    }
+                    cells.push(cur.trim());
+                } else {
+                    cells = lines[i].split(sep);
+                }
+                if (cells.length > 1 || rows.length > 0) rows.push(cells);
+            }
+            if (rows.length < 2 || rows[0].length < 2) return null;
+            return rows;
+        }
+        function colLetter(n) {
+            var s = ''; n++;
+            while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+            return s;
+        }
+        function renderSpreadsheet(rows, title, fileName) {
+            if (!rows || rows.length < 2) return;
+            ssData = rows;
+            var maxCols = 0;
+            rows.forEach(function(r){if(r.length>maxCols)maxCols=r.length;});
+            var html = '<div class="ss-wrapper">';
+            html += '<div class="ss-toolbar">';
+            html += '<span>📊 ' + (title || 'Spreadsheet') + '</span>';
+            html += '<button class="ws-btn" style="font-size:11px;" onclick="ssAnalyze()">🤖 AI 분석</button>';
+            html += '<button class="ws-btn" style="font-size:11px;" onclick="ssExportCSV()">💾 CSV</button>';
+            html += '<span class="ss-info">' + (rows.length-1) + ' rows × ' + maxCols + ' cols</span>';
+            html += '</div>';
+            html += '<div class="ss-scroll"><table class="ss-table"><thead><tr>';
+            html += '<th class="ss-corner"></th>';
+            for (var c = 0; c < maxCols; c++) html += '<th>' + colLetter(c) + '</th>';
+            html += '</tr><tr><th class="ss-rownum" style="background:#1a1a2e;">H</th>';
+            for (var c = 0; c < maxCols; c++) html += '<th style="color:var(--green);">' + escapeHtml(rows[0][c]||'') + '</th>';
+            html += '</tr></thead><tbody>';
+            var maxRows = Math.min(rows.length, 501);
+            for (var r = 1; r < maxRows; r++) {
+                html += '<tr><td class="ss-rownum">' + r + '</td>';
+                for (var c = 0; c < maxCols; c++) {
+                    html += '<td contenteditable="true" data-r="'+r+'" data-c="'+c+'">' + escapeHtml(rows[r] && rows[r][c] ? rows[r][c] : '') + '</td>';
+                }
+                html += '</tr>';
+            }
+            if (rows.length > 501) {
+                html += '<tr><td class="ss-rownum">...</td>';
+                for (var c = 0; c < maxCols; c++) html += '<td style="color:var(--text2);font-style:italic;">+' + (rows.length-501) + ' more</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table></div></div>';
+            if (fileName) {
+                html = '<div class="doc-query">' + escapeHtml(fileName) + '</div>' + html;
+            }
+            outputArea.innerHTML = html;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+            if (window.innerWidth <= 768) showMobilePanel('output');
+        }
+        function ssAnalyze() {
+            if (!ssData || !ssData.length) return;
+            var header = ssData[0].join(', ');
+            var sample = ssData.slice(1, Math.min(11, ssData.length)).map(function(r){return r.join(', ');}).join('\n');
+            var input = document.getElementById('userInput');
+            input.value = '다음 스프레드시트 데이터를 분석해 주세요.\n\n헤더: ' + header + '\n\n샘플 데이터 (처음 10행):\n' + sample + '\n\n총 ' + (ssData.length-1) + '행입니다. 주요 패턴, 통계, 인사이트를 알려주세요.';
+            send();
+        }
+        function ssExportCSV() {
+            if (!ssData) return;
+            var csv = ssData.map(function(r){return r.map(function(c){return '"'+(c||"").replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+            var blob = new Blob([csv], {type:'text/csv'});
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'spreadsheet.csv'; a.click();
+        }
+        function isTabularContent(text, fileName) {
+            if (!text) return false;
+            var fn = (fileName || '').toLowerCase();
+            if (fn.endsWith('.csv') || fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.tsv')) return true;
+            var lines = text.split('\n').filter(function(l){return l.trim();});
+            if (lines.length < 3) return false;
+            var tabCount = 0; var commaCount = 0;
+            for (var i = 0; i < Math.min(5, lines.length); i++) {
+                tabCount += (lines[i].match(/\t/g) || []).length;
+                commaCount += (lines[i].match(/,/g) || []).length;
+            }
+            return (tabCount >= 5) || (commaCount >= 10 && lines.length >= 3);
         }
         function copyOutput() {
             navigator.clipboard.writeText(outputArea.innerText).then(() => {
@@ -831,6 +1091,11 @@ MAIN_HTML = r"""
                     addMessage('System',`📄 업로드: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()}자)${
                         uploadedFiles.length > 1 ? ` — 역대 업로드 ${uploadedFiles.length}개` : ''
                     }`,'system-msg');
+                    // Auto-render spreadsheet for CSV/Excel
+                    if (isTabularContent(r.content, r.filename)) {
+                        var rows = parseTabularData(r.content);
+                        if (rows) renderSpreadsheet(rows, r.filename, r.filename);
+                    }
                 }else{addMessage('Error',r.error||'Upload failed','error-msg');}
             }catch(e){addMessage('Error','업로드 오류: '+e.message,'error-msg');}
         }
@@ -973,11 +1238,145 @@ MAIN_HTML = r"""
                         let pdsRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
                         showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||result.error||'')}</div></div>`, text, `Participants: ${pdsParticipants.join(', ')}`);
                     }
+                } else if(currentMode==='persona_report'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<1){removeLoading(loadId);addMessage('Error','Select at least 1 persona.','error-msg');}
+                    else{
+                        result=await safeFetch('/api/persona_report',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
+                        removeLoading(loadId);
+                        if(result.error){addMessage('Error',result.error,'error-msg');}
+                        else{
+                            let anaCards=(result.analyses||[]).map(a=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(a.persona_name)}</div><div class="doc-answer">${escapeHtml(a.analysis)}</div></div><hr class="doc-divider">`).join('');
+                            addMessage('System',`MULTI-PERSONA REPORT: ${text}\n${(result.analyses||[]).map(a=>a.persona_name).join(', ')}`,'system-msg');
+                            addMessage('Report',result.report||'','judge-msg','EXECUTIVE REPORT');
+                            showDoc(`<div class="doc-sec-title">📊 Multi-Persona Report (${result.persona_count} perspectives)</div>${anaCards}<div class="doc-verdict"><div class="doc-verdict-label">📋 Executive Report</div><div class="doc-verdict-text">${escapeHtml(result.report||'')}</div></div>`, text, `Report: ${result.persona_count} personas`);
+                        }
+                    }
+                } else if(currentMode==='decision_matrix'){
+                    const opts=document.getElementById('dmOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
+                    const crit=document.getElementById('dmCriteria').value.split(',').map(s=>s.trim()).filter(Boolean);
+                    const sel=Array.from(document.querySelectorAll('#dmPersonaCheckboxes input:checked')).map(c=>c.value);
+                    if(opts.length<2||crit.length<1||sel.length<1){removeLoading(loadId);addMessage('Error','Need ≥2 options, ≥1 criteria, ≥1 persona','error-msg');}
+                    else{
+                        result=await safeFetch('/api/decision_matrix',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({options:opts,criteria:crit,personas:sel})});
+                        removeLoading(loadId);
+                        if(result.error){addMessage('Error',result.error,'error-msg');}
+                        else{
+                            let evalCards=(result.evaluations||[]).map(e=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(e.persona_name)}</div><div class="doc-answer">${escapeHtml(e.evaluation)}</div></div><hr class="doc-divider">`).join('');
+                            addMessage('System',`DECISION MATRIX: ${opts.join(' vs ')}`,'system-msg');
+                            addMessage('Matrix Result',result.synthesis||'','judge-msg','SCORECARD');
+                            showDoc(`<div class="doc-sec-title">⚖️ Decision Matrix</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Options: ${opts.join(', ')} | Criteria: ${crit.join(', ')}</div>${evalCards}<div class="doc-verdict"><div class="doc-verdict-label">📊 Final Scorecard</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||'')}</div></div>`, text, `Matrix: ${opts.join(' vs ')}`);
+                        }
+                    }
+                } else if(currentMode==='persona_chain'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas for chain.','error-msg');}
+                    else{
+                        result=await safeFetch('/api/persona_chain',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
+                        removeLoading(loadId);
+                        if(result.error){addMessage('Error',result.error,'error-msg');}
+                        else{
+                            let chainCards=(result.chain||[]).map(c=>`<div class="doc-round"><div class="doc-round-meta">Step ${c.step}</div><div class="doc-round-speaker">${escapeHtml(c.persona_name)}</div><div class="doc-round-text">${escapeHtml(c.analysis)}</div></div>`).join('');
+                            addMessage('System',`CHAIN ANALYSIS: ${text}`,'system-msg');
+                            (result.chain||[]).forEach(c=>addMessage(c.persona_name,c.analysis,'',`Step ${c.step}`));
+                            addMessage('Conclusion',result.conclusion||'','judge-msg','FINAL');
+                            showDoc(`<div class="doc-sec-title">🔗 Chain Analysis (${result.steps} steps)</div>${chainCards}<div class="doc-verdict"><div class="doc-verdict-label">🎯 Final Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.conclusion||'')}</div></div>`, text, `Chain: ${result.steps} steps`);
+                        }
+                    }
+                } else if(currentMode==='persona_vote'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
+                    else{
+                        result=await safeFetch('/api/persona_vote',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({proposal:prompt,personas:sel,provider:currentProvider})});
+                        removeLoading(loadId);
+                        if(result.error){addMessage('Error',result.error,'error-msg');}
+                        else{
+                            const t=result.tally||{};
+                            const voteColors={APPROVE:'#4caf50',OPPOSE:'#f44336',CONDITIONAL:'#ff9800',ABSTAIN:'#666'};
+                            let voteCards=(result.votes||[]).map(v=>{
+                                const col=voteColors[v.vote]||'#666';
+                                return `<div class="doc-provider"><div class="doc-provider-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px;"></span>${escapeHtml(v.persona_name)} <span style="color:${col};font-weight:600;">${v.vote}</span></div><div class="doc-answer">${escapeHtml(v.response)}</div></div><hr class="doc-divider">`;
+                            }).join('');
+                            let tallyBar=`<div style="display:flex;gap:10px;margin:8px 0;font-size:12px;font-weight:600;"><span style="color:#4caf50;">✅ ${t.APPROVE||0}</span><span style="color:#f44336;">❌ ${t.OPPOSE||0}</span><span style="color:#ff9800;">⚠️ ${t.CONDITIONAL||0}</span></div>`;
+                            let decisionCol=result.decision==='APPROVED'?'#4caf50':result.decision==='REJECTED'?'#f44336':'#ff9800';
+                            addMessage('System',`VOTE: ${text}\nResult: ${result.decision} (${t.APPROVE||0} approve, ${t.OPPOSE||0} oppose, ${t.CONDITIONAL||0} conditional)`,'system-msg');
+                            addMessage('Summary',result.summary||'','judge-msg',result.decision);
+                            showDoc(`<div class="doc-sec-title">🗳️ Persona Voting (${result.total_votes} votes)</div>${tallyBar}<div style="text-align:center;font-size:18px;font-weight:700;color:${decisionCol};margin:10px 0;">${result.decision}</div>${voteCards}<div class="doc-verdict"><div class="doc-verdict-label">📋 Summary</div><div class="doc-verdict-text">${escapeHtml(result.summary||'')}</div></div>`, text, `Vote: ${result.decision}`);
+                        }
+                    }
                 }
             }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
             document.getElementById('sendBtn').disabled=false;input.focus();
         }
         document.getElementById('userInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+        // ── Convenience: Prompt Library ──
+        async function savePrompt() {
+            const input=document.getElementById('userInput').value.trim();
+            if(!input){addMessage('System','Type a prompt first to save it.','system-msg');return;}
+            const name=prompt('Save prompt as:',input.slice(0,50));
+            if(!name)return;
+            await fetch('/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name,prompt:input,mode:currentMode,personas:currentPersona?[currentPersona]:[]})});
+            addMessage('System','✅ Prompt saved: '+name,'system-msg');
+        }
+        async function loadPrompts() {
+            const r=await fetch('/api/prompts').then(r=>r.json());
+            const list=r.prompts||[];
+            if(!list.length){addMessage('System','No saved prompts yet.','system-msg');return;}
+            let html='<div class="doc-sec-title">📋 Prompt Library</div>';
+            list.forEach(function(p){
+                html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin:4px 0;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;">
+                    <div style="cursor:pointer;flex:1;" onclick="document.getElementById('userInput').value='${escapeHtml(p.prompt).replace(/'/g,"\\'")}';"><div style="font-weight:600;font-size:12px;">${escapeHtml(p.name)}</div><div style="font-size:10px;color:var(--text2);">${escapeHtml((p.prompt||'').slice(0,80))}</div></div>
+                    <span style="cursor:pointer;color:#666;font-size:12px;" onclick="deletePrompt('${p.id}')">&times;</span></div>`;
+            });
+            showDoc(html,'Prompt Library','📋 Prompts');
+        }
+        async function deletePrompt(id){await fetch('/api/prompts/'+id,{method:'DELETE'});loadPrompts();}
+
+        // ── Convenience: PDF Export ──
+        function exportPDF() {
+            const output=document.getElementById('outputArea');
+            if(!output||!output.innerHTML.trim()){addMessage('System','Nothing to export. Generate output first.','system-msg');return;}
+            const w=window.open('','_blank');
+            w.document.write(`<html><head><title>AI Hub Export</title><style>body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#333;line-height:1.6;}h1{color:#1a1a2e;border-bottom:2px solid #6c5ce7;padding-bottom:8px;}.doc-sec-title{font-size:18px;font-weight:700;margin:20px 0 10px;}.doc-provider-name{font-weight:600;margin:8px 0;}.doc-answer{margin:8px 0 16px;padding:10px;background:#f8f9fa;border-radius:8px;white-space:pre-wrap;}.doc-verdict{margin:20px 0;padding:15px;background:#f0f4ff;border:1px solid #6c5ce7;border-radius:8px;}.doc-verdict-label{font-weight:700;}.doc-round{margin:10px 0;padding:10px;background:#f8f9fa;border-radius:6px;}.doc-round-speaker{font-weight:600;}.doc-divider{border:none;border-top:1px solid #eee;margin:10px 0;}@media print{body{margin:0;}}</style></head><body><h1>AI Hub Report</h1><div style="font-size:12px;color:#666;margin-bottom:20px;">${new Date().toLocaleString()}</div>`+output.innerHTML+'</body></html>');
+            w.document.close();
+            setTimeout(function(){w.print();},500);
+        }
+
+
+
+        // ── Convenience: Custom Persona ──
+        function addCustomPersona() {
+            const name=prompt('Persona display name:');
+            if(!name)return;
+            const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+            const desc=prompt('Describe this persona\'s role and expertise:');
+            if(!desc)return;
+            fetch('/api/add_custom_persona',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({key:key,name:name,prompt:desc})}).then(function(){
+                    personas[key]=name;
+                    const g=document.getElementById('personaGrid');
+                    const lastBody=g.querySelector('.persona-group-body:last-child');
+                    if(lastBody)lastBody.innerHTML+=`<div class="persona-chip" data-key="${key}" onclick="togglePersona('${key}')">${name}</div>`;
+                    addMessage('System','✅ Custom persona added: '+name,'system-msg');
+                });
+        }
+
+        // ── Init Decision Matrix Checkboxes ──
+        function initDmCheckboxes() {
+            const c=document.getElementById('dmPersonaCheckboxes');
+            c.innerHTML='<div style="width:100%;font-size:10px;color:var(--accent2);margin-bottom:4px;">Select evaluators:</div>';
+            personaGroups.forEach(function(group){
+                group.personas.forEach(function(p){
+                    c.innerHTML+=`<label style="display:flex;align-items:center;gap:4px;padding:3px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;font-size:10px;cursor:pointer;"><input type="checkbox" value="${p.key}"> ${p.name}</label>`;
+                });
+            });
+        }
 
         // ── Conversation History (Supabase) ──
         let currentConvId = null;
@@ -1106,7 +1505,7 @@ MAIN_HTML = r"""
         const origSetProvider = setProvider;
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
 
-        initStatus(); initPersonas(); initHistory();
+        initStatus(); initPersonas(); initHistory(); initDmCheckboxes();
 
         // ── Voice Support (Web Speech API) ──
         let recognition = null;
@@ -1363,6 +1762,7 @@ MAIN_HTML = r"""
             html += '<button class="ws-btn ws-btn-green" onclick="saveNote()">+ Note</button>';
             html += '<button class="ws-btn" onclick="saveCurrentChat()">Save Chat</button>';
             html += '<button class="ws-btn" onclick="saveCurrentSlides()">Save Slides</button>';
+            html += '<button class="ws-btn" style="border-color:var(--blue);color:var(--blue);" onclick="saveUploadedFile()">' + '\uD83D\uDCBE Save File</button>';
             html += '</div>';
             var files = r.files || [];
             // Sort: pinned first, then by date
@@ -1446,6 +1846,22 @@ MAIN_HTML = r"""
             addMessage('System', 'Slides saved to workspace!', 'system-msg');
         }
 
+        async function saveUploadedFile() {
+            if (!wsCurrentFolder) { addMessage('System', '먼저 폴더를 선택하세요.', 'system-msg'); return; }
+            if (!uploadedFileContent || uploadedFiles.length === 0) { addMessage('System', '저장할 파일이 없습니다. 먼저 파일을 업로드하세요.', 'system-msg'); return; }
+            var defaultName = uploadedFiles.length === 1 ? uploadedFiles[0].name : uploadedFiles.length + '개 파일';
+            var name = prompt('파일 이름:', defaultName);
+            if (!name) return;
+            var meta = {original_files: uploadedFiles.map(function(f){return {name:f.name, size:f.size, chars:f.chars};})}
+            await fetch('/api/folders/'+wsCurrentFolder+'/files', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name, type:'file', content:uploadedFileContent, metadata:meta})
+            });
+            loadFiles(wsCurrentFolder);
+            closeWorkspace();
+            addMessage('System', '\uD83D\uDCBE 파일이 워크스페이스에 저장되었습니다: ' + name, 'system-msg');
+        }
+
         async function openFile(fileId, type) {
             var r = await fetch('/api/files/'+fileId).then(function(r){return r.json();});
             var f = r.file;
@@ -1485,6 +1901,30 @@ MAIN_HTML = r"""
                     showSlidesPreview(slides, currentSlideTopic);
                     if (window.innerWidth <= 768) showMobilePanel('output');
                 } catch(e) {}
+            } else if (type === 'file') {
+                // Check if tabular data → render as spreadsheet
+                if (isTabularContent(f.content, f.name)) {
+                    var rows = parseTabularData(f.content);
+                    if (rows) { renderSpreadsheet(rows, f.name, f.name); return; }
+                }
+                if (outputArea) {
+                    var html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+                    html += '<span style="font-size:16px;font-weight:700;color:var(--accent2);">\uD83D\uDCC4 ' + f.name + '</span>';
+                    html += '<button class="ws-btn" style="font-size:11px;" onclick="askAiAboutFile(\'' + fileId + '\',\'file\')">🤖 Ask AI</button>';
+                    html += '</div>';
+                    if (f.metadata && f.metadata.original_files) {
+                        html += '<div style="margin-bottom:12px;padding:8px 12px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text2);">';
+                        html += '📎 원본 파일: ';
+                        f.metadata.original_files.forEach(function(of, idx) {
+                            if (idx > 0) html += ', ';
+                            html += of.name + ' (' + (of.size/1024).toFixed(1) + 'KB, ' + (of.chars||0).toLocaleString() + '자)';
+                        });
+                        html += '</div>';
+                    }
+                    html += '<div style="white-space:pre-wrap;color:var(--text);font-size:13px;line-height:1.8;max-height:70vh;overflow-y:auto;">' + (f.content||'').replace(/</g,'&lt;') + '</div>';
+                    outputArea.innerHTML = html;
+                }
+                if (window.innerWidth <= 768) showMobilePanel('output');
             }
         }
 
@@ -1516,6 +1956,8 @@ MAIN_HTML = r"""
                     var summary = slides.map(function(s,i){return 'Slide '+(i+1)+': '+s.title;}).join(', ');
                     input.value = 'I have a presentation about "' + ((f.metadata && f.metadata.topic) || f.name) + '" with slides: ' + summary + '. Please suggest improvements.';
                 } catch(e) { input.value = 'Analyze and improve this: ' + content.substring(0, 2000); }
+            } else if (type === 'file') {
+                input.value = '다음 파일("' + f.name + '")의 내용을 분석하고 요약해 주세요:\n\n' + content.substring(0, 5000);
             }
             addMessage('System', 'Loaded from workspace: ' + f.name, 'system-msg');
             send();
@@ -1540,8 +1982,10 @@ def index():
     import json
     status = hub.status()
     personas = hub.list_personas()
+    persona_groups = hub.list_persona_groups()
     html = MAIN_HTML.replace("AI_STATUS", json.dumps(status)).replace(
-        "PERSONA_DATA", json.dumps(personas, ensure_ascii=False))
+        "PERSONA_DATA", json.dumps(personas, ensure_ascii=False)).replace(
+        "PERSONA_GROUPS_DATA", json.dumps(persona_groups, ensure_ascii=False))
     return html
 
 
@@ -1553,7 +1997,81 @@ def api_ask():
     provider = data.get("provider", "chatgpt")
     persona = data.get("persona", "")
     if persona:
-        response = hub.ask_as(prompt, persona=persona, provider=provider)
+        # Load memories + past conversations for this persona
+        memory_context = ""
+        conversation_context = ""
+        user_id = session.get("user", "admin")
+        if supabase_client:
+            try:
+                # Load distilled insights
+                mem_result = supabase_client.table("persona_memory").select("content").eq(
+                    "user_id", user_id
+                ).eq("persona_key", persona).order("created_at", desc=True).limit(20).execute()
+                if mem_result.data:
+                    memories = [m["content"] for m in mem_result.data]
+                    memory_context = "\n".join(f"- {m}" for m in memories)
+            except Exception:
+                pass
+            try:
+                # Load recent Q&A conversation history
+                conv_result = supabase_client.table("persona_conversations").select(
+                    "question,answer"
+                ).eq("user_id", user_id).eq(
+                    "persona_key", persona
+                ).order("created_at", desc=True).limit(10).execute()
+                if conv_result.data:
+                    convs = []
+                    for c in reversed(conv_result.data):  # chronological order
+                        convs.append(f"Q: {c['question'][:200]}\nA: {c['answer'][:300]}")
+                    conversation_context = "\n\n".join(convs)
+            except Exception:
+                pass
+
+        # Combine both memory types
+        full_memory = ""
+        if memory_context:
+            full_memory += f"KEY INSIGHTS:\n{memory_context}"
+        if conversation_context:
+            if full_memory:
+                full_memory += "\n\n"
+            full_memory += f"RECENT CONVERSATION HISTORY:\n{conversation_context}"
+
+        response = hub.ask_as(prompt, persona=persona, provider=provider,
+                              memory_context=full_memory)
+
+        # Save full Q&A + extract insight
+        if response.success and supabase_client:
+            try:
+                # Save full Q&A pair
+                supabase_client.table("persona_conversations").insert({
+                    "user_id": user_id,
+                    "persona_key": persona,
+                    "question": prompt[:2000],
+                    "answer": response.content[:3000],
+                    "provider": provider
+                }).execute()
+            except Exception:
+                pass
+
+            # Auto-extract memory insight (only for substantial responses)
+            if len(response.content) > 50:
+                try:
+                    extract = hub.ask(
+                        f"From this conversation, extract ONE concise key insight or fact worth remembering "
+                        f"for future reference (1 sentence max, in the language of the content). "
+                        f"If nothing worth remembering, respond with exactly 'NONE'.\n\n"
+                        f"User asked: {prompt[:500]}\nResponse: {response.content[:1000]}",
+                        provider=provider,
+                        system_prompt="You are a memory extraction assistant. Extract only genuinely useful facts or insights. Respond with a single sentence or 'NONE'."
+                    )
+                    if extract.success and extract.content.strip().upper() != "NONE" and len(extract.content.strip()) > 5:
+                        supabase_client.table("persona_memory").insert({
+                            "user_id": user_id,
+                            "persona_key": persona,
+                            "content": extract.content.strip()[:500]
+                        }).execute()
+                except Exception:
+                    pass
     else:
         response = hub.ask(prompt, provider=provider)
     return jsonify({"provider": response.provider, "model": response.model,
@@ -1630,6 +2148,154 @@ def api_persona_discuss():
         return jsonify({"error": result["error"]}), 400
     return jsonify({"topic": result["topic"], "participants": result["participants"],
         "discussion_log": result["discussion_log"], "synthesis": result["synthesis"]})
+
+
+@app.route("/api/persona_report", methods=["POST"])
+@login_required
+def api_persona_report():
+    data = request.json
+    personas = data.get("personas", [])
+    if len(personas) < 1:
+        return jsonify({"error": "Select at least 1 persona"}), 400
+    result = hub.multi_persona_report(topic=data.get("topic", ""),
+        persona_keys=personas, provider=data.get("provider", "chatgpt"))
+    return jsonify(result)
+
+
+@app.route("/api/persona_chain", methods=["POST"])
+@login_required
+def api_persona_chain():
+    data = request.json
+    personas = data.get("personas", [])
+    if len(personas) < 2:
+        return jsonify({"error": "Select at least 2 personas for chain"}), 400
+    result = hub.persona_chain(topic=data.get("topic", ""),
+        persona_keys=personas, provider=data.get("provider", "chatgpt"))
+    return jsonify(result)
+
+
+@app.route("/api/persona_vote", methods=["POST"])
+@login_required
+def api_persona_vote():
+    data = request.json
+    personas = data.get("personas", [])
+    if len(personas) < 2:
+        return jsonify({"error": "Select at least 2 personas for voting"}), 400
+    result = hub.persona_vote(proposal=data.get("proposal", ""),
+        persona_keys=personas, provider=data.get("provider", "chatgpt"))
+    return jsonify(result)
+
+
+@app.route("/api/decision_matrix", methods=["POST"])
+@login_required
+def api_decision_matrix():
+    """Evaluate options against criteria using selected personas."""
+    data = request.json
+    options = data.get("options", [])
+    criteria = data.get("criteria", [])
+    personas = data.get("personas", [])
+    if len(options) < 2 or len(criteria) < 1 or len(personas) < 1:
+        return jsonify({"error": "Need ≥2 options, ≥1 criteria, ≥1 persona"}), 400
+
+    available = [p for p in ["chatgpt", "gemini", "azure", "claude", "grok"]
+                 if p in hub.providers]
+    if not available:
+        return jsonify({"error": "No AI providers available"}), 400
+
+    scores = []
+    for i, pkey in enumerate(personas):
+        name = hub.get_persona_name(pkey)
+        prompt_text = hub.get_persona_prompt(pkey)
+        if not prompt_text:
+            continue
+        ai = available[i % len(available)]
+        options_str = ", ".join(options)
+        criteria_str = ", ".join(criteria)
+        sys_prompt = (
+            f"{prompt_text}\n\n"
+            f"You are evaluating options in a decision matrix. "
+            f"Score each option on each criterion from 1-10.\n"
+            f"Respond in EXACTLY this format for each option:\n"
+            f"OPTION_NAME: criterion1=N, criterion2=N, ...\n"
+            f"Then one line: BEST: [your recommended option]"
+        )
+        resp = hub.ask(
+            f"Evaluate these options: {options_str}\n"
+            f"Against these criteria: {criteria_str}\n"
+            f"Score each 1-10.",
+            provider=ai, system_prompt=sys_prompt
+        )
+        scores.append({
+            "persona_key": pkey, "persona_name": name,
+            "evaluation": resp.content if resp.success else "Error",
+            "provider": ai
+        })
+
+    # Synthesize
+    all_evals = "\n\n".join(f"[{s['persona_name']}]:\n{s['evaluation']}" for s in scores)
+    synth = hub.ask(
+        f"Synthesize these decision matrix evaluations:\n\n{all_evals}\n\n"
+        f"Options: {', '.join(options)}\nCriteria: {', '.join(criteria)}\n\n"
+        f"Create a final scorecard table and recommend the best option.",
+        provider=available[0],
+        system_prompt="You are a decision matrix synthesizer. Present a clear scorecard."
+    )
+    return jsonify({
+        "options": options, "criteria": criteria,
+        "evaluations": scores, "synthesis": synth.content if synth.success else synth.error
+    })
+
+
+# ── Prompt Library ──
+
+@app.route("/api/prompts", methods=["GET"])
+@login_required
+def api_prompts_list():
+    if not supabase_client:
+        return jsonify({"prompts": []})
+    try:
+        result = supabase_client.table("saved_prompts").select("*").eq(
+            "user_id", session.get("user", "admin")
+        ).order("created_at", desc=True).execute()
+        return jsonify({"prompts": result.data or []})
+    except Exception:
+        return jsonify({"prompts": []})
+
+
+@app.route("/api/prompts", methods=["POST"])
+@login_required
+def api_prompts_save():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json
+    result = supabase_client.table("saved_prompts").insert({
+        "user_id": session.get("user", "admin"),
+        "name": data.get("name", "Untitled"),
+        "prompt": data.get("prompt", ""),
+        "mode": data.get("mode", "chat"),
+        "personas": data.get("personas", [])
+    }).execute()
+    return jsonify({"prompt": result.data[0] if result.data else {}, "success": True})
+
+
+@app.route("/api/prompts/<prompt_id>", methods=["DELETE"])
+@login_required
+def api_prompts_delete(prompt_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    supabase_client.table("saved_prompts").delete().eq("id", prompt_id).execute()
+    return jsonify({"deleted": True})
+
+
+@app.route("/api/add_custom_persona", methods=["POST"])
+@login_required
+def api_add_custom_persona():
+    data = request.json
+    key = data.get("key", "custom")
+    name = data.get("name", "Custom")
+    prompt_text = data.get("prompt", "You are a helpful assistant.")
+    hub.add_persona(key, name, prompt_text)
+    return jsonify({"success": True, "key": key, "name": name})
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -2044,6 +2710,91 @@ def api_files_delete(file_id):
         return jsonify({"deleted": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ──────────────────────────── Persona Memory API ────────────────────────────
+
+
+@app.route("/api/persona/<persona_key>/memory", methods=["GET"])
+@login_required
+def api_persona_memory_list(persona_key):
+    """List memories for a persona"""
+    if not supabase_client:
+        return jsonify({"memories": [], "error": "No database"}), 200
+    try:
+        result = supabase_client.table("persona_memory").select("*").eq(
+            "user_id", session.get("user", "admin")
+        ).eq("persona_key", persona_key).order("created_at", desc=True).execute()
+        return jsonify({"memories": result.data or [], "count": len(result.data or [])})
+    except Exception as e:
+        return jsonify({"memories": [], "error": str(e)}), 200
+
+
+@app.route("/api/persona/<persona_key>/memory", methods=["POST"])
+@login_required
+def api_persona_memory_add(persona_key):
+    """Manually add a memory for a persona"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        data = request.json
+        content = data.get("content", "").strip()
+        if not content:
+            return jsonify({"error": "Empty memory"}), 400
+        result = supabase_client.table("persona_memory").insert({
+            "user_id": session.get("user", "admin"),
+            "persona_key": persona_key,
+            "content": content[:500]
+        }).execute()
+        return jsonify({"memory": result.data[0] if result.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/persona/memory/<memory_id>", methods=["DELETE"])
+@login_required
+def api_persona_memory_delete(memory_id):
+    """Delete a specific memory"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("persona_memory").delete().eq("id", memory_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/persona/<persona_key>/memory/clear", methods=["DELETE"])
+@login_required
+def api_persona_memory_clear(persona_key):
+    """Clear all memories AND conversations for a persona"""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("persona_memory").delete().eq(
+            "user_id", session.get("user", "admin")
+        ).eq("persona_key", persona_key).execute()
+        supabase_client.table("persona_conversations").delete().eq(
+            "user_id", session.get("user", "admin")
+        ).eq("persona_key", persona_key).execute()
+        return jsonify({"cleared": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/persona/<persona_key>/conversations", methods=["GET"])
+@login_required
+def api_persona_conversations(persona_key):
+    """List recent conversations for a persona"""
+    if not supabase_client:
+        return jsonify({"conversations": []})
+    try:
+        result = supabase_client.table("persona_conversations").select("*").eq(
+            "user_id", session.get("user", "admin")
+        ).eq("persona_key", persona_key).order("created_at", desc=True).limit(20).execute()
+        return jsonify({"conversations": result.data or [], "count": len(result.data or [])})
+    except Exception:
+        return jsonify({"conversations": []})
 
 
 # ──────────────────────────── Audio: OpenAI TTS ────────────────────────────

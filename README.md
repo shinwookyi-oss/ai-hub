@@ -26,19 +26,37 @@
 - 🎭 **Persona Debate** — Role-play debate between historical figures
 - 🧠 **Persona Discussion** — Group discussion with multiple personas
 
-### 👤 20+ Persona System
-Historical figures and expert personas that shape AI responses:
+### 👤 55 Persona System (3 Groups)
+Role-based personas for **multi-stakeholder decision-making** — gather diverse perspectives before making major decisions:
 
-| Category | Personas |
-|----------|---------|
-| Business | Elon Musk, Steve Jobs, J.P. Morgan |
-| Strategy | Sun Tzu, Sima Yi, Tokugawa Ieyasu |
-| Philosophy | Nietzsche, Schopenhauer |
-| Science | Nikola Tesla, Thomas Edison, Albert Einstein |
-| Psychology | Carl Jung, FBI Profiler |
-| Eastern Arts | I Ching Master, Saju (Four Pillars) Master |
-| Assistants | Personal Assistant, Devil's Advocate |
-| Politics | Donald Trump |
+| Group | Personas |
+|-------|----------|
+| 🏢 **역할별 (Corporate)** | 전략기획실, HR, CPA, Finance, Marketing, Compliance, Medical, Manager, Director, 외부이사, 찬성자, 반대자, Senior, 남성, 여성, 투자단, 영양사, 요리사, 서버, 기자, 편집자, 간병인, 코디네이터, 소셜워커, 홈케어 환자, 음식점 고객, 회계사무실 고객 |
+| 🔍 **기능별 (Function)** | FBI Profiler, 사주전문가, 관상전문가, 심리전문가 |
+| 👑 **자문 그룹 (Advisory)** | Rockefeller, Elon Musk, Trump, Sam Walton, J.P. Morgan, 조조, 사마의, 제갈량, Thomas Jefferson, 무사시, 토쿠가와, 손정의, 정주영, 이병철, 테슬라, 에디슨, 정약용, **손자, 오자서, 삼국지 전략가, 로마인 이야기, E.H. 카, 니체, 쇼펜하우어** |
+
+### 🧠 Persona Memory (Self-Learning)
+Each persona **accumulates knowledge** over conversations:
+- **Auto-extraction**: After each persona chat, AI extracts key insights and saves to Supabase
+- **Memory injection**: Next conversation loads past memories into the persona's system prompt
+- **Memory panel**: Click a persona → view, add, delete, or clear accumulated memories
+- **Max 20 memories** loaded per conversation (most recent first)
+- Memories are per-user, per-persona — private and isolated
+
+### 🚀 Advanced Analysis Modes
+| Mode | Description |
+|------|-------------|
+| 📊 **Multi-Persona Report** | All selected personas analyze a topic → synthesized executive report |
+| ⚖️ **Decision Matrix** | Evaluate options against criteria → scored by selected personas → final scorecard |
+| 🔗 **Chain Analysis** | Sequential analysis — each persona builds on the previous one's output |
+| 🗳️ **Persona Vote** | All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal → tally + summary |
+| 📋 **Prompt Library** | Save, load, and manage reusable prompt templates |
+
+### 🛠️ Convenience Features
+- **+ Custom Persona** — create user-defined personas on the fly
+- **📄 PDF Export** — export output panel to print-friendly PDF
+- **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
+- **📋 Save/Load Prompts** — Supabase-backed prompt template management
 
 ### 📊 Rich Visualization
 - **Markdown** rendering with syntax highlighting
@@ -76,11 +94,24 @@ Historical figures and expert personas that shape AI responses:
 - **Rich Note Editor** — Multi-line textarea in the Output panel with Save button
 - **Save Chat** — Save current AI conversation to a folder for later use
 - **Save Slides** — Save generated presentations to a folder
+- 💾 **Save File** — Save uploaded PDF/DOCX/Excel/CSV files to workspace folders
+  - Extracted text content is stored with original file metadata (name, size, character count)
+  - Supports single and multi-file batch saving
 - 📌 **Pin files** — Pin important files to the top of the list
 - 🤖 **One-click AI** — Ask AI / Continue / Develop buttons per file
   - Notes → AI analyzes, expands, and suggests improvements
   - Conversations → AI continues the discussion
   - Slides → AI suggests improvements and additional content
+  - Files → AI analyzes and summarizes the content
+
+### 📊 Responsive Spreadsheet
+- **Auto-render** — CSV/Excel files automatically display as interactive spreadsheets in the Output panel
+- **Excel-style UI** — Column letters (A, B, C...), row numbers, sticky headers
+- **Cell editing** — Click any cell to edit content directly
+- **AI Analysis** — One-click button sends headers + sample data to AI for insights
+- **CSV Export** — Download edited spreadsheet as CSV file
+- **500-row display** — Performance-safe rendering with overflow indicator
+- **Mobile responsive** — Horizontal scroll + compact layout on small screens
 
 ### 📱 Mobile Responsive
 - Hamburger menu for sidebar navigation
@@ -177,6 +208,7 @@ ai-hub/
 | Database | Supabase (PostgreSQL) |
 | Hosting | Render |
 | Visualization | Mermaid.js, Chart.js, Marked.js |
+| Spreadsheet | Pure HTML/CSS/JS (no external library) |
 
 ---
 
@@ -195,6 +227,7 @@ graph LR
     B --> J[Supabase]
     J --> K[Conversation History]
     J --> L[Message Logging]
+    J --> M[Workspace / Files]
 ```
 
 **Request Flow:**
