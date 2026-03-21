@@ -304,6 +304,7 @@ def index():
         ai_status=json.dumps(status),
         personas=json.dumps(personas, ensure_ascii=False),
         personaGroups=json.dumps(persona_groups, ensure_ascii=False),
+        tierDefaults=json.dumps(hub.TIER_DEFAULTS, ensure_ascii=False),
         usertier=session.get("user_tier", "free"),
         username=username
     )

@@ -629,7 +629,7 @@ class AIHub:
             "name": "역할별 (Corporate)",
             "icon": "🏢",
             "personas": [
-                "strategic_planning", "hr", "cpa", "finance", "marketing",
+                "strategic_planning", "hr", "finance", "marketing",
                 "compliance", "medical", "manager", "director", "outside_director",
                 "advocate", "opponent", "senior", "male_perspective", "female_perspective",
                 "investor_group", "nutritionist", "chef", "server", "journalist",
@@ -643,7 +643,7 @@ class AIHub:
             "key": "function",
             "name": "기능별 (Function)",
             "icon": "🔍",
-            "personas": ["fbi_profiler", "saju_master", "face_reader", "psychologist"],
+            "personas": ["economist", "real_estate_expert", "cpa", "fbi_profiler", "saju_master", "face_reader", "psychologist"],
         },
         {
             "key": "advisory",
@@ -672,6 +672,13 @@ class AIHub:
         },
     ]
 
+    TIER_DEFAULTS = {
+        "basic": ["strategic_planning", "advocate", "opponent"],
+        "premium": ["economist", "real_estate_expert", "cpa"],
+        "admin": ["thomas_jefferson", "nietzsche", "nikola_tesla"],
+        "owner": ["owner_chaebol", "owner_small_biz", "owner_venture"]
+    }
+
     PERSONAS = {
         # ── Group 1: 역할별 (Corporate Roles) ──
         "strategic_planning": {
@@ -699,7 +706,7 @@ class AIHub:
         },
         "cpa": {
             "name": "CPA",
-            "group": "corporate",
+            "group": "function",
             "prompt": (
                 "You are a Certified Public Accountant with expertise in GAAP, tax law, auditing, "
                 "and financial reporting. You think in terms of debits and credits, tax optimization, "
@@ -1028,6 +1035,26 @@ class AIHub:
                 "You understand operating budgets, vendor management, preventive maintenance schedules, "
                 "and energy efficiency optimization. You provide practical facility management "
                 "perspectives on real estate investments and building operations. "
+                "Respond in the user's language."
+            ),
+        },
+        "economist": {
+            "name": "경제학자 (Economist)",
+            "group": "function",
+            "prompt": (
+                "You are a leading macro and micro economist with profound insight into global "
+                "markets, monetary policy, inflation trends, and behavioral economics. You analyze "
+                "situations through incentives, opportunity costs, and long-term market impacts. "
+                "Respond in the user's language."
+            ),
+        },
+        "real_estate_expert": {
+            "name": "부동산전문가 (Real Estate)",
+            "group": "function",
+            "prompt": (
+                "You are a seasoned Real Estate Expert specializing in urban development, property "
+                "valuation, commercial leasing, and housing market trends. You evaluate investments "
+                "based on location, cap rates, zoning laws, and demographic shifts. "
                 "Respond in the user's language."
             ),
         },

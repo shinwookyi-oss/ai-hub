@@ -361,8 +361,9 @@
             uploadedFiles=[];  // array of {name, content, size, chars}
         let personas = {{ personas | safe }};
         let personaGroups = {{ personaGroups | safe }};
-        const CURRENT_USERNAME = '{{ username }}';
+        let tierDefaults = {{ tierDefaults | safe }};
         const USER_TIER = '{{ usertier }}';
+        const CURRENT_USERNAME = '{{ username }}';
         const chatArea = document.getElementById('chatArea');
         const outputArea = document.getElementById('outputArea');
 
@@ -500,6 +501,16 @@
             const hiddenPersonas = JSON.parse(localStorage.getItem('hiddenPersonas') || '[]');
             // Filter hidden built-in personas from each group
             groupsToRender = groupsToRender.map(gr => ({...gr, personas: gr.personas.filter(p => !hiddenPersonas.includes(p.key))})).filter(gr => gr.personas.length > 0);
+            
+            const defaultKeys = tierDefaults[USER_TIER] || tierDefaults['basic'];
+            if (defaultKeys && defaultKeys.length > 0) {
+                const defaultPersonasOptions = defaultKeys.map(k => ({key: k, name: personas[k]?.name || k, prompt: personas[k]?.prompt || '', icon: "⭐"}));
+                groupsToRender.unshift({
+                    key: 'tier_default_group', name: '⭐ 내 등급 기본 페르소나', icon: '⭐',
+                    personas: defaultPersonasOptions
+                });
+            }
+
             const cps = getCustomPersonas();
             if (cps.length > 0) {
                 cps.forEach(p => { personas[p.key] = { name: p.name, prompt: p.prompt, icon: "👤", group: "custom" }; });
