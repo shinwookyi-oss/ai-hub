@@ -1624,11 +1624,19 @@ def api_slides():
             slide_layout = prs.slide_layouts[6]  # Blank layout
             slide = prs.slides.add_slide(slide_layout)
 
-            # Dark background
+            # Dark gradient background
             bg = slide.background
             fill = bg.fill
             fill.solid()
-            fill.fore_color.rgb = RGBColor(0x0d, 0x0d, 0x1a)
+            fill.fore_color.rgb = RGBColor(0x0a, 0x0a, 0x16)
+
+            # Top accent bar (gradient effect via shapes)
+            accent_bar = slide.shapes.add_shape(
+                1, Inches(0), Inches(0), prs.slide_width, Inches(0.06)
+            )
+            accent_bar.fill.solid()
+            accent_bar.fill.fore_color.rgb = RGBColor(0x6c, 0x5c, 0xe7)
+            accent_bar.line.fill.background()
 
             s_title = slide_data.get("title", "")
             s_content = slide_data.get("content", "")
@@ -1636,51 +1644,73 @@ def api_slides():
 
             # Title
             left = Inches(0.8)
-            top = Inches(0.6) if i == 0 else Inches(0.5)
+            top = Inches(0.6) if i == 0 else Inches(0.4)
             width = Inches(11.7)
-            height = Inches(1.5) if i == 0 else Inches(1.0)
+            height = Inches(1.8) if i == 0 else Inches(1.0)
             txBox = slide.shapes.add_textbox(left, top, width, height)
             tf = txBox.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
             p.text = s_title
-            p.font.size = Pt(40) if i == 0 else Pt(32)
+            p.font.size = Pt(44) if i == 0 else Pt(30)
             p.font.bold = True
-            p.font.color.rgb = RGBColor(0xe0, 0xe0, 0xff)
+            p.font.color.rgb = RGBColor(0xf0, 0xf0, 0xff)
             p.alignment = PP_ALIGN.LEFT if i > 0 else PP_ALIGN.CENTER
 
             # Subtitle for title slide
             if i == 0 and s_content:
                 p2 = tf.add_paragraph()
                 p2.text = s_content
-                p2.font.size = Pt(20)
-                p2.font.color.rgb = RGBColor(0x88, 0x88, 0xaa)
+                p2.font.size = Pt(18)
+                p2.font.color.rgb = RGBColor(0xa2, 0x9b, 0xfe)
                 p2.alignment = PP_ALIGN.CENTER
+                p2.space_before = Pt(12)
+
+            # Accent line under title (non-title slides)
+            if i > 0:
+                line = slide.shapes.add_shape(
+                    1, Inches(0.8), Inches(1.4), Inches(2.0), Inches(0.03)
+                )
+                line.fill.solid()
+                line.fill.fore_color.rgb = RGBColor(0x6c, 0x5c, 0xe7)
+                line.line.fill.background()
 
             # Bullets
             if s_bullets and i > 0:
-                b_top = Inches(1.8)
+                b_top = Inches(1.7)
                 b_height = Inches(5.0)
                 txBox2 = slide.shapes.add_textbox(left, b_top, width, b_height)
                 tf2 = txBox2.text_frame
                 tf2.word_wrap = True
                 for j, bullet in enumerate(s_bullets):
                     p = tf2.paragraphs[0] if j == 0 else tf2.add_paragraph()
-                    p.text = bullet
-                    p.font.size = Pt(22)
-                    p.font.color.rgb = RGBColor(0xcc, 0xcc, 0xdd)
-                    p.space_after = Pt(12)
+                    p.text = f"▸  {bullet}"
+                    p.font.size = Pt(20)
+                    p.font.color.rgb = RGBColor(0xd1, 0xd5, 0xdb)
+                    p.space_after = Pt(10)
 
             # Content paragraph for non-title slides
             if s_content and i > 0 and not s_bullets:
-                c_top = Inches(1.8)
+                c_top = Inches(1.7)
                 txBox3 = slide.shapes.add_textbox(left, c_top, width, Inches(5.0))
                 tf3 = txBox3.text_frame
                 tf3.word_wrap = True
                 p = tf3.paragraphs[0]
                 p.text = s_content
-                p.font.size = Pt(20)
-                p.font.color.rgb = RGBColor(0xcc, 0xcc, 0xdd)
+                p.font.size = Pt(18)
+                p.font.color.rgb = RGBColor(0xd1, 0xd5, 0xdb)
+                p.line_spacing = Pt(28)
+
+            # Footer: page number
+            footer = slide.shapes.add_textbox(
+                Inches(12.0), Inches(7.0), Inches(1.0), Inches(0.3)
+            )
+            ftf = footer.text_frame
+            fp = ftf.paragraphs[0]
+            fp.text = f"{i + 1}"
+            fp.font.size = Pt(11)
+            fp.font.color.rgb = RGBColor(0x6b, 0x72, 0x80)
+            fp.alignment = PP_ALIGN.RIGHT
 
         # Save to buffer
         buffer = BytesIO()
