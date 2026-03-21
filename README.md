@@ -40,17 +40,20 @@
 | **Grok** | grok-3-mini-fast | xAI |
 
 ### 🎯 11 Interaction Modes
-- 💬 **Chat** — 1-on-1 conversation with any AI
+- 💬 **Chat** — 1-on-1 conversation with any AI (with real-time SSE streaming)
 - 🔄 **Compare All** — Ask all AIs simultaneously and compare responses side by side
 - ⚔️ **Debate** — AI vs AI structured debate on any topic
 - 🗣️ **Discussion** — Round-robin discussion with all available AIs
 - 🏆 **Best Answer** — All AIs answer, then cross-evaluate and vote for the best
 - 🎭 **Persona Debate** — Role-play debate between historical figures
 - 🧠 **Persona Discussion** — Group discussion with multiple personas
-- 📊 **Multi-Persona Report** — Selected personas analyze a topic → executive report
+- 📊 **Multi-Persona Report** — Selected personas analyze a topic → executive report (SSE streaming)
 - ⚖️ **Decision Matrix** — Score options × criteria with persona evaluators
-- 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous
-- 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal
+- 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous (SSE streaming)
+- 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal (SSE streaming)
+
+### 🚀 Real-Time SSE Streaming
+Multi-persona modes (Report, Chain, Vote) use **Server-Sent Events** to stream each persona's response in real-time instead of waiting for all to complete. This prevents timeout errors and provides instant visual feedback as each persona reports.
 
 ### 🧠 AI-Generated Persona System
 Users **create their own personas** by providing a name or job title. AI automatically generates:
@@ -63,7 +66,7 @@ Users **create their own personas** by providing a name or job title. AI automat
 **Tier-Based Limits:**
 
 | Tier | Stars | Max Personas |
-|------|-------|---------|
+|------|-------|---------||
 | Free | ⭐ | 1 |
 | Premium | ⭐⭐ | 3 |
 | Admin | ⭐⭐⭐ | 5 |
@@ -97,51 +100,39 @@ Each persona **accumulates knowledge** and evolves through conversations:
 - **🧠 AI Persona Creation** — Enter a name/job → AI auto-generates traits, skills, and system prompt.
   - User can add extra traits; persona self-evolves through conversations.
   - **Tier-based Limits**: Free: 1, Premium: 3, Admin: 5, Owner: 50 personas.
-- **📄 PDF Export** — export output panel to print-friendly PDF
+- **📄 Multi-Format Export** — Export output panel as PDF, HTML, Word (.doc), Excel (.xls), or CSV
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
+- **📊 Visualize** — One-click AI analysis → generates Chart.js charts or Mermaid diagrams from data
 
-### 🎨 Clean UI Design
-- **Collapsible Sidebar Modes** — 11 modes organized into 3 groups:
-  - **Mode** (5 basic modes, always visible)
-  - **🎭 Persona Modes** (4, collapsed by default, auto-expands on selection)
-  - **📐 Analysis Modes** (2, collapsed by default, auto-expands on selection)
-- **📎 Tools Toggle** — File upload, URL fetch, and prompt tools hidden behind one button; chat input always clean
-- **Dark Theme** — Premium glassmorphism dark UI with gradient accents
-
-### 🔐 Security & User Management
-| Feature | Description |
-|---------|-------------|
-| **Multi-User Auth** | Supabase `users` table with SHA-256 hashed passwords (env-var fallback) |
-| **Admin Panel** | ⚙️ button → manage users: add, delete, toggle active, change tier |
-| **Tiered Rate Limiting** | `admin`: **unlimited**, `premium`: 60 req/min, `free`: 20 req/min |
-| **Login Protection** | 20 attempts/min per IP to prevent brute force |
-| **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
-| **Password Change** | Self-service password change via API for Supabase users |
-| **Auto-Seed** | Admin user auto-created in Supabase on first launch |
-
-Configure via environment variables:
-```bash
-export SESSION_TIMEOUT_HOURS=2  # Session timeout in hours
-export PASSWORD_SALT=your_salt  # Custom salt for password hashing
-```
+### 🎨 Theme System (5 Themes)
+| Theme | Preview |
+|-------|---------|
+| 🌑 **Dark** | Deep dark with purple accents (default) |
+| 🌘 **Dim** | GitHub-inspired dim with blue accents |
+| ☀️ **Light** | Clean, bright white UI |
+| 🔥 **Warm** | Warm amber tones, golden accents |
+| 🌊 **Ocean** | Deep ocean blues, teal accents |
 
 ### 📊 Rich Visualization
-- **Markdown** rendering with syntax highlighting
-- **Mermaid** diagrams (flowcharts, sequence diagrams, etc.)
-- **Chart.js** charts (pie, bar, line charts)
+- **Markdown** rendering via `marked.js` with syntax highlighting, tables, and blockquotes
+- **Mermaid** diagrams (flowcharts, sequence diagrams, etc.) with dark theme
+- **Chart.js** charts (pie, bar, line, doughnut) with auto-color palettes
+- **📊 Visualize button** — AI analyzes output data and auto-generates the best visualization
 
-### 📁 File Support
+### 📁 File Support & RAG
 - Multi-file upload with drag & drop
-- Supports PDF, DOCX, XLSX, CSV, TXT, and more
-- URL fetching for web page analysis
+- Supports PDF, DOCX, XLSX, CSV, TXT, and 15+ more formats
+- **AI Vision OCR** — Image-based PDFs auto-scanned via GPT-4o vision
+- **RAG Document Indexing** — Uploaded files are chunk-indexed via ChromaDB for intelligent context retrieval
+- URL fetching for web page analysis (BeautifulSoup extraction)
 
 ### 💾 Persistent Conversation History
 - Cloud database storage via **Supabase** (PostgreSQL)
 - Browse and reload past conversations
 - Auto-save on every message
 
-### 🌐 Dual Language System
+### 🌐 Multi-Language System
 **UI Auto-Translation** — Browser language detected via `navigator.language`, UI elements auto-translate:
 - 🇺🇸 English · 🇰🇷 한국어 · 🇯🇵 日本語 · 🇨🇳 中文 · 🇪🇸 Español
 
@@ -186,9 +177,36 @@ export PASSWORD_SALT=your_salt  # Custom salt for password hashing
 - **500-row display** — Performance-safe rendering with overflow indicator
 - **Mobile responsive** — Horizontal scroll + compact layout on small screens
 
+### 🔲 Resizable Split Panel
+- **Drag to resize** — Vertical divider between Chat and Output panels
+- **Mouse + Touch** — Works on desktop and mobile
+- **Persistent** — Split ratio saved to `localStorage` and restored on reload
+- **Double-click** — Reset to default 42% ratio
+- **Output toggle** — Close/reopen output panel; divider syncs visibility
+
+### 🔐 Security & User Management
+| Feature | Description |
+|---------|-------------|
+| **Multi-User Auth** | Supabase `users` table with SHA-256 hashed passwords (env-var fallback) |
+| **Admin Panel** | ⚙️ button → manage users: add, delete, toggle active, change tier, reset password |
+| **Tiered Rate Limiting** | `owner/admin`: **unlimited**, `premium`: 60 req/min, `free`: 20 req/min |
+| **Login Protection** | 20 attempts/min per IP to prevent brute force |
+| **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
+| **Password Change** | Self-service password change via API for Supabase users |
+| **Temp Password** | Admin can set temporary password with forced-change flag |
+| **Auto-Seed** | Admin + guest users auto-created/synced in Supabase on every startup |
+| **Session Info** | Live display: first login, last login, session timer, IP, geolocation |
+
+Configure via environment variables:
+```bash
+export SESSION_TIMEOUT_HOURS=2  # Session timeout in hours
+export PASSWORD_SALT=your_salt  # Custom salt for password hashing
+```
+
 ### 📱 Mobile Responsive
 - Hamburger menu for sidebar navigation
 - Single-panel view with Chat/Output tab switcher
+- Persona and Mode tabs accessible via header on mobile
 - Optimized layout for all screen sizes
 
 ### 🌐 Supported Browsers
@@ -231,10 +249,12 @@ export AZURE_OPENAI_ENDPOINT=https://...
 # Conversation History & Memory (Supabase)
 export SUPABASE_URL=https://xxx.supabase.co
 export SUPABASE_KEY=eyJ...
+export SUPABASE_SERVICE_KEY=eyJ...  # Service role key (bypasses RLS for admin ops)
 
 # Authentication (defaults: admin / aihub2026)
 export APP_USERNAME=admin
 export APP_PASSWORD=your_password
+export SECRET_KEY=your_flask_secret  # Auto-generated if not set
 ```
 
 ### Supabase Tables Required
@@ -244,16 +264,48 @@ CREATE TABLE users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  tier TEXT DEFAULT 'free' CHECK (tier IN ('admin', 'premium', 'free')),
+  tier TEXT DEFAULT 'free' CHECK (tier IN ('owner', 'admin', 'premium', 'free')),
   display_name TEXT,
+  email TEXT,
+  phone TEXT,
   is_active BOOLEAN DEFAULT TRUE,
+  temp_password TEXT,
+  must_change_password BOOLEAN DEFAULT FALSE,
+  total_time_minutes INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_login TIMESTAMPTZ
 );
 
+-- User personas
+CREATE TABLE user_personas (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT NOT NULL,
+  persona_keys JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Conversation history
-CREATE TABLE conversations (...);  -- auto-created by app
-CREATE TABLE messages (...);       -- auto-created by app
+CREATE TABLE conversations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT NOT NULL,
+  title TEXT DEFAULT 'New Chat',
+  mode TEXT DEFAULT 'chat',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  speaker TEXT,
+  content TEXT NOT NULL,
+  provider TEXT,
+  model TEXT,
+  badge TEXT,
+  elapsed_seconds FLOAT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- Persona memory (insights)
 CREATE TABLE persona_memory (
@@ -278,9 +330,27 @@ CREATE TABLE saved_prompts (
   personas JSONB DEFAULT '[]', created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Workspace files (auto-created by app)
-CREATE TABLE workspace_folders (...);  -- auto-created
-CREATE TABLE workspace_files (...);    -- auto-created
+-- Workspace
+CREATE TABLE folders (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  icon TEXT DEFAULT '📁',
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE workspace_files (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  folder_id UUID REFERENCES folders(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'note',
+  content TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
 ### Run Locally
@@ -298,7 +368,7 @@ Open http://localhost:5000
 1. Connect your GitHub repo to [Render](https://render.com)
 2. Set **Environment Variables** with your API keys
 3. Build Command: `pip install -r requirements.txt`
-4. Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300`
+4. Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --max-requests 200`
 
 ---
 
@@ -306,8 +376,16 @@ Open http://localhost:5000
 
 ```
 ai-hub/
-├── app.py              # Flask app (UI + API routes + auth + all modes)
-├── ai_hub.py           # AIHub core (5 providers, 75+ built-in personas, AI persona gen, 11 modes, memory)
+├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin panel)
+├── ai_hub.py           # AIHub core (5 providers, 75+ personas, AI persona gen, 11 modes, memory, RAG)
+├── templates/
+│   ├── index.html      # Main SPA (2300+ lines: UI + JS logic)
+│   └── login.html      # Login page with Spline 3D background
+├── static/
+│   ├── css/style.css   # Full design system (5 themes, responsive, 490+ lines)
+│   ├── img/            # Logo and assets
+│   └── js/             # Additional scripts
+├── docs.html           # Interactive API documentation
 ├── requirements.txt    # Python dependencies
 ├── Procfile            # Render deployment config
 └── .gitignore
@@ -319,14 +397,16 @@ ai-hub/
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python, Flask |
-| Frontend | Vanilla HTML/CSS/JS (Genspark-style split panel) |
+| Backend | Python, Flask, SSE Streaming |
+| Frontend | Vanilla HTML/CSS/JS (Split-panel SPA) |
 | AI SDKs | OpenAI, Google GenAI, Anthropic |
 | Voice | OpenAI TTS (Nova), OpenAI Whisper, Web Speech API |
 | Slides | python-pptx, reveal.js |
 | Database | Supabase (PostgreSQL) |
-| Hosting | Render |
+| RAG | ChromaDB (document chunk indexing) |
+| Hosting | Render (gunicorn) |
 | Visualization | Mermaid.js, Chart.js, Marked.js |
+| Export | html2pdf.js, SheetJS (XLSX) |
 | Spreadsheet | Pure HTML/CSS/JS (no external library) |
 
 ---
@@ -348,17 +428,18 @@ graph LR
     J --> L[Persona Memory & Q&A]
     J --> M[Workspace / Files]
     J --> N[Prompt Library]
+    B --> O[ChromaDB]
+    O --> P[RAG Document Index]
 ```
 
 **Request Flow:**
 ```
 User → Flask UI/API → Auth Layer → Provider Router → AI Providers (OpenAI / Gemini / Anthropic / xAI / Azure)
                                                    ↘ Supabase (History · Memory · Workspace · Prompts)
+                                                   ↘ ChromaDB (RAG · Document Indexing)
 ```
 
 ---
-
-
 
 ## 📄 License
 
@@ -366,4 +447,4 @@ Private project.
 
 ---
 
-**
+**Built with ❤️ by Shinwook Yi**
