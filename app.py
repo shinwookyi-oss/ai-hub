@@ -167,10 +167,10 @@ def login_page():
         pw_hash = _hash_password(password)
         # Try Supabase users table first
         user_found = False
-        if supabase_client:
+        if supabase_admin:
             for _attempt in range(4):
                 try:
-                    res = supabase_client.table("users").select("*").eq("username", username).eq("is_active", True).execute()
+                    res = supabase_admin.table("users").select("*").eq("username", username).eq("is_active", True).execute()
                     if res.data and len(res.data) > 0:
                         db_user = res.data[0]
                         if db_user["password_hash"] == pw_hash:
@@ -184,7 +184,7 @@ def login_page():
                             session["login_time"] = datetime.utcnow().isoformat()
                             session["must_change_password"] = bool(db_user.get("must_change_password"))
                             try:
-                                supabase_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
+                                supabase_admin.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
                             except Exception:
                                 pass
                             return redirect("/")
@@ -217,9 +217,9 @@ def _seed_admin_user():
     if not supabase_client:
         return
     try:
-        res = supabase_client.table("users").select("id").eq("tier", "owner").limit(1).execute()
+        res = supabase_admin.table("users").select("id").eq("tier", "owner").limit(1).execute()
         if not res.data:
-            supabase_client.table("users").insert({
+            supabase_admin.table("users").insert({
                 "username": APP_USERNAME,
                 "password_hash": APP_PASSWORD_HASH,
                 "tier": "owner",
@@ -1564,10 +1564,10 @@ def change_own_password():
     if not user_id or user_id == "env_admin":
         return jsonify({"success": False, "error": "Password change only available for Supabase users"}), 400
     try:
-        res = supabase_client.table("users").select("password_hash").eq("id", user_id).execute()
+        res = supabase_admin.table("users").select("password_hash").eq("id", user_id).execute()
         if not res.data or res.data[0]["password_hash"] != _hash_password(current_pw):
             return jsonify({"success": False, "error": "Current password is incorrect"}), 401
-        supabase_client.table("users").update({
+        supabase_admin.table("users").update({
             "password_hash": _hash_password(new_pw),
             "temp_password": None,        # clear temp password
             "must_change_password": False  # clear forced-change flag
@@ -1603,7 +1603,7 @@ def session_info():
     # Get data from Supabase
     if supabase_client and user_id and user_id != "env_admin":
         try:
-            res = supabase_client.table("users").select("created_at,last_login,total_time_minutes").eq("id", user_id).execute()
+            res = supabase_admin.table("users").select("created_at,last_login,total_time_minutes").eq("id", user_id).execute()
             if res.data:
                 u = res.data[0]
                 info["first_login"] = u.get("created_at")
