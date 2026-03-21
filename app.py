@@ -286,18 +286,7 @@ def index():
     persona_groups = hub.list_persona_groups()
     
     username = session.get("username", "")
-    if username != "shinwookyi":
-        filtered_groups = []
-        filtered_personas = {}
-        for g in persona_groups:
-            limited_ps = g["personas"][:3]
-            new_g = dict(g)
-            new_g["personas"] = limited_ps
-            filtered_groups.append(new_g)
-            for p in limited_ps:
-                filtered_personas[p["key"]] = personas[p["key"]]
-        personas = filtered_personas
-        persona_groups = filtered_groups
+    # (Removed hardcoded username filtering to allow Tier Defaults to populate)
 
     return render_template(
         "index.html",
