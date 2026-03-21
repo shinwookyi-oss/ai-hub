@@ -7,7 +7,7 @@
 ![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?logo=render&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface with 67 role-playing personas, multi-stakeholder analysis modes, and enterprise-grade security.
+**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface with AI-generated personas, multi-stakeholder analysis modes, and enterprise-grade security.
 
 🌐 **Live Demo**: [https://ai-hub-zqpf.onrender.com](https://ai-hub-zqpf.onrender.com/)
 
@@ -52,18 +52,27 @@
 - 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous
 - 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal
 
-### 👤 75 Persona System (4 Groups)
-Role-based personas for **multi-stakeholder decision-making** — gather diverse perspectives before making major decisions:
+### 🧠 AI-Generated Persona System
+Users **create their own personas** by providing a name or job title. AI automatically generates:
 
-| Group | Personas |
-|-------|----------|
-| 🏢 **역할별 (Corporate)** | 전략기획실, HR, CPA, Finance, Marketing, Compliance, Medical, Manager, Director, 외부이사, 찬성자, 반대자, Senior, 남성, 여성, 투자단, 영양사, 요리사, 서버, 기자, 편집자, 간병인, 코디네이터, 소셜워커, 홈케어 환자, 음식점 고객, 회계사무실 고객, 광고기획실, **IT개발자**, **로봇엔지니어**, **운전사**, **건물관리인** |
-| 🔍 **기능별 (Function)** | FBI Profiler, 사주전문가, 관상전문가, 심리전문가 |
-| 👑 **자문 그룹 (Advisory)** | Rockefeller, Elon Musk, Trump, Sam Walton, J.P. Morgan, 조조, 사마의, 제갈량, Thomas Jefferson, 무사시, 토쿠가와, 손정의, 정주영, 이병철, 테슬라, 에디슨, 정약용, 손자, 오자서, 삼국지 전략가, 로마인 이야기, E.H. 카, 니체, 쇼펜하우어, **마키아벨리**, **로스차일드**, **다빈치** |
-| 🏢 **오너 그룹 (Owner)** | 회계법인, 신문사, 홈케어, 데이케어, 한식당, 도시락, 로봇회사, 자선단체, 역노화클리닉, 재벌, 소규모사장, 벤처대표 |
+- **System Prompt** — Expertise, personality, and communication style
+- **Traits** — 5-8 core trait keywords (e.g., analytical, creative)
+- **Skills** — 3-5 key professional skills
+- **Communication Style** — How the persona responds
 
-### 🧠 Persona Memory & Learning
-Each persona **accumulates knowledge** over conversations through two systems:
+**Tier-Based Limits:**
+
+| Tier | Stars | Max Personas |
+|------|-------|---------|
+| Free | ⭐ | 1 |
+| Premium | ⭐⭐ | 3 |
+| Admin | ⭐⭐⭐ | 5 |
+| Owner | ⭐⭐⭐⭐ | 50 |
+
+**75+ Built-in Personas** also available for debate modes (Corporate, Advisory, Function, Owner groups).
+
+### 🔄 Persona Self-Evolution
+Each persona **accumulates knowledge** and evolves through conversations:
 
 | System | Description |
 |--------|-------------|
@@ -72,6 +81,7 @@ Each persona **accumulates knowledge** over conversations through two systems:
 
 - **Memory injection**: Combined insights + Q&A history injected into persona system prompt
 - **Memory panel**: Click a persona → view insights, Q&A history, add/delete/clear
+- Personas grow smarter over time through accumulated context
 - Memories are per-user, per-persona — private and isolated
 
 ### 🚀 Advanced Analysis Modes
@@ -84,9 +94,9 @@ Each persona **accumulates knowledge** over conversations through two systems:
 | 📋 **Prompt Library** | Save, load, and manage reusable prompt templates |
 
 ### 🛠️ Convenience Features
-- **+ Custom Persona** — create user-defined personas on the fly.
-  - **AI-Assisted Persona Generation**: Describe traits (e.g., "friendly math teacher") and AI will automatically generate a highly optimized system prompt.
-  - **Tier-based Limits**: Control how many custom personas users can create (Free: 0, Premium: 5, Admin: 10, Owner: Unlimited).
+- **🧠 AI Persona Creation** — Enter a name/job → AI auto-generates traits, skills, and system prompt.
+  - User can add extra traits; persona self-evolves through conversations.
+  - **Tier-based Limits**: Free: 1, Premium: 3, Admin: 5, Owner: 50 personas.
 - **📄 PDF Export** — export output panel to print-friendly PDF
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
@@ -297,7 +307,7 @@ Open http://localhost:5000
 ```
 ai-hub/
 ├── app.py              # Flask app (UI + API routes + auth + all modes)
-├── ai_hub.py           # AIHub core (5 providers, 55 personas, 11 modes, memory)
+├── ai_hub.py           # AIHub core (5 providers, 75+ built-in personas, AI persona gen, 11 modes, memory)
 ├── requirements.txt    # Python dependencies
 ├── Procfile            # Render deployment config
 └── .gitignore
