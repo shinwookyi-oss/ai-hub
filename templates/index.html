@@ -240,6 +240,8 @@
                 <div style="display:flex;gap:6px;">
                     <button class="output-action-btn" id="vizBtn" onclick="visualize()" data-i18n="visualize">📊 Visualize</button>
                     <button class="output-action-btn" onclick="copyOutput()" data-i18n="copy">Copy</button>
+                    <button class="output-action-btn" id="editDocBtn" onclick="toggleDocEdit()" title="Edit Document">✏️ Edit</button>
+                    <button class="output-action-btn" id="saveDocBtn" onclick="saveDocToFile()" title="Save Document" style="display:none;background:rgba(0,210,160,0.1);color:var(--green);border-color:var(--green);">💾 Save</button>
                     <select id="exportSelect" class="output-action-btn" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);cursor:pointer;outline:none;" onchange="if(this.value){exportDocument(this.value);this.value='';}">
                         <option value="" disabled selected>📥 Download ▾</option>
                         <option value="html">HTML</option>
@@ -838,6 +840,62 @@
             outputArea.innerHTML = '<div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">Result will appear here</p></div>';
             document.getElementById('outputBadge').style.display = 'none';
             if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+            // Exit edit mode if active
+            if (outputArea.contentEditable === 'true') toggleDocEdit();
+        }
+
+        // ── Document Editor ──
+        let docEditMode = false;
+        function toggleDocEdit() {
+            docEditMode = !docEditMode;
+            const btn = document.getElementById('editDocBtn');
+            const saveBtn = document.getElementById('saveDocBtn');
+            if (docEditMode) {
+                outputArea.contentEditable = 'true';
+                outputArea.style.outline = '2px solid var(--accent)';
+                outputArea.style.outlineOffset = '-2px';
+                outputArea.style.cursor = 'text';
+                outputArea.focus();
+                btn.innerHTML = '✏️ Editing';
+                btn.style.background = 'rgba(108,92,231,0.15)';
+                btn.style.color = 'var(--accent2)';
+                btn.style.borderColor = 'var(--accent)';
+                saveBtn.style.display = 'inline-flex';
+            } else {
+                outputArea.contentEditable = 'false';
+                outputArea.style.outline = '';
+                outputArea.style.outlineOffset = '';
+                outputArea.style.cursor = '';
+                btn.innerHTML = '✏️ Edit';
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                saveBtn.style.display = 'none';
+            }
+        }
+        function saveDocToFile() {
+            const content = outputArea.innerHTML;
+            if (!content || content.includes('doc-empty')) { alert('No document to save'); return; }
+            // Save as file to Supabase
+            if (supabaseEnabled) {
+                const title = document.querySelector('.doc-title')?.textContent || 'AI Document ' + new Date().toLocaleDateString();
+                fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({name:'AI Documents'})}).then(r=>r.json()).then(folder => {
+                    const folderId = folder.id || folder.folder?.id;
+                    if (folderId) {
+                        fetch(`/api/folders/${folderId}/files`, {method:'POST', headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({name: title, content: content, file_type:'html'})}).then(r=>r.json()).then(r => {
+                            if(r.success) addMessage('System', `💾 문서 "${title}" 저장 완료!`, 'system-msg');
+                            else addMessage('Error', '저장 실패: ' + (r.error||''), 'error-msg');
+                        });
+                    }
+                }).catch(()=>{});
+            }
+            // Also trigger download
+            const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="utf-8"><title>AI Document</title><style>body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#1a1a2e;line-height:1.6;}h1,h2,h3{color:#2d3748;}table{width:100%;border-collapse:collapse;margin:10px 0;}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;}th{background:#f7f7ff;}</style></head><body>${content}</body></html>`], {type:'text/html'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'ai-document-' + Date.now() + '.html'; a.click();
+            addMessage('System', '💾 문서가 저장 및 다운로드되었습니다.', 'system-msg');
         }
         // ── Spreadsheet ──
         var ssData = null;
