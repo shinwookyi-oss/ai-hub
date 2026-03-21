@@ -74,6 +74,7 @@ class AIHub:
 
         # Chat history
         self._history: dict[str, list] = {p: [] for p in self.PROVIDERS}
+        self.max_history_length = 20  # Keep the last 10 pairs (20 messages)
 
         # Client initialization
         self._openai_client = None
@@ -108,6 +109,27 @@ class AIHub:
             "claude": "Ready" if self.claude_api_key else "No API Key",
             "grok": "Ready" if self.grok_api_key else "No API Key",
         }
+
+    # ──────────────────────────── Memory Management ────────────────────────────
+
+    def _add_to_history(self, provider: str, role: str, content: str):
+        """Add a message to the provider's history, maintaining the rolling context limit"""
+        provider = provider.lower()
+        if provider not in self._history:
+            self._history[provider] = []
+            
+        self._history[provider].append({"role": role, "content": content})
+        
+        # Enforce rolling memory limit
+        if len(self._history[provider]) > self.max_history_length:
+            # We want to remove the oldest pair (user + assistant) to keep context coherent
+            # Keep popping from the front until we are within limits
+            while len(self._history[provider]) > self.max_history_length:
+                # If first is user, second is usually assistant - pop both
+                if len(self._history[provider]) >= 2:
+                    self._history[provider] = self._history[provider][2:]
+                else:
+                    self._history[provider].pop(0)
 
     # ──────────────────────────── Individual AI Calls ────────────────────────────
 
@@ -151,8 +173,8 @@ class AIHub:
                 messages=messages,
             )
             content = response.choices[0].message.content
-            self._history["chatgpt"].append({"role": "user", "content": prompt})
-            self._history["chatgpt"].append({"role": "assistant", "content": content})
+            self._add_to_history("chatgpt", "user", prompt)
+            self._add_to_history("chatgpt", "assistant", content)
             return AIResponse(
                 provider="ChatGPT",
                 model=self.chatgpt_model,
@@ -178,8 +200,8 @@ class AIHub:
                 contents=full_prompt,
             )
             content = response.text
-            self._history["gemini"].append({"role": "user", "content": prompt})
-            self._history["gemini"].append({"role": "assistant", "content": content})
+            self._add_to_history("gemini", "user", prompt)
+            self._add_to_history("gemini", "assistant", content)
             return AIResponse(
                 provider="Gemini",
                 model=self.gemini_model,
@@ -210,8 +232,8 @@ class AIHub:
                 messages=messages,
             )
             content = response.choices[0].message.content
-            self._history["azure"].append({"role": "user", "content": prompt})
-            self._history["azure"].append({"role": "assistant", "content": content})
+            self._add_to_history("azure", "user", prompt)
+            self._add_to_history("azure", "assistant", content)
             return AIResponse(
                 provider="Azure OpenAI",
                 model=self.azure_model,
@@ -256,8 +278,8 @@ class AIHub:
                 kwargs["system"] = system_prompt
             response = client.messages.create(**kwargs)
             content = response.content[0].text
-            self._history["claude"].append({"role": "user", "content": prompt})
-            self._history["claude"].append({"role": "assistant", "content": content})
+            self._add_to_history("claude", "user", prompt)
+            self._add_to_history("claude", "assistant", content)
             return AIResponse(
                 provider="Claude",
                 model=self.claude_model,
@@ -287,8 +309,8 @@ class AIHub:
                 messages=messages,
             )
             content = response.choices[0].message.content
-            self._history["grok"].append({"role": "user", "content": prompt})
-            self._history["grok"].append({"role": "assistant", "content": content})
+            self._add_to_history("grok", "user", prompt)
+            self._add_to_history("grok", "assistant", content)
             return AIResponse(
                 provider="Grok",
                 model=self.grok_model,
@@ -324,8 +346,8 @@ class AIHub:
                     text = chunk.choices[0].delta.content
                     full_content += text
                     yield text
-            self._history["chatgpt"].append({"role": "user", "content": prompt})
-            self._history["chatgpt"].append({"role": "assistant", "content": full_content})
+            self._add_to_history("chatgpt", "user", prompt)
+            self._add_to_history("chatgpt", "assistant", full_content)
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
@@ -349,8 +371,8 @@ class AIHub:
                     text = chunk.choices[0].delta.content
                     full_content += text
                     yield text
-            self._history["azure"].append({"role": "user", "content": prompt})
-            self._history["azure"].append({"role": "assistant", "content": full_content})
+            self._add_to_history("azure", "user", prompt)
+            self._add_to_history("azure", "assistant", full_content)
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
@@ -366,8 +388,8 @@ class AIHub:
                 if chunk.text:
                     full_content += chunk.text
                     yield chunk.text
-            self._history["gemini"].append({"role": "user", "content": prompt})
-            self._history["gemini"].append({"role": "assistant", "content": full_content})
+            self._add_to_history("gemini", "user", prompt)
+            self._add_to_history("gemini", "assistant", full_content)
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
@@ -387,8 +409,8 @@ class AIHub:
                 for text in stream.text_stream:
                     full_content += text
                     yield text
-            self._history["claude"].append({"role": "user", "content": prompt})
-            self._history["claude"].append({"role": "assistant", "content": full_content})
+            self._add_to_history("claude", "user", prompt)
+            self._add_to_history("claude", "assistant", full_content)
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
@@ -412,8 +434,8 @@ class AIHub:
                     text = chunk.choices[0].delta.content
                     full_content += text
                     yield text
-            self._history["grok"].append({"role": "user", "content": prompt})
-            self._history["grok"].append({"role": "assistant", "content": full_content})
+            self._add_to_history("grok", "user", prompt)
+            self._add_to_history("grok", "assistant", full_content)
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
