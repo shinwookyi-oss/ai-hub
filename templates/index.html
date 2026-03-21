@@ -784,6 +784,7 @@
                 const body = m.querySelector('.msg-body');
                 if (renderMd) {
                     body.innerHTML = renderMarkdown(content);
+                    addCodeButtons(body);
                 } else {
                     body.textContent = content + ' █';
                 }
@@ -808,6 +809,59 @@
             if(typeof marked === 'undefined') return `<pre>${escapeHtml(text)}</pre>`;
             marked.setOptions({breaks:true, gfm:true});
             return `<div class="md-body">${marked.parse(text)}</div>`;
+        }
+        // ── Code block copy + preview buttons ──
+        function addCodeButtons(container) {
+            container.querySelectorAll('pre').forEach(pre => {
+                if (pre.querySelector('.code-btn-bar')) return;
+                const code = pre.querySelector('code');
+                const lang = code ? (code.className.match(/language-(\w+)/)||[])[1] || '' : '';
+                const bar = document.createElement('div');
+                bar.className = 'code-btn-bar';
+                bar.style.cssText = 'display:flex;justify-content:flex-end;gap:4px;padding:2px 6px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(108,92,231,0.08);border-radius:8px 8px 0 0;';
+                // Language label
+                if (lang) {
+                    const lbl = document.createElement('span');
+                    lbl.style.cssText = 'flex:1;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;line-height:22px;';
+                    lbl.textContent = lang;
+                    bar.appendChild(lbl);
+                }
+                // Copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.style.cssText = 'font-size:10px;padding:2px 8px;background:rgba(108,92,231,0.1);color:#a29bfe;border:1px solid rgba(108,92,231,0.2);border-radius:4px;cursor:pointer;';
+                copyBtn.onclick = () => {
+                    const text = (code || pre).textContent;
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.textContent = '✅ Copied!';
+                        setTimeout(() => copyBtn.textContent = '📋 Copy', 1500);
+                    });
+                };
+                bar.appendChild(copyBtn);
+                // Preview button for HTML
+                if (['html','htm','css','javascript','js'].includes(lang.toLowerCase())) {
+                    const pvBtn = document.createElement('button');
+                    pvBtn.textContent = '▶ Preview';
+                    pvBtn.style.cssText = 'font-size:10px;padding:2px 8px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:4px;cursor:pointer;';
+                    pvBtn.onclick = () => previewCode((code || pre).textContent, lang);
+                    bar.appendChild(pvBtn);
+                }
+                pre.style.borderRadius = '0 0 8px 8px';
+                pre.parentNode.insertBefore(bar, pre);
+            });
+        }
+        function previewCode(code, lang) {
+            let html = code;
+            if (lang === 'css') html = `<style>${code}</style><p>CSS Preview — add HTML to see styled content.</p>`;
+            else if (['javascript','js'].includes(lang)) html = `<script>${code}<\/script><p>JS executed. Open console for output.</p>`;
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%;height:500px;border:1px solid var(--border);border-radius:10px;background:white;';
+            iframe.sandbox = 'allow-scripts';
+            outputArea.innerHTML = '';
+            outputArea.appendChild(iframe);
+            iframe.srcdoc = html;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+            if (window.innerWidth <= 768) showMobilePanel('output');
         }
         async function renderMermaid(container) {
             const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid:not(.mermaid-rendered)');
@@ -835,6 +889,7 @@
             outputArea.scrollTop = 0;
             document.getElementById('outputBadge').style.display = 'inline-flex';
             renderMermaid(outputArea);
+            addCodeButtons(outputArea);
         }
         function showDocMarkdown(text, query='', footer='') {
             showDoc(renderMarkdown(text), query, footer);
@@ -1123,6 +1178,7 @@
                     div.innerHTML = `<div class="doc-sec-title">🗺️ ${r.title||'Diagram'}</div><div class="mermaid">${r.diagram}</div>`;
                     outputArea.prepend(div);
                     renderMermaid(outputArea);
+                    addCodeButtons(outputArea);
                 } else {
                     addMessage('Error', r.error || 'Visualization failed', 'error-msg');
                 }
