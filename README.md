@@ -52,6 +52,38 @@
 - 🔗 **Chain Analysis** — Sequential analysis, each persona builds on previous (SSE streaming)
 - 🗳️ **Persona Vote** — All personas vote APPROVE/OPPOSE/CONDITIONAL on a proposal (SSE streaming)
 
+### 🎨 AI Image Generation (DALL-E 3)
+- Type `/image`, `/그림`, or `/이미지` followed by a description
+- Supports size, quality, and style parameters
+- Generated images display with prompt, revised prompt, and download button
+
+### 📋 Document Templates
+One-click professional document generation via sidebar **Templates** section:
+- 📊 **사업계획서** (Business Plan) — 10-section structure with TAM/SAM/SOM
+- 📝 **제안서** (Proposal) — Project overview, timeline, budget, KPIs
+- 📑 **보고서** (Report) — Executive summary, analysis, conclusions
+- 📋 **회의록** (Meeting Minutes) — Attendees, agenda, action items
+- 👤 **이력서** (Resume) — Career, education, skills
+- 📜 **계약서** (Contract) — Terms, conditions, signatures
+
+### 🧠 Strategy Analysis Frameworks
+Sidebar **Strategy** section with 5 professional analysis frameworks:
+- 📊 **SWOT Analysis** — Strengths, Weaknesses, Opportunities, Threats + SO/WO/ST/WT strategies
+- 🌍 **PEST Analysis** — Political, Economic, Social, Technological factors
+- ⚔️ **Porter's 5 Forces** — Competition intensity, barriers, substitutes, buyer/supplier power
+- 📈 **BCG Matrix** — Star, Cash Cow, Question Mark, Dog classification
+- 🎯 **Business Model Canvas** — 9 building blocks of a business model
+
+### 📊 Data Analysis Command
+- Type `/analyze [topic]` or `/분석 [주제]` for structured data analysis
+- Auto-generates: overview, data tables, key insights, visualization suggestions, conclusions
+- Works with uploaded file data when available
+
+### ✏️ Editable Document Editor
+- **Edit Mode** — Click ✏️ Edit button to make the output panel editable (like Notion/Google Docs)
+- **Save** — 💾 Save to Supabase + download as styled HTML
+- **Rich Editing** — Full contenteditable support with inline formatting
+
 ### 🚀 Real-Time SSE Streaming
 Multi-persona modes (Report, Chain, Vote) use **Server-Sent Events** to stream each persona's response in real-time instead of waiting for all to complete. This prevents timeout errors and provides instant visual feedback as each persona reports.
 
@@ -115,10 +147,11 @@ Each persona **accumulates knowledge** and evolves through conversations:
 | 🌊 **Ocean** | Deep ocean blues, teal accents |
 
 ### 📊 Rich Visualization
-- **Markdown** rendering via `marked.js` with syntax highlighting, tables, and blockquotes
+- **Markdown** rendering via `marked.js` with Notion/Gemini/Claude-style typography
 - **Mermaid** diagrams (flowcharts, sequence diagrams, etc.) with dark theme
 - **Chart.js** charts (pie, bar, line, doughnut) with auto-color palettes
 - **📊 Visualize button** — AI analyzes output data and auto-generates the best visualization
+- **Premium Typography** — Compact spacing, accent-colored headings, gradient borders, styled code blocks
 
 ### 📁 File Support & RAG
 - Multi-file upload with drag & drop
@@ -207,6 +240,8 @@ export PASSWORD_SALT=your_salt  # Custom salt for password hashing
 - Hamburger menu for sidebar navigation
 - Single-panel view with Chat/Output tab switcher
 - Persona and Mode tabs accessible via header on mobile
+- **Full-screen Output Panel** — 100% height with absolute positioning on mobile
+- **← Back Button** — Physical button to return from Output to Chat
 - Optimized layout for all screen sizes
 
 ### 🌐 Supported Browsers
@@ -370,6 +405,22 @@ Open http://localhost:5000
 3. Build Command: `pip install -r requirements.txt`
 4. Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --max-requests 200`
 
+## 🐳 Docker / NAS Deployment (QNAP)
+
+```bash
+# Clone and configure
+git clone https://github.com/shinwookyi-oss/ai-hub.git
+cd ai-hub
+
+# Edit docker-compose.yml with your API keys, then:
+docker-compose up -d
+```
+
+- Pre-configured `Dockerfile` + `docker-compose.yml` for QNAP Container Station
+- Gunicorn production server with health checks
+- Persistent volume for uploads
+- Port 5000 exposed
+
 ---
 
 ## 📁 Project Structure
@@ -379,13 +430,16 @@ ai-hub/
 ├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin panel)
 ├── ai_hub.py           # AIHub core (5 providers, 75+ personas, AI persona gen, 11 modes, memory, RAG)
 ├── templates/
-│   ├── index.html      # Main SPA (2300+ lines: UI + JS logic)
+│   ├── index.html      # Main SPA (2500+ lines: UI + JS logic + templates + strategy)
 │   └── login.html      # Login page with Spline 3D background
 ├── static/
-│   ├── css/style.css   # Full design system (5 themes, responsive, 490+ lines)
-│   ├── img/            # Logo and assets
+│   ├── css/style.css   # Full design system (5 themes, responsive, 580+ lines)
+│   ├── img/            # Logo, favicon, and assets
 │   └── js/             # Additional scripts
 ├── docs.html           # Interactive API documentation
+├── Dockerfile          # Docker container for NAS deployment
+├── docker-compose.yml  # Docker Compose with env vars and health checks
+├── .dockerignore       # Docker build exclusions
 ├── requirements.txt    # Python dependencies
 ├── Procfile            # Render deployment config
 └── .gitignore
@@ -400,11 +454,12 @@ ai-hub/
 | Backend | Python, Flask, SSE Streaming |
 | Frontend | Vanilla HTML/CSS/JS (Split-panel SPA) |
 | AI SDKs | OpenAI, Google GenAI, Anthropic |
+| Image Gen | DALL-E 3 (OpenAI) |
 | Voice | OpenAI TTS (Nova), OpenAI Whisper, Web Speech API |
 | Slides | python-pptx, reveal.js |
 | Database | Supabase (PostgreSQL) |
 | RAG | ChromaDB (document chunk indexing) |
-| Hosting | Render (gunicorn) |
+| Hosting | Render (gunicorn), Docker (QNAP NAS) |
 | Visualization | Mermaid.js, Chart.js, Marked.js |
 | Export | html2pdf.js, SheetJS (XLSX) |
 | Spreadsheet | Pure HTML/CSS/JS (no external library) |
