@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1946,6 +1946,179 @@
                 html += '</section>';
             });
             html += '</div></div>';
-            html += '<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.js"><\/script>';
-            html += '<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+            html += '<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.js"><\\/script>';
+            html += '<script>Reveal.initialize({hash:true,transition:"slide"});<\\/script></body></html>';
+            w.document.write(html);
+            w.document.close();
+        }
+
+        // Allow /slides command in chat
+        var _origSendForSlides = send;
+        send = async function() {
+            var input = document.getElementById('userInput');
+            var val = (input.value || '').trim();
+            if (val.toLowerCase().startsWith('/slides ')) {
+                var topic = val.substring(8).trim();
+                input.value = '';
+                await generateSlides(topic);
+                return;
+            }
+            await _origSendForSlides();
+        };
+        // ── Workspace ──
+        var wsCurrentFolder = null;
+        function openWorkspace() {
+            document.getElementById('wsOverlay').classList.add('open');
+            loadFolders();
+        }
+        function closeWorkspace() { document.getElementById('wsOverlay').classList.remove('open'); }
+
+        async function loadFolders() {
+            try {
+                var r = await fetch('/api/folders').then(function(r){return r.json();});
+                var el = document.getElementById('wsFolderList');
+                if (!r.workspace) {
+                    el.innerHTML = '<div style="color:var(--text2);font-size:12px;">Supabase not configured</div>';
+                    return;
+                }
+                
+                let folders = (r.folders || []).map(f => {
+                    let descObj = {text: f.description || ''};
+                    try {
+                        let parsed = JSON.parse(f.description);
+                        if (parsed && typeof parsed === 'object') descObj = parsed;
+                    } catch(e) {}
+                    f.parent_id = descObj.parent_id || null;
+                    f.descText = descObj.text || '';
+                    return f;
+                });
+                
+                let rootFolders = folders.filter(f => !f.parent_id);
+                let html = '';
+                
+                function renderFolder(f, depth) {
+                    var cls = wsCurrentFolder === f.id ? 'ws-folder-item active' : 'ws-folder-item';
+                    let pad = depth * 15;
+                    let h = `<div class="${cls}" style="padding-left:${12 + pad}px;" onclick="selectFolder('${f.id}')">
+                        <span style="display:flex;align-items:center;gap:6px;">
+                            ${depth > 0 ? `<span style="color:var(--text2);font-size:10px;">↳</span>` : ''}
+                            ${f.icon||'📁'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+                        </span>
+                        <div class="folder-actions">
+                            ${depth < 2 ? `<button class="ws-close" onclick="event.stopPropagation();createSubFolder('${f.id}')" title="Add Subfolder" style="font-size:16px;margin-right:4px;">+</button>` : ''}
+                            <button class="ws-close" onclick="event.stopPropagation();deleteFolder('${f.id}')" title="Delete">×</button>
+                        </div>
+                    </div>`;
+                    let children = folders.filter(child => child.parent_id === f.id);
+                    children.forEach(c => { h += renderFolder(c, depth + 1); });
+                    return h;
+                }
+                
+                rootFolders.forEach(f => { html += renderFolder(f, 0); });
+                el.innerHTML = html;
+            } catch(e) { console.log('loadFolders err:', e); }
+        }
+
+        async function createFolder() {
+            var name = prompt('Folder name:');
+            if (!name) return;
+            var icon = prompt('Folder icon (emoji):', '📁') || '📁';
+            var desc = prompt('Folder description (optional):', '') || '';
+            let extDesc = JSON.stringify({text: desc, parent_id: null});
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:extDesc})});
+            loadFolders();
+        }
+
+        async function createSubFolder(parentId) {
+            var name = prompt('Subfolder name:');
+            if (!name) return;
+            var icon = prompt('Folder icon (emoji):', '📁') || '📁';
+            var desc = prompt('Folder description (optional):', '') || '';
+            let extDesc = JSON.stringify({text: desc, parent_id: parentId});
+            await fetch('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,icon:icon,description:extDesc})});
+            loadFolders();
+        }
+
+        async function deleteFolder(id) {
+            if (!confirm('Delete this folder and all files?')) return;
+            await fetch('/api/folders/'+id, {method:'DELETE'});
+            if (wsCurrentFolder === id) wsCurrentFolder = null;
+            loadFolders();
+            document.getElementById('wsFileList').innerHTML = '';
+        }
+
+        function selectFolder(id) {
+            wsCurrentFolder = id;
+            document.querySelectorAll('.ws-folder-item').forEach(e=>e.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            loadFiles(id);
+        }
+
+        async function loadFiles(folderId) {
+            try {
+                var r = await fetch('/api/folders/'+folderId+'/files').then(r=>r.json());
+                var el = document.getElementById('wsFileList');
+                if (!r.files || !r.files.length) {
+                    el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">No files here.</div>';
+                    return;
+                }
+                var html = '';
+                r.files.forEach(function(f) {
+                    var size = (f.size_bytes / 1024).toFixed(1) + ' KB';
+                    var time = new Date(f.created_at).toLocaleString();
+                    html += `<div class="ws-file-item" onclick="viewFile('${f.id}')">
+                        <div style="flex:1;overflow:hidden;">
+                            <div style="font-weight:600;color:#e0e0ff;font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">📄 ${f.name}</div>
+                            <div style="color:var(--text2);font-size:11px;margin-top:4px;">${size} • ${time}</div>
+                        </div>
+                        <div class="folder-actions" style="opacity:1;">
+                            <button class="ws-close" onclick="event.stopPropagation();deleteFile('${f.id}','${folderId}')" title="Delete">×</button>
+                        </div>
+                    </div>`;
+                });
+                el.innerHTML = html;
+            } catch(e) { console.log('loadFiles err:', e); }
+        }
+
+        async function deleteFile(fileId, folderId) {
+            if (!confirm('Delete this file permanently?')) return;
+            await fetch('/api/files/'+fileId, {method:'DELETE'});
+            loadFiles(folderId);
+        }
+
+        async function viewFile(fileId) {
+            try {
+                var r = await fetch('/api/files/'+fileId).then(r=>r.json());
+                if(r.error) { alert(r.error); return; }
+                showDocMarkdown(r.content, '📄 ' + r.name, Math.floor(r.size_bytes/1024)+' KB');
+                closeWorkspace();
+                if (window.innerWidth <= 768) showMobilePanel('output');
+            } catch(e) { alert('Error reading file: '+e.message); }
+        }
+
+        async function saveOutputToWorkspace() {
+            if (!wsCurrentFolder) { alert('Please open Workspace and select a folder first!'); openWorkspace(); return; }
+            var name = prompt('File name:', 'analysis.txt');
+            if(!name) return;
+            var text = outputArea.innerText;
+            if(!text || text.includes('Result will appear here')) { alert('Nothing to save.'); return; }
+            
+            var fd = new FormData();
+            var blob = new Blob([text], {type:'text/plain'});
+            fd.append('file', blob, name);
+            fd.append('folder_id', wsCurrentFolder);
+            
+            var loadId = addLoading('Saving to workspace...');
+            try {
+                await fetch('/api/upload_workspace', {method:'POST', body:fd});
+                removeLoading(loadId);
+                addMessage('System', '✅ Saved ' + name + ' to workspace.', 'system-msg');
+                loadFiles(wsCurrentFolder);
+            } catch(e) {
+                removeLoading(loadId);
+                alert('Save failed: '+e.message);
+            }
+        }
+    </script>
+</body>
 </html>
