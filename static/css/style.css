@@ -202,7 +202,7 @@
         .compare-card .provider { font-size: 12px; font-weight: 600; color: var(--accent2); margin-bottom: 6px; }
         .compare-card .content { font-size: 13px; line-height: 1.5; }
         .compare-card .meta { font-size: 11px; color: var(--text2); margin-top: 6px; }
-        .input-area { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface); }
+        .input-area { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
         .file-bar {
             display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
             padding: 7px 12px; background: var(--surface2); border: 1px dashed var(--border);
@@ -354,32 +354,42 @@
         .mobile-panel-tabs button.active { color: var(--accent2); border-bottom-color: var(--accent); }
         /* ── Responsive ── */
         @media (max-width: 768px) {
+            body { height: 100vh; height: 100dvh; }
             .mobile-menu-btn { display: block; }
             .mobile-panel-tabs { display: flex; }
-            .header h1 { font-size: 16px; }
+            .header { padding: 8px 12px; min-height: 44px; }
+            .header h1 { font-size: 15px; white-space: nowrap; }
+            .header-right { gap: 8px; }
+            .header-tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; max-width: 50vw; }
+            .header-tab { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
             .status-dots { display: none; }
-            .container { flex-direction: column; }
+            .info-strip { padding: 2px 12px; font-size: 9px; gap: 10px; flex-shrink: 0; }
+            .container { flex-direction: column; flex: 1; min-height: 0; }
             .sidebar {
-                position: fixed; top: 48px; left: 0; bottom: 0; z-index: 100;
+                position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
                 width: 260px; transform: translateX(-100%); transition: transform 0.3s;
                 box-shadow: 4px 0 20px rgba(0,0,0,0.5);
             }
             .sidebar.open { transform: translateX(0); }
             .sidebar-overlay {
-                display: none; position: fixed; inset: 0; top: 48px;
+                display: none; position: fixed; inset: 0;
                 background: rgba(0,0,0,0.5); z-index: 99;
             }
             .sidebar-overlay.open { display: block; }
-            .main-panel { border-right: none; width: 100%; min-width: 0; }
+            .main-panel { border-right: none; width: 100%; min-width: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+            .chat-area { flex: 1; min-height: 0; overflow-y: auto; padding: 10px; }
+            .input-area { padding: 8px 12px; flex-shrink: 0; }
+            .input-row textarea { font-size: 14px; max-height: 80px; }
             .panel-divider { display: none !important; }
             .output-panel { display: none; width: 100%; min-width: 0; flex: none !important; }
-            .output-panel.mobile-show { display: flex; flex: 1 !important; }
+            .output-panel.mobile-show { display: flex; flex: 1 !important; min-height: 0; }
             .main-panel.mobile-hide { display: none; }
-            .header { padding: 10px 14px; }
-            .input-area { padding: 10px 14px; }
-            .chat-area { padding: 10px; }
             .compare-grid { grid-template-columns: 1fr; }
             .persona-group-body { grid-template-columns: 1fr 1fr 1fr; }
+            .logout-btn { padding: 4px 8px; font-size: 11px; }
+            .settings-btn { font-size: 14px; padding: 3px 5px; }
+            .theme-picker-btn { font-size: 14px; }
+            .open-output-btn { right: 8px; bottom: 70px; width: 38px; height: 38px; font-size: 15px; }
         }
         /* ── Voice Buttons ── */
         .mic-btn {
