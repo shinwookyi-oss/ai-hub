@@ -1785,6 +1785,16 @@
                 });
             } catch(e) { alert('Error: ' + e.message); }
         }
+        async function adminUpdateField(id, field, value) {
+            try {
+                const payload = {};
+                payload[field] = value;
+                await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            } catch(e) { alert('Error: ' + e.message); }
+        }
         async function adminResetPw(id, username) {
             const pw = prompt(`"${username}" 의 새 비밀번호를 입력하세요:`);
             if (!pw || !pw.trim()) return;

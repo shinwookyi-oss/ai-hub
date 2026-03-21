@@ -167,10 +167,11 @@ def login_page():
         pw_hash = _hash_password(password)
         # Try Supabase users table first
         user_found = False
-        if supabase_admin:
+        db_client = supabase_admin or supabase_client
+        if db_client:
             for _attempt in range(4):
                 try:
-                    res = supabase_admin.table("users").select("*").eq("username", username).eq("is_active", True).execute()
+                    res = db_client.table("users").select("*").eq("username", username).eq("is_active", True).execute()
                     if res.data and len(res.data) > 0:
                         db_user = res.data[0]
                         if db_user["password_hash"] == pw_hash:
@@ -184,19 +185,25 @@ def login_page():
                             session["login_time"] = datetime.utcnow().isoformat()
                             session["must_change_password"] = bool(db_user.get("must_change_password"))
                             try:
-                                supabase_admin.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
+                                db_client.table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("id", db_user["id"]).execute()
                             except Exception:
                                 pass
                             return redirect("/")
                         else:
                             user_found = True  # user exists but wrong password
+                            print(f"  ⚠️ Login failed: user '{username}' found but password mismatch")
+                    else:
+                        print(f"  ⚠️ Login: user '{username}' not found in Supabase (is_active=True)")
                     break  # query succeeded, no need to retry
                 except Exception as e:
                     err = str(e)
+                    print(f"  ⚠️ Login Supabase error (attempt {_attempt+1}): {err}")
                     if ("PGRST002" in err or "schema cache" in err) and _attempt < 3:
                         time.sleep(1.0)
                     else:
                         break  # non-retryable error, fall through
+        else:
+            print("  ⚠️ Login: No Supabase client available, trying env fallback only")
         # Fallback: env var credentials
         if not user_found and username == APP_USERNAME and pw_hash == APP_PASSWORD_HASH:
             session.permanent = True
@@ -1822,3 +1829,6 @@ if __name__ == "__main__":
     print(f"  http://localhost:{port}")
     print(f"  Login: {APP_USERNAME}\n")
     app.run(debug=False, host="0.0.0.0", port=port)
+else:
+    # Also run seed when imported by gunicorn
+    _seed_admin_user()
