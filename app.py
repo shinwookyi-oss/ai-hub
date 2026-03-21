@@ -589,7 +589,23 @@ def api_ask_stream():
     prompt = data.get("prompt", "")
     provider = data.get("provider", "chatgpt")
     persona = data.get("persona", "")
+    chat_context = data.get("chat_context", [])
     user_id = session.get("username", "admin")
+
+    # Build conversation history context from frontend messages
+    history_context = ""
+    if chat_context and isinstance(chat_context, list):
+        history_lines = []
+        for msg in chat_context[-10:]:
+            role = msg.get("role", "user")
+            speaker = msg.get("speaker", "")
+            content = msg.get("content", "")[:500]
+            if role == "user":
+                history_lines.append(f"User: {content}")
+            else:
+                history_lines.append(f"{speaker}: {content}")
+        if history_lines:
+            history_context = "PREVIOUS CONVERSATION (for context continuity):\n" + "\n".join(history_lines) + "\n\nNow respond to the latest message:"
 
     # Register user-created personas dynamically
     if persona:
@@ -631,6 +647,10 @@ def api_ask_stream():
                     if full_memory:
                         full_memory += "\n\n"
                     full_memory += f"RECENT CONVERSATION HISTORY:\n{conversation_context}"
+                if history_context:
+                    if full_memory:
+                        full_memory += "\n\n"
+                    full_memory += history_context
                 
                 for chunk in hub.ask_as_stream(prompt, persona=persona, provider=provider, memory_context=full_memory):
                     if chunk:
@@ -649,7 +669,9 @@ def api_ask_stream():
                     except Exception:
                         pass
             else:
-                for chunk in hub.ask_stream(prompt, provider=provider):
+                # Inject chat context as system prompt for cross-provider continuity
+                sys_prompt = history_context if history_context else ""
+                for chunk in hub.ask_stream(prompt, provider=provider, system_prompt=sys_prompt):
                     if chunk:
                         full_content += chunk
                         yield chunk
