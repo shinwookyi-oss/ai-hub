@@ -398,8 +398,9 @@
             .input-area { padding: 8px 12px; flex-shrink: 0; }
             .input-row textarea { font-size: 14px; max-height: 80px; }
             .panel-divider { display: none !important; }
-            .output-panel { display: none; width: 100%; min-width: 0; flex: none !important; }
-            .output-panel.mobile-show { display: flex; flex: 1 !important; min-height: 0; }
+            .output-panel { display: none; width: 100%; min-width: 0; flex: none !important; flex-direction: column; }
+            .output-panel.mobile-show { display: flex; flex: 1 !important; min-height: 0; height: 100%; overflow: hidden; }
+            .output-panel.mobile-show .output-area { flex: 1; overflow-y: auto; min-height: 0; }
             .main-panel.mobile-hide { display: none; }
             .compare-grid { grid-template-columns: 1fr; }
             .persona-group-body { grid-template-columns: 1fr 1fr 1fr; }
