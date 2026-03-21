@@ -82,6 +82,8 @@ class AIHub:
         self._gemini_model_obj = None
         self._claude_client = None
         self._grok_client = None
+        self._chroma_client = None
+        self._embedding_function = None
 
     # ──────────────────────────── Availability Check ────────────────────────────
 
@@ -130,6 +132,81 @@ class AIHub:
                     self._history[provider] = self._history[provider][2:]
                 else:
                     self._history[provider].pop(0)
+
+    # ──────────────────────────── Vector DB (RAG) ────────────────────────────
+
+    def _get_chroma_client(self):
+        if self._chroma_client is None:
+            import chromadb
+            from chromadb.utils import embedding_functions
+            import os
+            
+            db_path = os.path.join(os.path.dirname(__file__), "chroma_db")
+            self._chroma_client = chromadb.PersistentClient(path=db_path)
+            # Use sentence-transformers for local fast embeddings avoiding API costs
+            self._embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+        return self._chroma_client
+
+    def index_document(self, text: str, document_id: str, chunk_size: int = 1500, overlap: int = 200) -> int:
+        """Split text into chunks and index them into ChromaDB for later RAG querying."""
+        client = self._get_chroma_client()
+        # Ensure alphanumeric collection name
+        safe_id = "".join(c if c.isalnum() else "_" for c in document_id)
+        
+        try:
+            collection = client.get_or_create_collection(
+                name=safe_id, 
+                embedding_function=self._embedding_function
+            )
+        except Exception:
+            client.delete_collection(name=safe_id)
+            collection = client.create_collection(name=safe_id, embedding_function=self._embedding_function)
+
+        # Simple overlap chunking
+        chunks = []
+        start = 0
+        text_len = len(text)
+        while start < text_len:
+            end = min(start + chunk_size, text_len)
+            chunks.append(text[start:end])
+            start += chunk_size - overlap
+
+        ids = [f"chunk_{i}" for i in range(len(chunks))]
+        metadatas = [{"source": document_id, "chunk_index": i} for i in range(len(chunks))]
+        
+        # Add to ChromaDB in batches to prevent payload limits
+        batch_size = 100
+        for i in range(0, len(chunks), batch_size):
+            collection.add(
+                documents=chunks[i:i+batch_size],
+                metadatas=metadatas[i:i+batch_size],
+                ids=ids[i:i+batch_size]
+            )
+            
+        return len(chunks)
+
+    def query_document(self, query: str, document_id: str, top_k: int = 3) -> str:
+        """Query ChromaDB for the most relevant document chunks based on semantic similarity."""
+        try:
+            client = self._get_chroma_client()
+            safe_id = "".join(c if c.isalnum() else "_" for c in document_id)
+            collection = client.get_collection(name=safe_id, embedding_function=self._embedding_function)
+            
+            results = collection.query(
+                query_texts=[query],
+                n_results=top_k
+            )
+            
+            if not results["documents"] or not results["documents"][0]:
+                return ""
+                
+            retrieved_texts = results["documents"][0]
+            # Join top K chunks with visual separators
+            return "\n\n...[Snippet]...\n\n".join(retrieved_texts)
+        except Exception as e:
+            return f"[Vector DB Query Failed: {str(e)}]"
 
     # ──────────────────────────── Individual AI Calls ────────────────────────────
 

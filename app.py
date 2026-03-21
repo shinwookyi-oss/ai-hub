@@ -806,9 +806,47 @@ def api_upload():
             try:
                 with open(filepath, "r", encoding="utf-8", errors="replace") as f: content = f.read()
             except: content = "[Unsupported format]"
+        chunks_indexed = 0
+        if content.strip():
+            try:
+                chunks_indexed = hub.index_document(text=content, document_id=file.filename)
+            except Exception as e:
+                print(f"Warning: Failed to index document for RAG: {e}")
+
         if len(content) > 50000: content = content[:50000] + "\n\n[... truncated ...]"
-        return jsonify({"success": True, "filename": file.filename,
-            "size": os.path.getsize(filepath), "char_count": len(content), "content": content})
+        return jsonify({
+            "success": True, 
+            "filename": file.filename,
+            "size": os.path.getsize(filepath), 
+            "char_count": len(content), 
+            "content": content,
+            "chunks_indexed": chunks_indexed
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/query_rag", methods=["POST"])
+@login_required
+def api_query_rag():
+    """Query ChromaDB for relevant exact chunks for uploaded files before sending to AI."""
+    try:
+        data = request.json
+        query = data.get("query", "")
+        files = data.get("files", [])
+        top_k = data.get("top_k", 3)
+        
+        if not query or not files:
+            return jsonify({"success": False, "context": ""})
+            
+        combined_context = []
+        for f in files:
+            snippet = hub.query_document(query, document_id=f, top_k=top_k)
+            if snippet:
+                combined_context.append(f"=== 관련 문서 일부: {f} ===\n{snippet}")
+                
+        # If no RAG results were found (e.g. indexing failed), fallback to empty context
+        final_context = "\n\n".join(combined_context) if combined_context else ""
+        return jsonify({"success": True, "context": final_context})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
