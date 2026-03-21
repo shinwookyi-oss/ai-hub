@@ -444,6 +444,23 @@ def create_user_persona():
         return jsonify({"error": f"AI 페르소나 생성 실패: {str(e)}"}), 500
 
 
+def _ensure_user_persona_registered(persona_key, username):
+    """If persona is user-created (p_xxxx), register it in hub.PERSONAS from DB."""
+    import json as _json
+    if persona_key.startswith("p_") and persona_key not in hub.PERSONAS:
+        try:
+            res = supabase_admin.table("user_personas").select("persona_keys").eq("username", username).execute()
+            if res.data and len(res.data) > 0:
+                user_personas = _json.loads(res.data[0].get("persona_keys", "[]"))
+                for p in user_personas:
+                    if p.get("key") == persona_key:
+                        hub.add_persona(persona_key, p.get("name", persona_key), p.get("prompt", f"You are {p.get('name', 'an assistant')}."))
+                        return True
+        except Exception:
+            pass
+    return persona_key in hub.PERSONAS
+
+
 @app.route("/api/ask", methods=["POST"])
 @login_required
 def api_ask():
@@ -454,6 +471,8 @@ def api_ask():
         persona = data.get("persona", "")
         response = None
         if persona:
+            # Register user-created personas dynamically
+            _ensure_user_persona_registered(persona, session.get("username", ""))
             memory_context = ""
             conversation_context = ""
             user_id = session.get("username", "admin")
@@ -534,6 +553,10 @@ def api_ask_stream():
     provider = data.get("provider", "chatgpt")
     persona = data.get("persona", "")
     user_id = session.get("username", "admin")
+
+    # Register user-created personas dynamically
+    if persona:
+        _ensure_user_persona_registered(persona, session.get("username", ""))
 
     def generate():
         try:
