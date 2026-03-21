@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import time
 
-from flask import Flask, request, jsonify, session, redirect, url_for, Response, stream_with_context, render_template
+from flask import Flask, request, jsonify, session, redirect, url_for, Response, stream_with_context, render_template, send_from_directory
 import json
 
 from ai_hub import AIHub
@@ -154,6 +154,11 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+# PWA: Serve service worker from root scope
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory(app.static_folder, "service-worker.js", mimetype="application/javascript")
 
 
 @app.route("/login", methods=["GET", "POST"])
