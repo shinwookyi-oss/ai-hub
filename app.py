@@ -284,19 +284,100 @@ def index():
     status = hub.status()
     personas = hub.list_personas()
     persona_groups = hub.list_persona_groups()
-    
+    # Build full catalog: key -> {name, group, prompt} for persona picker popup
+    catalog = {}
+    for k, v in hub.PERSONAS.items():
+        catalog[k] = {"name": v["name"], "group": v.get("group", ""), "prompt": v.get("prompt", "")}
+
     username = session.get("username", "")
-    # (Removed hardcoded username filtering to allow Tier Defaults to populate)
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
 
     return render_template(
         "index.html",
         ai_status=json.dumps(status),
         personas=json.dumps(personas, ensure_ascii=False),
         personaGroups=json.dumps(persona_groups, ensure_ascii=False),
-        tierDefaults=json.dumps(hub.TIER_DEFAULTS, ensure_ascii=False),
-        usertier=session.get("user_tier", "free"),
+        personaCatalog=json.dumps(catalog, ensure_ascii=False),
+        tierLimits=json.dumps(tier_limits),
+        defaultPersonas=json.dumps(hub.DEFAULT_PERSONAS),
+        usertier=user_tier,
         username=username
     )
+
+
+# ── User Persona Slot API ─────────────────────────────────
+@app.route("/api/user/personas", methods=["GET"])
+@login_required
+def get_user_personas():
+    """Load user's persona config from DB"""
+    import json as _json
+    username = session.get("username", "")
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    try:
+        res = supabase_admin.table("user_personas").select("*").eq("username", username).execute()
+        if res.data and len(res.data) > 0:
+            config = res.data[0]
+            return jsonify({
+                "personas": _json.loads(config.get("persona_keys", "[]")),
+                "groups": _json.loads(config.get("groups", "[]")),
+                "limits": tier_limits
+            })
+    except Exception:
+        pass
+    # Return defaults if no DB record
+    defaults = hub.DEFAULT_PERSONAS[:tier_limits["personas"]]
+    return jsonify({
+        "personas": [{"key": k, "group": "기본"} for k in defaults],
+        "groups": [{"name": "기본", "icon": "⭐"}],
+        "limits": tier_limits
+    })
+
+
+@app.route("/api/user/personas", methods=["POST"])
+@login_required
+def save_user_personas():
+    """Save user's persona config to DB"""
+    import json as _json
+    username = session.get("username", "")
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    data = request.json
+    persona_list = data.get("personas", [])
+    groups = data.get("groups", [])
+    # Enforce limits
+    if len(persona_list) > tier_limits["personas"]:
+        return jsonify({"error": f"최대 {tier_limits['personas']}개 페르소나만 허용됩니다."}), 400
+    if len(groups) > tier_limits["groups"]:
+        return jsonify({"error": f"최대 {tier_limits['groups']}개 그룹만 허용됩니다."}), 400
+    try:
+        payload = {
+            "username": username,
+            "persona_keys": _json.dumps(persona_list, ensure_ascii=False),
+            "groups": _json.dumps(groups, ensure_ascii=False),
+        }
+        # Upsert
+        existing = supabase_admin.table("user_personas").select("id").eq("username", username).execute()
+        if existing.data and len(existing.data) > 0:
+            supabase_admin.table("user_personas").update(payload).eq("username", username).execute()
+        else:
+            supabase_admin.table("user_personas").insert(payload).execute()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        # Table may not exist yet — return soft error so frontend can use localStorage fallback
+        print(f"  ⚠️ save_user_personas failed (table may not exist): {e}")
+        return jsonify({"status": "ok", "fallback": True, "warning": "DB save failed, using local storage"})
+
+
+@app.route("/api/personas/catalog")
+@login_required
+def personas_catalog():
+    """Return full persona catalog for the picker popup"""
+    catalog = {}
+    for k, v in hub.PERSONAS.items():
+        catalog[k] = {"name": v["name"], "group": v.get("group", ""), "prompt": v.get("prompt", "")}
+    return jsonify(catalog)
 
 
 @app.route("/api/ask", methods=["POST"])

@@ -672,12 +672,14 @@ class AIHub:
         },
     ]
 
-    TIER_DEFAULTS = {
-        "basic": ["strategic_planning", "advocate", "opponent"],
-        "premium": ["novelist", "philosopher", "religious_leader"],
-        "admin": ["thomas_jefferson", "tolstoy", "da_vinci"],
-        "owner": ["owner_bookstore", "owner_grocery", "owner_korean_restaurant"]
+    TIER_LIMITS = {
+        "free":    {"personas": 1,  "groups": 1},
+        "premium": {"personas": 4,  "groups": 2},
+        "admin":   {"personas": 6,  "groups": 3},
+        "owner":   {"personas": 30, "groups": 5},
     }
+
+    DEFAULT_PERSONAS = ["advocate", "opponent"]
 
     PERSONAS = {
         # ── Group 1: 역할별 (Corporate Roles) ──
