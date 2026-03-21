@@ -673,13 +673,11 @@ class AIHub:
     ]
 
     TIER_LIMITS = {
-        "free":    {"personas": 1,  "groups": 1},
-        "premium": {"personas": 4,  "groups": 2},
-        "admin":   {"personas": 6,  "groups": 3},
-        "owner":   {"personas": 30, "groups": 5},
+        "free":    {"personas": 1},
+        "premium": {"personas": 3},
+        "admin":   {"personas": 5},
+        "owner":   {"personas": 50},
     }
-
-    DEFAULT_PERSONAS = ["advocate", "opponent"]
 
     PERSONAS = {
         # ── Group 1: 역할별 (Corporate Roles) ──

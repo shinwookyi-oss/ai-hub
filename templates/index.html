@@ -361,9 +361,7 @@
             uploadedFiles=[];  // array of {name, content, size, chars}
         let personas = {{ personas | safe }};
         let personaGroups = {{ personaGroups | safe }};
-        const PERSONA_CATALOG = {{ personaCatalog | safe }};
         const TIER_LIMITS = {{ tierLimits | safe }};
-        const DEFAULT_PERSONAS = {{ defaultPersonas | safe }};
         let userPersonaConfig = null;  // loaded from DB
         const USER_TIER = '{{ usertier }}';
         const CURRENT_USERNAME = '{{ username }}';
@@ -498,202 +496,156 @@
             g.innerHTML=''; f.innerHTML=''; a.innerHTML='';
             const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
 
-            // ── Load user's persona config from DB (fallback: localStorage → defaults) ──
+            // ── Load user's personas from DB (fallback: localStorage) ──
             try {
                 const res = await fetch('/api/user/personas');
-                const serverConfig = await res.json();
-                // Check if server returned real data or just defaults
-                userPersonaConfig = serverConfig;
+                userPersonaConfig = await res.json();
             } catch(e) {
-                // Server failed, try localStorage
                 const local = localStorage.getItem('userPersonaConfig');
-                if (local) {
-                    try { userPersonaConfig = JSON.parse(local); } catch(e2) { userPersonaConfig = null; }
-                }
-                if (!userPersonaConfig) {
-                    userPersonaConfig = {
-                        personas: [],
-                        groups: [{name: '기본', icon: '⭐'}],
-                        limits: TIER_LIMITS
-                    };
-                }
+                if (local) { try { userPersonaConfig = JSON.parse(local); } catch(e2) { userPersonaConfig = null; } }
+                if (!userPersonaConfig) userPersonaConfig = { personas: [], limits: TIER_LIMITS };
             }
-            // Merge localStorage if server returned defaults and localStorage has data
-            if (userPersonaConfig.personas && userPersonaConfig.personas.length <= 2) {
-                const local = localStorage.getItem('userPersonaConfig');
-                if (local) {
-                    try {
-                        const localConfig = JSON.parse(local);
-                        if (localConfig.personas && localConfig.personas.length > userPersonaConfig.personas.length) {
-                            userPersonaConfig = {...userPersonaConfig, ...localConfig, limits: userPersonaConfig.limits || TIER_LIMITS};
-                        }
-                    } catch(e3) {}
-                }
+            // Merge localStorage if server had less data
+            const local = localStorage.getItem('userPersonaConfig');
+            if (local) {
+                try {
+                    const lc = JSON.parse(local);
+                    if (lc.personas && lc.personas.length > (userPersonaConfig.personas||[]).length)
+                        userPersonaConfig = {...userPersonaConfig, personas: lc.personas, limits: userPersonaConfig.limits || TIER_LIMITS};
+                } catch(e3) {}
             }
 
-            const uGroups = userPersonaConfig.groups || [{name: '기본', icon: '⭐'}];
             const uPersonas = userPersonaConfig.personas || [];
             const limits = userPersonaConfig.limits || TIER_LIMITS;
             const starMap = {'free':'⭐','premium':'⭐⭐','admin':'⭐⭐⭐','owner':'⭐⭐⭐⭐'};
             const tierStars = starMap[USER_TIER] || '⭐';
 
-            // Header: tier info
+            // Header: tier + count
             g.innerHTML += `<div style="padding:6px 10px;font-size:11px;color:var(--accent2);display:flex;justify-content:space-between;align-items:center;">`
                 + `<span>${tierStars} ${USER_TIER.toUpperCase()}</span>`
-                + `<span style="color:#666;">페르소나 ${uPersonas.length}/${limits.personas} · 그룹 ${uGroups.length}/${limits.groups}</span></div>`;
+                + `<span style="color:#666;">페르소나 ${uPersonas.length}/${limits.personas}</span></div>`;
 
-            // ── Render each user group ──
-            uGroups.forEach(function(grp, gi) {
-                const grpKey = 'ugrp_' + gi;
-                const grpPersonas = uPersonas.filter(p => p.group === grp.name);
-                const icon = grp.icon || '📁';
-
-                g.innerHTML += `<div class="persona-group-header" onclick="togglePersonaGroup('${grpKey}')">`
-                    + `<span class="pg-toggle" id="pgToggle_${grpKey}">▼</span> ${icon} ${grp.name}`
-                    + `<span style="float:right;font-size:10px;color:#666;">${grpPersonas.length}</span></div>`;
-
-                let bodyHtml = '';
-                grpPersonas.forEach(function(p) {
-                    const name = (typeof personas[p.key] === 'string') ? personas[p.key] : (PERSONA_CATALOG[p.key]?.name || p.key);
-                    const canDelete = USER_TIER !== 'free';
-                    bodyHtml += `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')">`
-                        + `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>`
-                        + (canDelete ? `<span class="persona-del" title="삭제" style="flex-shrink:0;color:var(--red);cursor:pointer;opacity:0;font-size:13px;" onclick="removeSlotPersona('${p.key}',event)">×</span>` : '')
-                        + `</div>`;
-                });
-
-                // Add slot button if under limit
-                if (uPersonas.length < limits.personas && USER_TIER !== 'free') {
-                    bodyHtml += `<div class="persona-chip" style="border:1px dashed var(--accent);color:var(--accent);cursor:pointer;text-align:center;justify-content:center;" onclick="openPersonaCatalog('${grp.name}')">`
-                        + `➕ 추가</div>`;
-                } else if (USER_TIER === 'free' && grpPersonas.length < 1) {
-                    bodyHtml += `<div class="persona-chip" style="border:1px dashed var(--accent);color:var(--accent);cursor:pointer;text-align:center;justify-content:center;" onclick="openPersonaCatalog('${grp.name}')">`
-                        + `🔄 변경</div>`;
-                }
-
-                g.innerHTML += `<div class="persona-group-body" id="pgBody_${grpKey}">${bodyHtml}</div>`;
-
-                // Populate debate selectors
-                f.innerHTML += `<optgroup label="${icon} ${grp.name}">`
-                    + grpPersonas.map(p => { const n = (typeof personas[p.key]==='string')?personas[p.key]:(PERSONA_CATALOG[p.key]?.name||p.key); return `<option value="${p.key}">${n}</option>`; }).join('')
-                    + '</optgroup>';
-                a.innerHTML += `<optgroup label="${icon} ${grp.name}">`
-                    + grpPersonas.map(p => { const n = (typeof personas[p.key]==='string')?personas[p.key]:(PERSONA_CATALOG[p.key]?.name||p.key); return `<option value="${p.key}">${n}</option>`; }).join('')
-                    + '</optgroup>';
-                cb.innerHTML += `<div style="width:100%;font-size:10px;color:var(--accent2);margin-top:6px;">${icon} ${grp.name}</div>`;
-                grpPersonas.forEach(function(p) {
-                    const n = (typeof personas[p.key]==='string')?personas[p.key]:(PERSONA_CATALOG[p.key]?.name||p.key);
-                    cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${p.key}" class="persona-cb"> ${n}</label>`;
-                });
+            // ── Render each persona as a chip ──
+            uPersonas.forEach(function(p) {
+                const name = p.name || p.key;
+                const traits = (p.traits || []).slice(0, 3).join(', ');
+                g.innerHTML += `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')" title="${p.prompt || ''}">`
+                    + `<div style="flex:1;overflow:hidden;">`
+                    + `<div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>`
+                    + (traits ? `<div style="font-size:9px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${traits}</div>` : '')
+                    + `</div>`
+                    + `<span class="persona-del" title="삭제" style="flex-shrink:0;color:var(--red);cursor:pointer;opacity:0;font-size:13px;" onclick="removePersona('${p.key}',event)">×</span>`
+                    + `</div>`;
             });
 
-            // ── Group management buttons ──
-            if (uGroups.length < limits.groups) {
-                g.innerHTML += `<div style="padding:6px;"><button onclick="addPersonaGroup()" style="width:100%;padding:6px;background:transparent;border:1px dashed var(--accent2);color:var(--accent2);border-radius:6px;cursor:pointer;font-size:11px;">📁 그룹 추가 (${uGroups.length}/${limits.groups})</button></div>`;
+            // Add button (if under limit)
+            if (uPersonas.length < limits.personas) {
+                g.innerHTML += `<div class="persona-chip" style="border:1px dashed var(--accent);color:var(--accent);cursor:pointer;text-align:center;justify-content:center;" onclick="openCreatePersonaModal()">`
+                    + `➕ 새 페르소나</div>`;
             }
 
-            const keys=Object.keys(personas);
-            if (keys.length>=2) a.value=keys[1];
+            // Populate debate selectors
+            uPersonas.forEach(function(p) {
+                const n = p.name || p.key;
+                f.innerHTML += `<option value="${p.key}">${n}</option>`;
+                a.innerHTML += `<option value="${p.key}">${n}</option>`;
+                cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${p.key}" class="persona-cb"> ${n}</label>`;
+            });
+            // Also add built-in personas to debate selectors
+            const keys = Object.keys(personas);
+            keys.forEach(function(k) {
+                if (!uPersonas.some(p => p.key === k)) {
+                    const n = (typeof personas[k] === 'string') ? personas[k] : k;
+                    f.innerHTML += `<option value="${k}">${n}</option>`;
+                    a.innerHTML += `<option value="${k}">${n}</option>`;
+                }
+            });
+            if (uPersonas.length >= 2) a.selectedIndex = 1;
+            else if (keys.length >= 2) a.value = keys[1];
         }
 
-        // ── Slot-based persona management functions ──
-        function openPersonaCatalog(groupName) {
-            let html = '<div style="max-height:400px;overflow-y:auto;">';
-            html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">페르소나 선택 — ' + groupName + ' 그룹</div>';
-            // Group catalog by built-in groups
-            const byGroup = {};
-            for (const [k, v] of Object.entries(PERSONA_CATALOG)) {
-                const gn = v.group || 'etc';
-                if (!byGroup[gn]) byGroup[gn] = [];
-                byGroup[gn].push({key: k, name: v.name});
-            }
-            const groupLabels = {corporate:'🏢 역할별',function:'🔍 기능별',advisory:'👑 자문',owner:'🏢 오너',etc:'기타'};
-            for (const [gn, items] of Object.entries(byGroup)) {
-                html += `<div style="color:var(--accent2);font-size:10px;margin:8px 0 4px;">${groupLabels[gn]||gn}</div>`;
-                html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
-                items.forEach(p => {
-                    const already = (userPersonaConfig.personas||[]).some(up => up.key === p.key);
-                    html += `<div onclick="${already ? '' : `selectCatalogPersona('${p.key}','${groupName}')`}" style="padding:4px 8px;border-radius:6px;font-size:11px;cursor:${already?'default':'pointer'};`
-                        + `background:${already?'#1a1a2e':'#12121a'};border:1px solid ${already?'var(--accent)':'#2a2a3e'};color:${already?'var(--accent)':'#ccc'};">`
-                        + `${already?'✓ ':''}${p.name}</div>`;
-                });
-                html += '</div>';
-            }
-            html += '</div>';
-            // Use a modal
-            let modal = document.getElementById('personaCatalogModal');
+        // ── Create Persona Modal ──
+        function openCreatePersonaModal() {
+            let modal = document.getElementById('personaCreateModal');
             if (!modal) {
                 modal = document.createElement('div');
-                modal.id = 'personaCatalogModal';
+                modal.id = 'personaCreateModal';
                 modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
                 document.body.appendChild(modal);
             }
-            modal.innerHTML = `<div style="background:#0a0a14;border:1px solid #2a2a3e;border-radius:12px;padding:16px;max-width:500px;width:90%;">${html}<div style="margin-top:10px;text-align:right;"><button onclick="document.getElementById('personaCatalogModal').remove()" style="padding:6px 16px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;">닫기</button></div></div>`;
+            modal.innerHTML = `<div style="background:#0a0a14;border:1px solid #2a2a3e;border-radius:12px;padding:20px;max-width:420px;width:90%;">
+                <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--accent);">🧠 새 페르소나 생성</div>
+                <div style="font-size:11px;color:#888;margin-bottom:10px;">이름/직업을 입력하면 AI가 자동으로 성향, 능력, 기술을 설정합니다.</div>
+                <input id="newPersonaName" type="text" placeholder="이름 또는 직업 (예: 마케팅 전문가, CPA, 변호사)" style="width:100%;padding:8px 10px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;color:#eee;font-size:12px;margin-bottom:8px;box-sizing:border-box;">
+                <textarea id="newPersonaTraits" placeholder="추가 성향 (선택, 예: 공격적, 데이터 중심, 한국어 전문)" style="width:100%;padding:8px 10px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;color:#eee;font-size:11px;resize:none;height:50px;box-sizing:border-box;"></textarea>
+                <div id="personaCreateStatus" style="font-size:10px;color:#666;margin:6px 0;min-height:14px;"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button onclick="document.getElementById('personaCreateModal').remove()" style="padding:6px 14px;background:transparent;border:1px solid #2a2a3e;color:#888;border-radius:6px;cursor:pointer;font-size:11px;">취소</button>
+                    <button onclick="submitCreatePersona()" style="padding:6px 14px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">✨ AI 생성</button>
+                </div>
+            </div>`;
             modal.style.display = 'flex';
+            setTimeout(() => document.getElementById('newPersonaName')?.focus(), 100);
         }
 
-        async function selectCatalogPersona(key, groupName) {
-            if (!userPersonaConfig) return;
-            const limits = userPersonaConfig.limits || TIER_LIMITS;
-            let pList = userPersonaConfig.personas || [];
-            // For free tier: replace the single slot
-            if (USER_TIER === 'free') {
-                pList = [{key: key, group: groupName}];
-            } else {
-                if (pList.length >= limits.personas) { alert(`최대 ${limits.personas}개 페르소나까지만 추가 가능합니다.`); return; }
-                pList.push({key: key, group: groupName});
+        async function submitCreatePersona() {
+            const name = document.getElementById('newPersonaName')?.value?.trim();
+            const traits = document.getElementById('newPersonaTraits')?.value?.trim();
+            const status = document.getElementById('personaCreateStatus');
+            if (!name) { if (status) status.textContent = '⚠️ 이름을 입력해주세요.'; return; }
+            if (status) status.innerHTML = '<span style="color:var(--accent);">⏳ AI가 페르소나를 생성 중...</span>';
+            try {
+                const resp = await fetch('/api/user/personas/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        traits: traits || '',
+                        current_personas: (userPersonaConfig?.personas || [])
+                    })
+                });
+                const result = await resp.json();
+                if (result.error) {
+                    if (status) status.innerHTML = `<span style="color:var(--red);">❌ ${result.error}</span>`;
+                    return;
+                }
+                // Update local config
+                if (result.personas) userPersonaConfig.personas = result.personas;
+                else if (result.persona) (userPersonaConfig.personas || []).push(result.persona);
+                // Register persona in the global personas dict for chat
+                if (result.persona) {
+                    personas[result.persona.key] = result.persona.name;
+                }
+                localStorage.setItem('userPersonaConfig', JSON.stringify(userPersonaConfig));
+                document.getElementById('personaCreateModal')?.remove();
+                initPersonas();
+            } catch(e) {
+                if (status) status.innerHTML = `<span style="color:var(--red);">❌ 생성 실패: ${e.message}</span>`;
             }
-            userPersonaConfig.personas = pList;
-            await saveUserPersonas();
-            const modal = document.getElementById('personaCatalogModal');
-            if (modal) modal.remove();
-            initPersonas();
         }
 
-        async function removeSlotPersona(key, event) {
+        async function removePersona(key, event) {
             if (event) event.stopPropagation();
             if (!userPersonaConfig) return;
+            if (!confirm('이 페르소나를 삭제하시겠습니까?')) return;
             userPersonaConfig.personas = (userPersonaConfig.personas||[]).filter(p => p.key !== key);
             if (currentPersona === key) togglePersona('');
-            await saveUserPersonas();
-            initPersonas();
-        }
-
-        async function addPersonaGroup() {
-            if (!userPersonaConfig) return;
-            const limits = userPersonaConfig.limits || TIER_LIMITS;
-            const groups = userPersonaConfig.groups || [];
-            if (groups.length >= limits.groups) { alert(`최대 ${limits.groups}개 그룹까지만 생성 가능합니다.`); return; }
-            const name = prompt('새 그룹 이름을 입력하세요:');
-            if (!name || !name.trim()) return;
-            const icon = prompt('그룹 아이콘 (이모지, 예: 📁):', '📁') || '📁';
-            groups.push({name: name.trim(), icon: icon});
-            userPersonaConfig.groups = groups;
+            delete personas[key];
             await saveUserPersonas();
             initPersonas();
         }
 
         async function saveUserPersonas() {
-            // Always save to localStorage as backup
             localStorage.setItem('userPersonaConfig', JSON.stringify(userPersonaConfig));
             try {
                 const resp = await fetch('/api/user/personas', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        personas: userPersonaConfig.personas || [],
-                        groups: userPersonaConfig.groups || []
-                    })
+                    body: JSON.stringify({ personas: userPersonaConfig.personas || [] })
                 });
                 const result = await resp.json();
                 if (result.fallback) console.warn('DB save unavailable, using localStorage');
-            } catch(e) { console.warn('Save personas to server failed, localStorage used:', e); }
-        }
-        function togglePersonaGroup(key) {
-            var body = document.getElementById('pgBody_' + key);
-            var toggle = document.getElementById('pgToggle_' + key);
-            if (body) body.classList.toggle('collapsed');
-            if (toggle) toggle.classList.toggle('collapsed');
+            } catch(e) { console.warn('Save to server failed, localStorage used:', e); }
         }
         async function loadPersonaMemory(personaKey) {
             const panel = document.getElementById('personaMemoryPanel');

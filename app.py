@@ -284,10 +284,6 @@ def index():
     status = hub.status()
     personas = hub.list_personas()
     persona_groups = hub.list_persona_groups()
-    # Build full catalog: key -> {name, group, prompt} for persona picker popup
-    catalog = {}
-    for k, v in hub.PERSONAS.items():
-        catalog[k] = {"name": v["name"], "group": v.get("group", ""), "prompt": v.get("prompt", "")}
 
     username = session.get("username", "")
     user_tier = session.get("user_tier", "free")
@@ -298,19 +294,17 @@ def index():
         ai_status=json.dumps(status),
         personas=json.dumps(personas, ensure_ascii=False),
         personaGroups=json.dumps(persona_groups, ensure_ascii=False),
-        personaCatalog=json.dumps(catalog, ensure_ascii=False),
         tierLimits=json.dumps(tier_limits),
-        defaultPersonas=json.dumps(hub.DEFAULT_PERSONAS),
         usertier=user_tier,
         username=username
     )
 
 
-# ── User Persona Slot API ─────────────────────────────────
+# ── User Persona API (simplified — no groups) ─────────────────
 @app.route("/api/user/personas", methods=["GET"])
 @login_required
 def get_user_personas():
-    """Load user's persona config from DB"""
+    """Load user's persona list from DB"""
     import json as _json
     username = session.get("username", "")
     user_tier = session.get("user_tier", "free")
@@ -321,42 +315,30 @@ def get_user_personas():
             config = res.data[0]
             return jsonify({
                 "personas": _json.loads(config.get("persona_keys", "[]")),
-                "groups": _json.loads(config.get("groups", "[]")),
                 "limits": tier_limits
             })
     except Exception:
         pass
-    # Return empty config for new users — they add personas themselves
-    return jsonify({
-        "personas": [],
-        "groups": [{"name": "기본", "icon": "⭐"}],
-        "limits": tier_limits
-    })
+    return jsonify({"personas": [], "limits": tier_limits})
 
 
 @app.route("/api/user/personas", methods=["POST"])
 @login_required
 def save_user_personas():
-    """Save user's persona config to DB"""
+    """Save user's persona list to DB"""
     import json as _json
     username = session.get("username", "")
     user_tier = session.get("user_tier", "free")
     tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
     data = request.json
     persona_list = data.get("personas", [])
-    groups = data.get("groups", [])
-    # Enforce limits
     if len(persona_list) > tier_limits["personas"]:
         return jsonify({"error": f"최대 {tier_limits['personas']}개 페르소나만 허용됩니다."}), 400
-    if len(groups) > tier_limits["groups"]:
-        return jsonify({"error": f"최대 {tier_limits['groups']}개 그룹만 허용됩니다."}), 400
     try:
         payload = {
             "username": username,
             "persona_keys": _json.dumps(persona_list, ensure_ascii=False),
-            "groups": _json.dumps(groups, ensure_ascii=False),
         }
-        # Upsert
         existing = supabase_admin.table("user_personas").select("id").eq("username", username).execute()
         if existing.data and len(existing.data) > 0:
             supabase_admin.table("user_personas").update(payload).eq("username", username).execute()
@@ -364,19 +346,102 @@ def save_user_personas():
             supabase_admin.table("user_personas").insert(payload).execute()
         return jsonify({"status": "ok"})
     except Exception as e:
-        # Table may not exist yet — return soft error so frontend can use localStorage fallback
-        print(f"  ⚠️ save_user_personas failed (table may not exist): {e}")
-        return jsonify({"status": "ok", "fallback": True, "warning": "DB save failed, using local storage"})
+        print(f"  ⚠️ save_user_personas failed: {e}")
+        return jsonify({"status": "ok", "fallback": True})
 
 
-@app.route("/api/personas/catalog")
+@app.route("/api/user/personas/create", methods=["POST"])
 @login_required
-def personas_catalog():
-    """Return full persona catalog for the picker popup"""
-    catalog = {}
-    for k, v in hub.PERSONAS.items():
-        catalog[k] = {"name": v["name"], "group": v.get("group", ""), "prompt": v.get("prompt", "")}
-    return jsonify(catalog)
+def create_user_persona():
+    """AI generates persona traits from name/job. Saves to user's persona list."""
+    import json as _json
+    username = session.get("username", "")
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    data = request.json
+    name = data.get("name", "").strip()
+    extra_traits = data.get("traits", "").strip()
+    if not name:
+        return jsonify({"error": "페르소나 이름을 입력해주세요."}), 400
+
+    # Check current count
+    current_personas = []
+    try:
+        res = supabase_admin.table("user_personas").select("persona_keys").eq("username", username).execute()
+        if res.data and len(res.data) > 0:
+            current_personas = _json.loads(res.data[0].get("persona_keys", "[]"))
+    except Exception:
+        local_data = data.get("current_personas", [])
+        current_personas = local_data
+
+    if len(current_personas) >= tier_limits["personas"]:
+        return jsonify({"error": f"최대 {tier_limits['personas']}개 페르소나까지 생성 가능합니다."}), 400
+
+    # AI generates persona traits from name
+    trait_prompt = (
+        f"You are creating a persona profile. The persona name/role is: \"{name}\".\n"
+        f"{'Additional user-specified traits: ' + extra_traits if extra_traits else ''}\n\n"
+        f"Generate a detailed persona profile in JSON format with these fields:\n"
+        f"- prompt: A system instruction (2-3 sentences) defining this persona's expertise, personality, and communication style\n"
+        f"- traits: Array of 5-8 core trait keywords (e.g. [\"analytical\",\"detail-oriented\"])\n"
+        f"- skills: Array of 3-5 key skills\n"
+        f"- style: Communication style in one sentence\n\n"
+        f"Output ONLY valid JSON, no markdown, no explanation."
+    )
+
+    try:
+        ai_response = hub.ask(trait_prompt, provider=data.get("provider", "chatgpt"))
+        # AIResponse is a dataclass with .content attribute
+        if not ai_response.success:
+            return jsonify({"error": f"AI 응답 실패: {ai_response.error}"}), 500
+        ai_text = ai_response.content.strip()
+        ai_text = ai_text.strip()
+        if ai_text.startswith("```"):
+            ai_text = ai_text.split("\n", 1)[1] if "\n" in ai_text else ai_text[3:]
+            if ai_text.endswith("```"):
+                ai_text = ai_text[:-3]
+            ai_text = ai_text.strip()
+
+        try:
+            profile = _json.loads(ai_text)
+        except _json.JSONDecodeError:
+            profile = {
+                "prompt": f"You are {name}. Respond with the expertise and perspective of this role.",
+                "traits": [name],
+                "skills": [],
+                "style": "Professional"
+            }
+
+        new_persona = {
+            "key": "p_" + str(int(__import__('time').time() * 1000)),
+            "name": name,
+            "prompt": profile.get("prompt", f"You are {name}."),
+            "traits": profile.get("traits", []),
+            "skills": profile.get("skills", []),
+            "style": profile.get("style", ""),
+            "extra_traits": extra_traits,
+        }
+
+        current_personas.append(new_persona)
+
+        # Save to DB
+        try:
+            payload = {
+                "username": username,
+                "persona_keys": _json.dumps(current_personas, ensure_ascii=False),
+            }
+            existing = supabase_admin.table("user_personas").select("id").eq("username", username).execute()
+            if existing.data and len(existing.data) > 0:
+                supabase_admin.table("user_personas").update(payload).eq("username", username).execute()
+            else:
+                supabase_admin.table("user_personas").insert(payload).execute()
+        except Exception as e:
+            print(f"  ⚠️ persona create DB save failed: {e}")
+
+        return jsonify({"status": "ok", "persona": new_persona, "personas": current_personas})
+
+    except Exception as e:
+        return jsonify({"error": f"AI 페르소나 생성 실패: {str(e)}"}), 500
 
 
 @app.route("/api/ask", methods=["POST"])
