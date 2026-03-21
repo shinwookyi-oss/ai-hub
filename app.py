@@ -1642,6 +1642,8 @@ def admin_create_user():
             "password_hash": _hash_password(password),
             "tier": tier,
             "display_name": display_name,
+            "email": data.get("email", ""),
+            "phone": data.get("phone", ""),
             "is_active": True,
         }).execute()
         return jsonify({"success": True, "user": res.data[0] if res.data else {}})

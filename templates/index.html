@@ -1746,7 +1746,7 @@
             try {
                 const res = await fetch('/api/admin/users', {
                     method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({username, password, display_name, tier})
+                    body: JSON.stringify({username, password, display_name, tier, email: document.getElementById('newEmail').value.trim(), phone: document.getElementById('newPhone').value.trim()})
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1948,7 +1948,7 @@
             if (np !== cp) { err.textContent = '새 비밀번호가 일치하지 않습니다.'; err.style.display='block'; return; }
             if (np.length < 4) { err.textContent = '비밀번호는 4자 이상이어야 합니다.'; err.style.display='block'; return; }
             try {
-                const res = await fetch('/api/user/change-password', {
+                const res = await fetch('/api/user/password', {
                     method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({current_password: cur, new_password: np})
                 });
