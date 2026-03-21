@@ -1609,7 +1609,7 @@ class AIHub:
                 "--- END MEMORY ---"
             )
             
-        return self.ask_stream(prompt, provider=provider, system_prompt=persona_prompt)
+        yield from self.ask_stream(prompt, provider=provider, system_prompt=persona_prompt)
 
     def persona_discuss(self, topic: str, persona_keys: list[str],
                         rounds: int = 2, callback=None) -> dict:
