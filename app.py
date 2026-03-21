@@ -1441,6 +1441,51 @@ def api_persona_conversations(persona_key):
         return jsonify({"conversations": []})
 
 
+# ──────────────────────────── Image Generation: DALL-E 3 ────────────────────────────
+
+@app.route("/api/generate-image", methods=["POST"])
+@login_required
+def api_generate_image():
+    """Generate images using OpenAI DALL-E 3"""
+    try:
+        from openai import OpenAI
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({"error": "OpenAI API key not configured"}), 400
+        client = OpenAI(api_key=api_key)
+        data = request.json
+        prompt = data.get("prompt", "").strip()
+        if not prompt:
+            return jsonify({"error": "Prompt is required"}), 400
+        size = data.get("size", "1024x1024")   # 1024x1024, 1024x1792, 1792x1024
+        quality = data.get("quality", "standard")  # standard, hd
+        style = data.get("style", "vivid")  # vivid, natural
+        # Validate size
+        valid_sizes = ["1024x1024", "1024x1792", "1792x1024"]
+        if size not in valid_sizes:
+            size = "1024x1024"
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            style=style,
+            n=1,
+        )
+        image_url = response.data[0].url
+        revised_prompt = response.data[0].revised_prompt
+        return jsonify({
+            "success": True,
+            "image_url": image_url,
+            "revised_prompt": revised_prompt,
+            "size": size,
+            "quality": quality,
+            "style": style,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ──────────────────────────── Audio: OpenAI TTS ────────────────────────────
 
 @app.route("/api/tts", methods=["POST"])

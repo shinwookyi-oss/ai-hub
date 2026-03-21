@@ -1260,6 +1260,57 @@
             if(!text) return;
             let prompt=text;
             input.value=''; document.getElementById('sendBtn').disabled=true;
+
+            // ── /image command: DALL-E 3 image generation ──
+            const imgMatch = text.match(/^\/(image|그림|이미지)\s+(.+)/i);
+            if (imgMatch) {
+                const imgPrompt = imgMatch[2].trim();
+                addMessage('You', text, 'user-msg');
+                const loadId='load-'+Date.now(); addLoading(loadId);
+                try {
+                    const resp = await fetch('/api/generate-image', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt: imgPrompt, size: '1024x1024', quality: 'standard', style: 'vivid'})
+                    });
+                    removeLoading(loadId);
+                    const r = await resp.json();
+                    if (r.success && r.image_url) {
+                        addMessage('AI', '🎨 이미지가 생성되었습니다!', 'system-msg');
+                        const container = document.createElement('div');
+                        container.className = 'generated-image-container';
+                        container.innerHTML = `
+                            <div class="gen-img-header">
+                                <div class="gen-img-title"><span class="gen-img-icon">🎨</span> AI Generated Image</div>
+                                <span class="gen-img-badge">DALL-E 3</span>
+                            </div>
+                            <div class="gen-img-body">
+                                <img src="${r.image_url}" alt="${escapeHtml(imgPrompt)}" class="gen-img" onclick="window.open(this.src,'_blank')">
+                            </div>
+                            <div class="gen-img-meta">
+                                <div class="gen-img-prompt"><strong>Prompt:</strong> ${escapeHtml(imgPrompt)}</div>
+                                ${r.revised_prompt ? `<div class="gen-img-revised"><strong>Enhanced:</strong> ${escapeHtml(r.revised_prompt.slice(0,200))}${r.revised_prompt.length>200?'...':''}</div>` : ''}
+                                <div class="gen-img-info">${r.size} · ${r.quality} · ${r.style}</div>
+                            </div>
+                            <div class="gen-img-actions">
+                                <a href="${r.image_url}" download="ai-hub-image.png" class="gen-img-btn">💾 Download</a>
+                                <button class="gen-img-btn" onclick="navigator.clipboard.writeText('${r.image_url}').then(()=>this.textContent='✅ Copied!')">📋 Copy URL</button>
+                            </div>`;
+                        outputArea.prepend(container);
+                        outputArea.scrollTop = 0;
+                        document.getElementById('outputBadge').style.display = 'inline-flex';
+                        // On mobile, auto-show output panel
+                        if (window.innerWidth <= 768) showMobilePanel('output');
+                    } else {
+                        addMessage('Error', r.error || 'Image generation failed', 'error-msg');
+                    }
+                } catch(e) {
+                    removeLoading(loadId);
+                    addMessage('Error', 'Image generation error: ' + e.message, 'error-msg');
+                }
+                document.getElementById('sendBtn').disabled=false;
+                return;
+            }
+
             addMessage('You',text,'user-msg');
             const loadId='load-'+Date.now(); addLoading(loadId);
 
