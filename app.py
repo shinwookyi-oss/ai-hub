@@ -1649,8 +1649,6 @@ def admin_create_user():
             "password_hash": _hash_password(password),
             "tier": tier,
             "display_name": display_name,
-            "email": data.get("email", ""),
-            "phone": data.get("phone", ""),
             "is_active": True,
         }).execute()
         return jsonify({"success": True, "user": res.data[0] if res.data else {}})
@@ -1670,10 +1668,6 @@ def admin_update_user(user_id):
         updates["tier"] = data["tier"]
     if "display_name" in data:
         updates["display_name"] = data["display_name"]
-    if "email" in data:
-        updates["email"] = data["email"]
-    if "phone" in data:
-        updates["phone"] = data["phone"]
     if "is_active" in data:
         updates["is_active"] = bool(data["is_active"])
     if "password" in data and data["password"].strip():

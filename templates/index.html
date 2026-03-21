@@ -71,8 +71,6 @@
                     <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
                     <input type="password" id="newPassword" placeholder="Password" style="width:100px;">
                     <input type="text" id="newDisplayName" placeholder="Display Name" style="width:120px;">
-                    <input type="email" id="newEmail" placeholder="Email" style="width:140px;">
-                    <input type="tel" id="newPhone" placeholder="Phone" style="width:120px;">
                     <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option><option value="owner">Owner</option></select>
                     <button onclick="adminAddUser()">+ Add</button>
                 </div>
@@ -1746,15 +1744,13 @@
             try {
                 const res = await fetch('/api/admin/users', {
                     method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({username, password, display_name, tier, email: document.getElementById('newEmail').value.trim(), phone: document.getElementById('newPhone').value.trim()})
+                    body: JSON.stringify({username, password, display_name, tier})
                 });
                 const data = await res.json();
                 if (data.success) {
                     document.getElementById('newUsername').value = '';
                     document.getElementById('newPassword').value = '';
                     document.getElementById('newDisplayName').value = '';
-                    document.getElementById('newEmail').value = '';
-                    document.getElementById('newPhone').value = '';
                     adminLoadUsers();
                 } else { alert(data.error); }
             } catch(e) { alert('Error: ' + e.message); }
