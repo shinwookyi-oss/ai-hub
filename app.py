@@ -1453,6 +1453,28 @@ MAIN_HTML = r"""
             m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${escapeHtml(b)}</div>`;
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
         }
+        function addStreamingMessage(id, h, badge='', time='') {
+            const m = document.createElement('div');
+            m.className = 'message';
+            m.id = 'stream-' + id;
+            let bH = badge ? `<span class="badge">${badge}</span>` : '';
+            let tH = time ? `<span class="time">${time}</span>` : '';
+            m.innerHTML = `<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body"></div>`;
+            chatArea.appendChild(m);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        function updateStreamingMessage(id, content, renderMd=false) {
+            const m = document.getElementById('stream-' + id);
+            if (m) {
+                const body = m.querySelector('.msg-body');
+                if (renderMd) {
+                    body.innerHTML = renderMarkdown(content);
+                } else {
+                    body.textContent = content + ' █';
+                }
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        }
         // Initialize mermaid with dark theme
         mermaid.initialize({startOnLoad:false, theme:'dark', securityLevel:'loose'});
         let chartInstance = null;
@@ -1839,15 +1861,45 @@ MAIN_HTML = r"""
             try {
                 let result;
                 if(currentMode==='chat'){
-                    result=await safeFetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({prompt,provider:currentProvider,persona:currentPersona})});
+                    const streamId = Date.now().toString();
                     removeLoading(loadId);
-                    if(result.success) {
-                        addMessage(result.provider,result.content,'',result.model,result.elapsed_seconds+'s');
-                        const persona_label = currentPersona ? `Persona: ${currentPersona}` : result.provider;
-                        showDoc(`<div class="doc-sec-title">💬 Response</div><div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(result.provider)} <span class="ti">${result.elapsed_seconds}s · ${result.model}</span></div><div class="doc-answer">${escapeHtml(result.content)}</div></div>`, text, persona_label);
+                    addStreamingMessage(streamId, currentProvider, currentPersona ? 'Persona' : '');
+                    
+                    const response = await fetch('/api/ask_stream', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt, provider: currentProvider, persona: currentPersona})
+                    });
+                    
+                    if (!response.ok) {
+                        addMessage('Error', 'Stream request failed', 'error-msg');
+                        return;
                     }
-                    else addMessage('Error',result.error,'error-msg');
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let done = false;
+                    let fullText = '';
+                    const persona_label = currentPersona ? `Persona: ${currentPersona}` : currentProvider;
+                    
+                    // Show initial loading doc
+                    showDoc(`<div class="doc-sec-title">💬 Response</div><div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(currentProvider)} </div><div class="doc-answer" id="doc-stream-${streamId}">Typing...</div></div>`, text, persona_label);
+                    const docEl = document.getElementById(`doc-stream-${streamId}`);
+                    
+                    while (!done) {
+                        const { value, done: readerDone } = await reader.read();
+                        done = readerDone;
+                        if (value) {
+                            const chunk = decoder.decode(value, {stream: true});
+                            fullText += chunk;
+                            updateStreamingMessage(streamId, fullText, false);
+                            if (docEl) docEl.textContent = fullText + ' █';
+                        }
+                    }
+                    // finalized update
+                    updateStreamingMessage(streamId, fullText, true);
+                    if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                    document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
                 } else if(currentMode==='compare'){
                     result=await safeFetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({prompt})});
@@ -3127,6 +3179,78 @@ def api_ask():
     except Exception as e:
         return jsonify({"success": False, "error": f"서버 오류: {str(e)}", "content": "", "provider": "error", "model": "", "elapsed_seconds": 0}), 500
 
+@app.route("/api/ask_stream", methods=["POST"])
+@login_required
+def api_ask_stream():
+    data = request.json
+    prompt = data.get("prompt", "")
+    provider = data.get("provider", "chatgpt")
+    persona = data.get("persona", "")
+    user_id = session.get("username", "admin")
+
+    def generate():
+        try:
+            full_content = ""
+            if persona:
+                memory_context = ""
+                conversation_context = ""
+                if supabase_client:
+                    try:
+                        mem_result = supabase_client.table("persona_memory").select("content").eq(
+                            "user_id", user_id
+                        ).eq("persona_key", persona).order("created_at", desc=True).limit(20).execute()
+                        if mem_result.data:
+                            memories = [m["content"] for m in mem_result.data]
+                            memory_context = "\n".join(f"- {m}" for m in memories)
+                    except Exception:
+                        pass
+                    try:
+                        conv_result = supabase_client.table("persona_conversations").select(
+                            "question,answer"
+                        ).eq("user_id", user_id).eq(
+                            "persona_key", persona
+                        ).order("created_at", desc=True).limit(10).execute()
+                        if conv_result.data:
+                            convs = []
+                            for c in reversed(conv_result.data):
+                                convs.append(f"Q: {c['question'][:200]}\nA: {c['answer'][:300]}")
+                            conversation_context = "\n\n".join(convs)
+                    except Exception:
+                        pass
+                full_memory = ""
+                if memory_context:
+                    full_memory += f"KEY INSIGHTS:\n{memory_context}"
+                if conversation_context:
+                    if full_memory:
+                        full_memory += "\n\n"
+                    full_memory += f"RECENT CONVERSATION HISTORY:\n{conversation_context}"
+                
+                for chunk in hub.ask_as_stream(prompt, persona=persona, provider=provider, memory_context=full_memory):
+                    if chunk:
+                        full_content += chunk
+                        yield chunk
+
+                if supabase_client:
+                    try:
+                        supabase_client.table("persona_conversations").insert({
+                            "user_id": user_id,
+                            "persona_key": persona,
+                            "question": prompt[:2000],
+                            "answer": full_content[:3000],
+                            "provider": provider
+                        }).execute()
+                    except Exception:
+                        pass
+            else:
+                for chunk in hub.ask_stream(prompt, provider=provider):
+                    if chunk:
+                        full_content += chunk
+                        yield chunk
+        except Exception as e:
+            yield f"\n[Stream Error: {str(e)}]"
+
+    from flask import Response, stream_with_context
+    return Response(stream_with_context(generate()), mimetype='text/plain')
 
 @app.route("/api/compare", methods=["POST"])
 @login_required

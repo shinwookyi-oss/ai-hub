@@ -302,6 +302,121 @@ class AIHub:
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
+    # ──────────────────────────── Stream Generators ────────────────────────────
+
+    def _ask_chatgpt_stream(self, prompt: str, system_prompt: str = ""):
+        try:
+            client = self._get_openai_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["chatgpt"])
+            messages.append({"role": "user", "content": prompt})
+
+            response = client.chat.completions.create(
+                model=self.chatgpt_model,
+                messages=messages,
+                stream=True,
+            )
+            full_content = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    text = chunk.choices[0].delta.content
+                    full_content += text
+                    yield text
+            self._history["chatgpt"].append({"role": "user", "content": prompt})
+            self._history["chatgpt"].append({"role": "assistant", "content": full_content})
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
+    def _ask_azure_stream(self, prompt: str, system_prompt: str = ""):
+        try:
+            client = self._get_azure_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["azure"])
+            messages.append({"role": "user", "content": prompt})
+
+            response = client.chat.completions.create(
+                model=self.azure_model,
+                messages=messages,
+                stream=True,
+            )
+            full_content = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    text = chunk.choices[0].delta.content
+                    full_content += text
+                    yield text
+            self._history["azure"].append({"role": "user", "content": prompt})
+            self._history["azure"].append({"role": "assistant", "content": full_content})
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
+    def _ask_gemini_stream(self, prompt: str, system_prompt: str = ""):
+        try:
+            client = self._get_gemini_client()
+            full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+            full_content = ""
+            for chunk in client.models.generate_content_stream(
+                model=self.gemini_model,
+                contents=full_prompt,
+            ):
+                if chunk.text:
+                    full_content += chunk.text
+                    yield chunk.text
+            self._history["gemini"].append({"role": "user", "content": prompt})
+            self._history["gemini"].append({"role": "assistant", "content": full_content})
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
+    def _ask_claude_stream(self, prompt: str, system_prompt: str = ""):
+        try:
+            client = self._get_claude_client()
+            kwargs = {
+                "model": self.claude_model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            if system_prompt:
+                kwargs["system"] = system_prompt
+            
+            full_content = ""
+            with client.messages.stream(**kwargs) as stream:
+                for text in stream.text_stream:
+                    full_content += text
+                    yield text
+            self._history["claude"].append({"role": "user", "content": prompt})
+            self._history["claude"].append({"role": "assistant", "content": full_content})
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
+    def _ask_grok_stream(self, prompt: str, system_prompt: str = ""):
+        try:
+            client = self._get_grok_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["grok"])
+            messages.append({"role": "user", "content": prompt})
+
+            response = client.chat.completions.create(
+                model=self.grok_model,
+                messages=messages,
+                stream=True,
+            )
+            full_content = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    text = chunk.choices[0].delta.content
+                    full_content += text
+                    yield text
+            self._history["grok"].append({"role": "user", "content": prompt})
+            self._history["grok"].append({"role": "assistant", "content": full_content})
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
     # ──────────────────────────── Unified Interface ────────────────────────────
 
     # Language instruction always prepended
@@ -340,6 +455,28 @@ class AIHub:
                 content="", success=False,
                 error=f"Unknown provider: {provider}. Available: {self.PROVIDERS}",
             )
+
+    def ask_stream(self, prompt: str, provider: str = "chatgpt", system_prompt: str = ""):
+        """Ask a specific AI provider and yield streaming text chunks."""
+        provider = provider.lower()
+        lang_sys = self._LANG_INSTRUCTION
+        if system_prompt:
+            lang_sys = f"{self._LANG_INSTRUCTION}\n\n{system_prompt}"
+        
+        if provider == "chatgpt":
+            return self._ask_chatgpt_stream(prompt, lang_sys)
+        elif provider == "gemini":
+            return self._ask_gemini_stream(prompt, lang_sys)
+        elif provider == "azure":
+            return self._ask_azure_stream(prompt, lang_sys)
+        elif provider == "claude":
+            return self._ask_claude_stream(prompt, lang_sys)
+        elif provider == "grok":
+            return self._ask_grok_stream(prompt, lang_sys)
+        else:
+            def err_gen():
+                yield f"Unknown provider: {provider}. Available: {self.PROVIDERS}"
+            return err_gen()
 
     def ask_all(self, prompt: str, system_prompt: str = "") -> list[AIResponse]:
         """Ask all available AIs simultaneously and compare results"""
@@ -1355,6 +1492,25 @@ class AIHub:
         persona_name = self.get_persona_name(persona)
         response.provider = f"{response.provider} as {persona_name}"
         return response
+
+    def ask_as_stream(self, prompt: str, persona: str, provider: str = "chatgpt",
+                      memory_context: str = ""):
+        """Ask an AI as a specific persona (Streaming), optionally with accumulated memory."""
+        persona_prompt = self.get_persona_prompt(persona)
+        if not persona_prompt:
+            yield f"[Error: Unknown persona {persona}]"
+            return
+            
+        if memory_context:
+            persona_prompt += (
+                "\n\n--- ACCUMULATED MEMORY ---\n"
+                "The following are key insights you have learned from previous conversations. "
+                "Reference them naturally when relevant, but do not mention that you have 'memories' explicitly.\n"
+                f"{memory_context}\n"
+                "--- END MEMORY ---"
+            )
+            
+        return self.ask_stream(prompt, provider=provider, system_prompt=persona_prompt)
 
     def persona_discuss(self, topic: str, persona_keys: list[str],
                         rounds: int = 2, callback=None) -> dict:
