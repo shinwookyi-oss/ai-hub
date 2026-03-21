@@ -248,6 +248,7 @@ class AIHub:
             response = client.chat.completions.create(
                 model=self.chatgpt_model,
                 messages=messages,
+                max_tokens=8192,
             )
             content = response.choices[0].message.content
             self._add_to_history("chatgpt", "user", prompt)
@@ -307,6 +308,7 @@ class AIHub:
             response = client.chat.completions.create(
                 model=self.azure_model,
                 messages=messages,
+                max_tokens=8192,
             )
             content = response.choices[0].message.content
             self._add_to_history("azure", "user", prompt)
@@ -348,7 +350,7 @@ class AIHub:
             client = self._get_claude_client()
             kwargs = {
                 "model": self.claude_model,
-                "max_tokens": 2048,
+                "max_tokens": 8192,
                 "messages": [{"role": "user", "content": prompt}],
             }
             if system_prompt:
@@ -384,6 +386,7 @@ class AIHub:
             response = client.chat.completions.create(
                 model=self.grok_model,
                 messages=messages,
+                max_tokens=8192,
             )
             content = response.choices[0].message.content
             self._add_to_history("grok", "user", prompt)
@@ -416,6 +419,7 @@ class AIHub:
                 model=self.chatgpt_model,
                 messages=messages,
                 stream=True,
+                max_tokens=8192,
             )
             full_content = ""
             for chunk in response:
@@ -441,6 +445,7 @@ class AIHub:
                 model=self.azure_model,
                 messages=messages,
                 stream=True,
+                max_tokens=8192,
             )
             full_content = ""
             for chunk in response:
@@ -475,7 +480,7 @@ class AIHub:
             client = self._get_claude_client()
             kwargs = {
                 "model": self.claude_model,
-                "max_tokens": 2048,
+                "max_tokens": 8192,
                 "messages": [{"role": "user", "content": prompt}],
             }
             if system_prompt:
@@ -504,6 +509,7 @@ class AIHub:
                 model=self.grok_model,
                 messages=messages,
                 stream=True,
+                max_tokens=8192,
             )
             full_content = ""
             for chunk in response:
