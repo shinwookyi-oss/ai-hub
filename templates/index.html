@@ -120,6 +120,25 @@
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
                 <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
             </div>
+            <!-- Templates -->
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;" onclick="toggleModeGroup('modeTemplates')">📋 Templates <span id="modeTemplatesArrow" style="float:right;">▶</span></h3>
+            <div id="modeTemplates" style="display:none;">
+                <button class="mode-btn template-btn" onclick="useTemplate('business_plan')">📊 사업계획서</button>
+                <button class="mode-btn template-btn" onclick="useTemplate('proposal')">📝 제안서</button>
+                <button class="mode-btn template-btn" onclick="useTemplate('report')">📑 보고서</button>
+                <button class="mode-btn template-btn" onclick="useTemplate('meeting')">📋 회의록</button>
+                <button class="mode-btn template-btn" onclick="useTemplate('resume')">👤 이력서</button>
+                <button class="mode-btn template-btn" onclick="useTemplate('contract')">📜 계약서</button>
+            </div>
+            <!-- Strategy Analysis -->
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;" onclick="toggleModeGroup('modeStrategy')">🧠 Strategy <span id="modeStrategyArrow" style="float:right;">▶</span></h3>
+            <div id="modeStrategy" style="display:none;">
+                <button class="mode-btn template-btn" onclick="useStrategy('swot')">📊 SWOT 분석</button>
+                <button class="mode-btn template-btn" onclick="useStrategy('pest')">🌍 PEST 분석</button>
+                <button class="mode-btn template-btn" onclick="useStrategy('porter')">⚔️ Porter 5 Forces</button>
+                <button class="mode-btn template-btn" onclick="useStrategy('bcg')">📈 BCG Matrix</button>
+                <button class="mode-btn template-btn" onclick="useStrategy('canvas')">🎯 Business Canvas</button>
+            </div>
             </div>
             <!-- Provider Section -->
             <div class="sidebar-section" id="sectionProvider">
@@ -1313,6 +1332,27 @@
                 return;
             }
 
+            // ── /analyze command: data analysis with charts ──
+            const analyzeMatch = text.match(/^\/(analyze|분석)\s+(.+)/i);
+            if (analyzeMatch) {
+                const topic = analyzeMatch[2].trim();
+                const analyzePrompt = `다음 주제에 대해 **전문적인 데이터 분석**을 수행해주세요.
+
+📊 분석 요청: ${topic}
+
+반드시 포함할 내용:
+1. **📋 분석 개요** — 분석 목적과 범위
+2. **📈 핵심 수치/데이터** — 표(table) 형식으로 정리
+3. **💡 주요 인사이트** — 데이터에서 도출한 핵심 발견
+4. **📊 시각화 제안** — 어떤 차트가 적합한지 설명
+5. **🎯 결론 및 제언** — 의사결정을 위한 요약
+${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석해주세요.' : ''}
+
+각 섹션에 적절한 이모지와 구조화된 마크다운을 사용하세요.`;
+                document.getElementById('userInput').value = analyzePrompt;
+                // Fall through to normal send flow
+            }
+
             addMessage('You',text,'user-msg');
             const loadId='load-'+Date.now(); addLoading(loadId);
 
@@ -2009,8 +2049,58 @@
         function toggleModeGroup(id) {
             const el = document.getElementById(id);
             const arrow = document.getElementById(id + 'Arrow');
-            el.classList.toggle('collapsed');
-            if (arrow) arrow.textContent = el.classList.contains('collapsed') ? '▶' : '▼';
+            if (!el) return;
+            // Support both collapsed class and display:none
+            if (el.style.display === 'none') {
+                el.style.display = 'flex';
+                el.style.flexDirection = 'column';
+                el.style.gap = '4px';
+                if (arrow) arrow.textContent = '▼';
+            } else if (el.classList.contains('collapsed') || el.style.display === '') {
+                el.classList.toggle('collapsed');
+                if (arrow) arrow.textContent = el.classList.contains('collapsed') ? '▶' : '▼';
+            } else {
+                el.style.display = 'none';
+                if (arrow) arrow.textContent = '▶';
+            }
+        }
+
+        // ── Document Templates ──
+        const DOC_TEMPLATES = {
+            business_plan: '다음 사업에 대한 **전문적인 사업계획서**를 작성해주세요.\n\n포함할 섹션:\n1. 📋 Executive Summary (요약)\n2. 🏢 회사 소개 및 비전\n3. 📊 시장 분석 (TAM/SAM/SOM)\n4. 🎯 사업 모델 및 수익 구조\n5. 📈 마케팅/영업 전략\n6. 🏗️ 운영 계획\n7. 👥 팀 구성\n8. 💰 재무 계획 (3년 예상)\n9. 📅 마일스톤 및 일정\n10. ⚠️ 리스크 분석 및 대응\n\n사업 주제: ',
+            proposal: '다음 주제에 대한 **프로페셔널한 제안서**를 작성해주세요.\n\n포함할 섹션:\n1. 📋 프로젝트 개요\n2. 🎯 목적 및 기대효과\n3. 📊 현황 분석\n4. 💡 제안 내용 (상세)\n5. 📅 추진 일정\n6. 💰 예산 계획\n7. 👥 추진 체계\n8. 📈 기대 성과 (KPI)\n\n제안 주제: ',
+            report: '다음 주제에 대한 **전문 보고서**를 작성해주세요.\n\n포함할 섹션:\n1. 📋 요약 (Executive Summary)\n2. 📊 현황 분석\n3. 🔍 상세 분석\n4. 💡 핵심 발견사항\n5. 📈 데이터 및 근거\n6. 🎯 결론 및 제언\n7. 📎 참고사항\n\n보고서 주제: ',
+            meeting: '다음 회의에 대한 **회의록**을 작성해주세요.\n\n포함할 섹션:\n1. 📋 회의 정보 (일시, 참석자, 장소)\n2. 🎯 회의 목적\n3. 📊 안건별 논의 내용\n4. ✅ 결정 사항\n5. 📅 Action Items (담당자, 기한)\n6. 📝 기타 사항\n\n회의 주제: ',
+            resume: '다음 정보를 바탕으로 **프로페셔널한 이력서**를 작성해주세요.\n\n포함할 섹션:\n1. 👤 인적사항 및 요약\n2. 💼 경력사항\n3. 🎓 학력\n4. 🏆 자격증 및 수상\n5. 💡 핵심 역량\n6. 📝 자기소개서\n\n정보: ',
+            contract: '다음 내용에 대한 **계약서 초안**을 작성해주세요.\n\n포함할 섹션:\n1. 📋 계약 당사자\n2. 🎯 계약 목적\n3. 📊 계약 내용 및 범위\n4. 💰 대금 및 지불 조건\n5. 📅 계약 기간\n6. ⚠️ 계약 해지 조건\n7. 📜 기타 조항\n8. ✍️ 서명란\n\n계약 내용: '
+        };
+        function useTemplate(key) {
+            const tmpl = DOC_TEMPLATES[key];
+            if (!tmpl) return;
+            const input = document.getElementById('userInput');
+            input.value = tmpl;
+            input.focus();
+            input.setSelectionRange(tmpl.length, tmpl.length);
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+        }
+
+        // ── Strategy Analysis ──
+        const STRATEGY_TEMPLATES = {
+            swot: '다음 주제에 대한 **SWOT 분석**을 수행해주세요.\n\n📊 분석 프레임워크:\n- **S (Strengths)**: 강점 — 내부 장점\n- **W (Weaknesses)**: 약점 — 내부 단점\n- **O (Opportunities)**: 기회 — 외부 기회요인\n- **T (Threats)**: 위협 — 외부 위험요인\n\n각 요소별 최소 3개 이상 항목을 포함하고, 최종적으로 SO/WO/ST/WT 전략을 도출해주세요.\n\n분석 대상: ',
+            pest: '다음 주제에 대한 **PEST 분석**을 수행해주세요.\n\n🌍 분석 프레임워크:\n- **P (Political)**: 정치적 환경\n- **E (Economic)**: 경제적 환경\n- **S (Social)**: 사회적 환경  \n- **T (Technological)**: 기술적 환경\n\n각 요소별 현황, 트렌드, 영향도, 대응전략을 포함해주세요.\n\n분석 대상: ',
+            porter: '다음 산업에 대한 **Porter\'s 5 Forces (5가지 경쟁 요인)** 분석을 수행해주세요.\n\n⚔ 분석 프레임워크:\n1. 기존 경쟁자 간 경쟁 강도\n2. 신규 진입자의 위협\n3. 대체재의 위협\n4. 구매자의 교섭력\n5. 공급자의 교섭력\n\n각 요인별 강도(높음/중간/낮음), 근거, 대응전략을 포함해주세요.\n\n분석 대상: ',
+            bcg: '다음 사업/제품에 대한 **BCG Matrix (성장-점유율 매트릭스)** 분석을 수행해주세요.\n\n📈 분석 프레임워크:\n- ⭐ **Star**: 고성장 + 고점유 → 투자 유지\n- 🐄 **Cash Cow**: 저성장 + 고점유 → 수익 회수\n- ❓ **Question Mark**: 고성장 + 저점유 → 선택적 투자\n- 🐶 **Dog**: 저성장 + 저점유 → 철수 검토\n\n각 사업/제품을 분류하고 전략을 제안해주세요.\n\n분석 대상: ',
+            canvas: '다음 사업에 대한 **비즈니스 모델 캔버스 (Business Model Canvas)**를 작성해주세요.\n\n🎯 9가지 구성 요소:\n1. 💡 가치 제안 (Value Proposition)\n2. 👥 고객 세그먼트 (Customer Segments)\n3. 📢 채널 (Channels)\n4. 🤝 고객 관계 (Customer Relationships)\n5. 💰 수익 구조 (Revenue Streams)\n6. 🔑 핵심 자원 (Key Resources)\n7. ⚙️ 핵심 활동 (Key Activities)\n8. 🤝 핵심 파트너 (Key Partnerships)\n9. 💸 비용 구조 (Cost Structure)\n\n사업 주제: '
+        };
+        function useStrategy(key) {
+            const tmpl = STRATEGY_TEMPLATES[key];
+            if (!tmpl) return;
+            const input = document.getElementById('userInput');
+            input.value = tmpl;
+            input.focus();
+            input.setSelectionRange(tmpl.length, tmpl.length);
+            if (window.innerWidth <= 768) { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
         }
         function toggleInputTools() {
             const p = document.getElementById('inputToolsPanel');
