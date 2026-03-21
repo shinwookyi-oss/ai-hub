@@ -406,8 +406,8 @@
             .header-tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; max-width: 50vw; }
             .header-tab { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
             .status-dots { display: none; }
-            .info-strip { padding: 2px 12px; font-size: 9px; gap: 10px; flex-shrink: 0; }
-            .container { flex-direction: column; flex: 1; min-height: 0; }
+            .info-strip { display: none; }
+            .container { flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }
             .sidebar {
                 position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
                 width: 260px; transform: translateX(-100%); transition: transform 0.3s;
@@ -425,7 +425,7 @@
             .input-row textarea { font-size: 14px; max-height: 80px; }
             .panel-divider { display: none !important; }
             .output-panel { display: none; width: 100%; min-width: 0; flex: none !important; flex-direction: column; }
-            .output-panel.mobile-show { display: flex; flex: 1 !important; min-height: 0; height: 100%; overflow: hidden; }
+            .output-panel.mobile-show { display: flex; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--bg); }
             .output-panel.mobile-show .output-area { flex: 1; overflow-y: auto; min-height: 0; }
             .main-panel.mobile-hide { display: none; }
             .compare-grid { grid-template-columns: 1fr; }
