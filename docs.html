@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub — Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a2e;
+            --border: #2a2a3e; --text: #e0e0f0; --text2: #8888aa;
+            --accent: #6c5ce7; --accent2: #a29bfe; --green: #00d2a0;
+            --orange: #fdcb6e; --red: #ff6b6b; --blue: #74b9ff;
+            --yellow: #ffeaa7;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Left Nav ── */
+        .nav {
+            width: 220px;
+            min-width: 220px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 20px 14px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .nav-logo {
+            font-size: 18px; font-weight: 700; margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--accent2), var(--blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            padding: 0 4px;
+        }
+        .nav-section {
+            font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text2); margin: 12px 0 4px 4px;
+        }
+        .nav-link {
+            display: block; padding: 7px 10px; border-radius: 7px;
+            color: var(--text2); text-decoration: none; font-size: 13px;
+            transition: all 0.15s; cursor: pointer;
+        }
+        .nav-link:hover { background: var(--surface2); color: var(--text); }
+        .nav-link.active { background: #2a2058; color: var(--accent2); }
+
+        /* ── Main Content ── */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 48px;
+            max-width: 900px;
+        }
+
+        /* ── Right Mini-Nav (오른쪽 창) ── */
+        .right-panel {
+            width: 200px;
+            min-width: 200px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            padding: 24px 14px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .right-panel h4 {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text2); margin-bottom: 10px;
+        }
+        .on-page-link {
+            display: block; padding: 5px 8px; color: var(--text2);
+            text-decoration: none; border-left: 2px solid transparent;
+            transition: all 0.15s; font-size: 12px;
+        }
+        .on-page-link:hover { color: var(--accent2); border-left-color: var(--accent2); }
+        .on-page-link.active { color: var(--accent2); border-left-color: var(--accent2); }
+
+        /* ── Typography ── */
+        h1 { font-size: 32px; font-weight: 700; margin-bottom: 10px;
+             background: linear-gradient(135deg, var(--accent2), var(--blue));
+             -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 22px; font-weight: 600; margin: 40px 0 14px;
+             padding-top: 40px; border-top: 1px solid var(--border); color: var(--text); }
+        h2:first-of-type { border-top: none; }
+        h3 { font-size: 15px; font-weight: 600; margin: 24px 0 10px; color: var(--accent2); }
+        p { font-size: 14px; line-height: 1.75; color: #c0c0d8; margin-bottom: 12px; }
+        .subtitle { color: var(--text2); font-size: 15px; margin-bottom: 30px; }
+
+        /* ── Code ── */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 2px 6px;
+            color: var(--green);
+        }
+        pre {
+            background: #0d0d16;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            overflow-x: auto;
+            margin: 12px 0 20px;
+            position: relative;
+        }
+        pre code {
+            background: none; border: none; padding: 0;
+            font-size: 13px; color: #c0d0f0; line-height: 1.7;
+        }
+        .kw { color: #c39af0; }
+        .str { color: #a8d8a8; }
+        .cm { color: #555577; font-style: italic; }
+        .fn { color: var(--blue); }
+        .cls { color: var(--orange); }
+        .num { color: var(--orange); }
+
+        /* ── Badge / Tag ── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+        }
+        .badge-green { background: #0a2a20; border: 1px solid var(--green); color: var(--green); }
+        .badge-blue { background: #0a1a2a; border: 1px solid var(--blue); color: var(--blue); }
+        .badge-purple { background: #1a1040; border: 1px solid var(--accent2); color: var(--accent2); }
+        .badge-orange { background: #2a1a0a; border: 1px solid var(--orange); color: var(--orange); }
+
+        /* ── Table ── */
+        table { width: 100%; border-collapse: collapse; margin: 10px 0 20px; font-size: 13px; }
+        th { text-align: left; padding: 10px 14px; background: var(--surface2);
+             border-bottom: 1px solid var(--border); color: var(--text2);
+             font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 10px 14px; border-bottom: 1px solid #1e1e2e; vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #13131d; }
+
+        /* ── Cards ── */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin: 14px 0; }
+        .card {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px;
+            transition: border-color 0.2s;
+        }
+        .card:hover { border-color: var(--accent); }
+        .card-icon { font-size: 22px; margin-bottom: 8px; }
+        .card-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .card-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+        /* ── Persona Table ── */
+        .persona-row td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green); }
+        .persona-row td:nth-child(2) { font-weight: 500; }
+
+        /* ── Alert ── */
+        .alert {
+            padding: 12px 16px; border-radius: 8px; margin: 14px 0;
+            font-size: 13px; line-height: 1.6; display: flex; gap: 10px;
+        }
+        .alert-blue { background: #0a1a2a; border: 1px solid #2a4a7a; }
+        .alert-green { background: #0a2a1a; border: 1px solid #1a6a3a; }
+        .alert-orange { background: #2a1a0a; border: 1px solid #7a4a1a; }
+
+        /* ── Method Tag ── */
+        .method { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .method-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 8px 8px 0 0;
+            margin-top: 16px;
+        }
+        .method-body {
+            padding: 14px 16px; background: #0d0d16;
+            border: 1px solid var(--border); border-top: none;
+            border-radius: 0 0 8px 8px; font-size: 13px; line-height: 1.7;
+        }
+        .param { color: var(--blue); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .returns { color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+        .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    </style>
+</head>
+<body>
+
+<!-- ══ LEFT NAV ══ -->
+<nav class="nav">
+    <div class="nav-logo">⚡ AI Hub</div>
+    <div class="nav-section">시작하기</div>
+    <a class="nav-link active" href="#overview" onclick="scrollTo('overview')">개요</a>
+    <a class="nav-link" href="#install" onclick="scrollTo('install')">설치</a>
+    <a class="nav-link" href="#quickstart" onclick="scrollTo('quickstart')">빠른 시작</a>
+
+    <div class="nav-section">핵심 기능</div>
+    <a class="nav-link" href="#ask" onclick="scrollTo('ask')">단일 질문</a>
+    <a class="nav-link" href="#compare" onclick="scrollTo('compare')">비교 모드</a>
+    <a class="nav-link" href="#fallback" onclick="scrollTo('fallback')">자동 폴백</a>
+    <a class="nav-link" href="#debate" onclick="scrollTo('debate')">AI 토론</a>
+
+    <div class="nav-section">페르소나</div>
+    <a class="nav-link" href="#personas" onclick="scrollTo('personas')">페르소나 목록</a>
+    <a class="nav-link" href="#ask-as" onclick="scrollTo('ask-as')">페르소나 질문</a>
+    <a class="nav-link" href="#persona-debate" onclick="scrollTo('persona-debate')">페르소나 토론</a>
+    <a class="nav-link" href="#persona-discuss" onclick="scrollTo('persona-discuss')">그룹 토론</a>
+
+    <div class="nav-section">Web API</div>
+    <a class="nav-link" href="#web-app" onclick="scrollTo('web-app')">웹앱 실행</a>
+    <a class="nav-link" href="#api-ref" onclick="scrollTo('api-ref')">API 레퍼런스</a>
+
+    <div class="nav-section">기타</div>
+    <a class="nav-link" href="#env" onclick="scrollTo('env')">환경변수</a>
+    <a class="nav-link" href="#models" onclick="scrollTo('models')">모델 정보</a>
+</nav>
+
+<!-- ══ MAIN CONTENT ══ -->
+<main class="content" id="mainContent">
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+        <h1>AI Hub Docs</h1>
+        <p class="subtitle">ChatGPT · Gemini · Azure OpenAI · Claude · Grok — 하나의 인터페이스</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-icon">🔄</div>
+                <div class="card-title">멀티 AI 동시 실행</div>
+                <div class="card-desc">ThreadPoolExecutor로 모든 AI를 병렬 호출</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🎭</div>
+                <div class="card-title">20개 페르소나</div>
+                <div class="card-desc">일론 머스크, 칼 융, 니체 등 역할 기반 질문</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⚔️</div>
+                <div class="card-title">AI 토론 시스템</div>
+                <div class="card-desc">두 AI가 토론하고 세 번째 AI가 심판</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🏆</div>
+                <div class="card-title">최선 답변 선발</div>
+                <div class="card-desc">AI들이 서로 투표해 최고 답변 선택</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🌐</div>
+                <div class="card-title">웹앱 내장</div>
+                <div class="card-desc">Flask 기반 웹 UI, 클라우드 배포 가능</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📎</div>
+                <div class="card-title">파일 분석</div>
+                <div class="card-desc">PDF, DOCX, XLSX, CSV 등 첨부 파일 분석</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INSTALL -->
+    <section id="install">
+        <h2>설치</h2>
+        <pre><code><span class="cm"># 의존성 설치</span>
+pip install -r requirements.txt
+
+<span class="cm"># requirements.txt 내용</span>
+flask
+openai
+google-genai
+anthropic</code></pre>
+
+        <h3>환경변수 설정 (.env)</h3>
+        <pre><code>OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
+AZURE_OPENAI_API_KEY=...
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+CLAUDE_API_KEY=sk-ant-...
+GROK_API_KEY=xai-...</code></pre>
+    </section>
+
+    <!-- QUICKSTART -->
+    <section id="quickstart">
+        <h2>빠른 시작</h2>
+        <pre><code><span class="kw">from</span> ai_hub <span class="kw">import</span> <span class="cls">AIHub</span>
+
+hub = <span class="cls">AIHub</span>()
+
+<span class="cm"># 1. 단일 AI 질문</span>
+resp = hub.<span class="fn">ask</span>(<span class="str">"AI의 미래는?"</span>, provider=<span class="str">"chatgpt"</span>)
+<span class="fn">print</span>(resp.content)
+
+<span class="cm"># 2. 모든 AI 동시 비교</span>
+results = hub.<span class="fn">ask_all</span>(<span class="str">"양자컴퓨터란?"</span>)
+<span class="kw">for</span> r <span class="kw">in</span> results:
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{r.provider}: {r.content[:100]}"</span>)
+
+<span class="cm"># 3. 사용 가능한 AI 확인</span>
+<span class="fn">print</span>(hub.<span class="fn">available_providers</span>())
+<span class="cm"># → ['chatgpt', 'gemini', 'azure', 'claude', 'grok']</span>
+
+<span class="cm"># 4. 연결 상태 확인</span>
+<span class="fn">print</span>(hub.<span class="fn">status</span>())
+<span class="cm"># → {'chatgpt': 'Ready', 'gemini': 'Ready', ...}</span></code></pre>
+    </section>
+
+    <!-- ASK -->
+    <section id="ask">
+        <h2>단일 질문 — <code>ask()</code></h2>
+
+        <div class="method-header">
+            <span class="badge badge-blue">METHOD</span>
+            <span class="method">hub.<span style="color:var(--blue)">ask</span>(prompt, provider, system_prompt) → AIResponse</span>
+        </div>
+        <div class="method-body">
+            <table>
+                <tr><th>파라미터</th><th>타입</th><th>기본값</th><th>설명</th></tr>
+                <tr><td><span class="param">prompt</span></td><td>str</td><td>—</td><td>질문 내용</td></tr>
+                <tr><td><span class="param">provider</span></td><td>str</td><td>"chatgpt"</td><td>chatgpt / gemini / azure / claude / grok</td></tr>
+                <tr><td><span class="param">system_prompt</span></td><td>str</td><td>""</td><td>시스템 프롬프트 (역할 지정)</td></tr>
+            </table>
+            <p>반환: <span class="returns">AIResponse</span> — provider, model, content, success, error, elapsed_seconds</p>
+        </div>
+
+        <pre><code>resp = hub.<span class="fn">ask</span>(<span class="str">"요약해줘"</span>, provider=<span class="str">"claude"</span>)
+<span class="kw">if</span> resp.success:
+    <span class="fn">print</span>(resp.content)
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{resp.elapsed_seconds}초 소요"</span>)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="str">"오류:"</span>, resp.error)</code></pre>
+    </section>
+
+    <!-- COMPARE -->
+    <section id="compare">
+        <h2>비교 모드 — <code>ask_all()</code></h2>
+        <p>사용 가능한 모든 AI를 <strong>동시에</strong> 호출하고 결과를 응답 시간 순으로 정렬합니다.</p>
+
+        <pre><code>results = hub.<span class="fn">ask_all</span>(<span class="str">"블록체인의 장단점을 설명해줘"</span>)
+
+<span class="kw">for</span> r <span class="kw">in</span> results:
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"[{r.elapsed_seconds}s] {r.provider} ({r.model})"</span>)
+    <span class="fn">print</span>(r.content)
+    <span class="fn">print</span>(<span class="str">"---"</span>)</code></pre>
+    </section>
+
+    <!-- FALLBACK -->
+    <section id="fallback">
+        <h2>자동 폴백 — <code>ask_with_fallback()</code></h2>
+        <p>첫 번째 AI가 실패하면 자동으로 다음 AI로 전환합니다.</p>
+
+        <pre><code>resp = hub.<span class="fn">ask_with_fallback</span>(
+    <span class="str">"안전한 질문"</span>,
+    priority=[<span class="str">"azure"</span>, <span class="str">"chatgpt"</span>, <span class="str">"gemini"</span>]
+)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{resp.provider}이 답변함"</span>)</code></pre>
+    </section>
+
+    <!-- AI DEBATE -->
+    <section id="debate">
+        <h2>AI 토론 — <code>debate()</code></h2>
+        <p>두 AI가 서로 다른 입장에서 토론하고, 세 번째 AI가 심판 역할을 합니다.</p>
+
+        <pre><code>result = hub.<span class="fn">debate</span>(
+    topic=<span class="str">"AI가 인류에게 위협인가?"</span>,
+    rounds=<span class="num">3</span>,
+    ai_for=<span class="str">"chatgpt"</span>,      <span class="cm"># 찬성 측</span>
+    ai_against=<span class="str">"gemini"</span>,  <span class="cm"># 반대 측</span>
+    judge=<span class="str">"claude"</span>         <span class="cm"># 심판</span>
+)
+
+<span class="kw">for</span> entry <span class="kw">in</span> result[<span class="str">"debate_log"</span>]:
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"[Round {entry['round']}] {entry['speaker']}: {entry['content']}"</span>)
+
+<span class="fn">print</span>(<span class="str">"판결:"</span>, result[<span class="str">"judgment"</span>])</code></pre>
+
+        <div class="alert alert-blue">
+            💡 <strong>discuss()</strong> — 여러 AI가 협력적으로 주제를 논의하는 모드도 있습니다.
+        </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- PERSONAS -->
+    <section id="personas">
+        <h2>페르소나 목록</h2>
+        <p>20개의 내장 페르소나가 있습니다. <code>hub.list_personas()</code>로 전체 목록 조회 가능.</p>
+
+        <table>
+            <tr><th>키</th><th>이름</th><th>분야</th></tr>
+            <tr class="persona-row"><td>elon_musk</td><td>Elon Musk</td><td><span class="badge badge-blue">기업가</span></td></tr>
+            <tr class="persona-row"><td>trump</td><td>Donald Trump</td><td><span class="badge badge-blue">정치/비즈니스</span></td></tr>
+            <tr class="persona-row"><td>cao_cao</td><td>조조 (曹操)</td><td><span class="badge badge-orange">전략</span></td></tr>
+            <tr class="persona-row"><td>chung_juyoung</td><td>정주영</td><td><span class="badge badge-blue">기업가</span></td></tr>
+            <tr class="persona-row"><td>lee_byungchul</td><td>이병철</td><td><span class="badge badge-blue">기업가</span></td></tr>
+            <tr class="persona-row"><td>rockefeller</td><td>John D. Rockefeller</td><td><span class="badge badge-blue">금융</span></td></tr>
+            <tr class="persona-row"><td>musashi</td><td>미야모토 무사시</td><td><span class="badge badge-orange">전략/철학</span></td></tr>
+            <tr class="persona-row"><td>tokugawa</td><td>도쿠가와 이에야스</td><td><span class="badge badge-orange">전략</span></td></tr>
+            <tr class="persona-row"><td>sima_yi</td><td>사마의 (司馬懿)</td><td><span class="badge badge-orange">전략</span></td></tr>
+            <tr class="persona-row"><td>iching_master</td><td>주역 대가</td><td><span class="badge badge-purple">동양철학</span></td></tr>
+            <tr class="persona-row"><td>saju_master</td><td>사주 대가</td><td><span class="badge badge-purple">동양철학</span></td></tr>
+            <tr class="persona-row"><td>jp_morgan</td><td>J.P. Morgan</td><td><span class="badge badge-blue">금융</span></td></tr>
+            <tr class="persona-row"><td>fbi_profiler</td><td>FBI 프로파일러</td><td><span class="badge badge-orange">심리분석</span></td></tr>
+            <tr class="persona-row"><td>carl_jung</td><td>칼 융</td><td><span class="badge badge-purple">심리학</span></td></tr>
+            <tr class="persona-row"><td>nietzsche</td><td>니체</td><td><span class="badge badge-purple">철학</span></td></tr>
+            <tr class="persona-row"><td>schopenhauer</td><td>쇼펜하우어</td><td><span class="badge badge-purple">철학</span></td></tr>
+            <tr class="persona-row"><td>nikola_tesla</td><td>니콜라 테슬라</td><td><span class="badge badge-blue">발명/과학</span></td></tr>
+            <tr class="persona-row"><td>edison</td><td>토마스 에디슨</td><td><span class="badge badge-blue">발명</span></td></tr>
+            <tr class="persona-row"><td>personal_assistant</td><td>개인비서</td><td><span class="badge badge-green">실용</span></td></tr>
+            <tr class="persona-row"><td>devils_advocate</td><td>반대 비서</td><td><span class="badge badge-green">실용</span></td></tr>
+        </table>
+
+        <pre><code><span class="cm"># 커스텀 페르소나 추가</span>
+hub.<span class="fn">add_persona</span>(
+    key=<span class="str">"buffett"</span>,
+    name=<span class="str">"Warren Buffett"</span>,
+    prompt=<span class="str">"You are Warren Buffett, the Oracle of Omaha..."</span>
+)</code></pre>
+    </section>
+
+    <!-- ASK AS -->
+    <section id="ask-as">
+        <h2>페르소나 질문 — <code>ask_as()</code></h2>
+        <pre><code><span class="cm"># 일론 머스크 관점으로 질문</span>
+resp = hub.<span class="fn">ask_as</span>(
+    <span class="str">"한국 스타트업 생태계를 어떻게 봐?"</span>,
+    persona=<span class="str">"elon_musk"</span>,
+    provider=<span class="str">"chatgpt"</span>
+)
+<span class="fn">print</span>(resp.provider)  <span class="cm"># "ChatGPT as Elon Musk"</span>
+<span class="fn">print</span>(resp.content)</code></pre>
+    </section>
+
+    <!-- PERSONA DEBATE -->
+    <section id="persona-debate">
+        <h2>페르소나 토론 — <code>persona_debate()</code></h2>
+        <pre><code>result = hub.<span class="fn">persona_debate</span>(
+    topic=<span class="str">"전쟁은 정당화될 수 있는가?"</span>,
+    persona_for=<span class="str">"cao_cao"</span>,
+    persona_against=<span class="str">"musashi"</span>,
+    ai_for=<span class="str">"chatgpt"</span>,
+    ai_against=<span class="str">"gemini"</span>,
+    judge=<span class="str">"claude"</span>,
+    rounds=<span class="num">3</span>
+)
+<span class="fn">print</span>(result[<span class="str">"judgment"</span>])</code></pre>
+    </section>
+
+    <!-- PERSONA DISCUSS -->
+    <section id="persona-discuss">
+        <h2>그룹 토론 — <code>persona_discuss()</code></h2>
+        <p>여러 페르소나가 한 주제를 두고 다 함께 토론합니다.</p>
+
+        <pre><code>result = hub.<span class="fn">persona_discuss</span>(
+    topic=<span class="str">"AI 시대 인간의 역할은?"</span>,
+    persona_keys=[<span class="str">"nietzsche"</span>, <span class="str">"carl_jung"</span>, <span class="str">"elon_musk"</span>, <span class="str">"tokugawa"</span>],
+    rounds=<span class="num">2</span>,
+    callback=<span class="kw">lambda</span> name, rnd, resp: <span class="fn">print</span>(<span class="fn">f</span><span class="str">"[R{rnd}] {name}: {resp.content[:80]}..."</span>)
+)
+<span class="fn">print</span>(<span class="str">"종합 결론:"</span>, result[<span class="str">"synthesis"</span>])</code></pre>
+    </section>
+
+    <hr class="divider">
+
+    <!-- WEB APP -->
+    <section id="web-app">
+        <h2>웹앱 실행</h2>
+        <pre><code><span class="cm"># 로컬 실행</span>
+python app.py
+<span class="cm"># → http://localhost:5000</span>
+<span class="cm"># 기본 로그인: admin / aihub2026</span></code></pre>
+
+        <div class="alert alert-green">
+            ✅ <strong>Render.com 무료 배포 가능</strong> — GitHub 연동 → New Web Service → <code>pip install -r requirements.txt</code> → <code>gunicorn app:app</code>
+        </div>
+
+        <h3>웹앱 모드</h3>
+        <table>
+            <tr><th>모드</th><th>설명</th></tr>
+            <tr><td>💬 Chat</td><td>선택한 AI와 단일 대화 (히스토리 유지)</td></tr>
+            <tr><td>🔄 Compare All</td><td>모든 AI에 동시 질문 후 카드 형태 비교</td></tr>
+            <tr><td>⚔️ Debate</td><td>AI 2개가 토론, 1개가 심판</td></tr>
+            <tr><td>🗣️ Discussion</td><td>AI들이 협력적으로 주제 논의</td></tr>
+            <tr><td>🏆 Best Answer</td><td>AI들이 서로 투표해 최선 답변 선발</td></tr>
+            <tr><td>🎭 Persona Debate</td><td>역사적 인물들이 토론</td></tr>
+            <tr><td>🧠 Persona Discussion</td><td>여러 인물이 그룹 토론</td></tr>
+        </table>
+    </section>
+
+    <!-- API REF -->
+    <section id="api-ref">
+        <h2>Web API 레퍼런스</h2>
+        <table>
+            <tr><th>엔드포인트</th><th>Method</th><th>Body</th><th>설명</th></tr>
+            <tr><td><code>/api/ask</code></td><td>POST</td><td>prompt, provider, persona</td><td>단일 질문</td></tr>
+            <tr><td><code>/api/compare</code></td><td>POST</td><td>prompt</td><td>모든 AI 비교</td></tr>
+            <tr><td><code>/api/debate</code></td><td>POST</td><td>topic</td><td>AI 토론</td></tr>
+            <tr><td><code>/api/discuss</code></td><td>POST</td><td>topic</td><td>AI 토의</td></tr>
+            <tr><td><code>/api/best</code></td><td>POST</td><td>question</td><td>최선 답변 선발</td></tr>
+            <tr><td><code>/api/persona_debate</code></td><td>POST</td><td>topic, persona_for, persona_against</td><td>페르소나 토론</td></tr>
+            <tr><td><code>/api/persona_discuss</code></td><td>POST</td><td>topic, personas[]</td><td>그룹 토론</td></tr>
+            <tr><td><code>/api/upload</code></td><td>POST</td><td>file (multipart)</td><td>파일 업로드/분석</td></tr>
+        </table>
+
+        <h3>curl 예시</h3>
+        <pre><code>curl -X POST http://localhost:5000/api/ask \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"prompt": "안녕", "provider": "chatgpt"}'</span> \
+  -b <span class="str">"session=..."</span></code></pre>
+    </section>
+
+    <!-- ENV -->
+    <section id="env">
+        <h2>환경변수</h2>
+        <table>
+            <tr><th>변수</th><th>필수</th><th>설명</th></tr>
+            <tr><td><code>OPENAI_API_KEY</code></td><td>🟡 선택</td><td>ChatGPT (gpt-4o-mini)</td></tr>
+            <tr><td><code>GEMINI_API_KEY</code></td><td>🟡 선택</td><td>Gemini 2.5 Flash</td></tr>
+            <tr><td><code>AZURE_OPENAI_API_KEY</code></td><td>🟡 선택</td><td>Azure OpenAI</td></tr>
+            <tr><td><code>AZURE_OPENAI_ENDPOINT</code></td><td>🟡 선택</td><td>Azure 엔드포인트 URL</td></tr>
+            <tr><td><code>CLAUDE_API_KEY</code></td><td>🟡 선택</td><td>Claude (Anthropic)</td></tr>
+            <tr><td><code>GROK_API_KEY</code></td><td>🟡 선택</td><td>Grok (xAI)</td></tr>
+            <tr><td><code>APP_USERNAME</code></td><td>⚪ 웹앱</td><td>로그인 ID (기본: admin)</td></tr>
+            <tr><td><code>APP_PASSWORD</code></td><td>⚪ 웹앱</td><td>로그인 PW (기본: aihub2026)</td></tr>
+            <tr><td><code>SECRET_KEY</code></td><td>⚪ 웹앱</td><td>Flask 세션 키</td></tr>
+            <tr><td><code>PORT</code></td><td>⚪ 웹앱</td><td>웹 포트 (기본: 5000)</td></tr>
+        </table>
+        <div class="alert alert-orange">
+            ⚠️ AI Hub는 API 키가 하나라도 있으면 작동합니다. 여러 개일수록 기능이 풍부해집니다.
+        </div>
+    </section>
+
+    <!-- MODELS -->
+    <section id="models">
+        <h2>기본 모델 정보</h2>
+        <table>
+            <tr><th>Provider</th><th>기본 모델</th><th>변경 방법</th></tr>
+            <tr><td>ChatGPT</td><td><code>gpt-4o-mini</code></td><td><code>AIHub(chatgpt_model="gpt-4o")</code></td></tr>
+            <tr><td>Gemini</td><td><code>gemini-2.5-flash</code></td><td><code>AIHub(gemini_model="gemini-2.0-flash")</code></td></tr>
+            <tr><td>Azure OpenAI</td><td><code>gpt-4o-mini</code></td><td><code>AIHub(azure_model="gpt-4o")</code></td></tr>
+            <tr><td>Claude</td><td><code>claude-sonnet-4-20250514</code></td><td><code>AIHub(claude_model="claude-3-5-haiku...")</code></td></tr>
+            <tr><td>Grok</td><td><code>grok-3-mini-fast</code></td><td><code>AIHub(grok_model="grok-3")</code></td></tr>
+        </table>
+    </section>
+
+</main>
+
+<!-- ══ RIGHT PANEL ══ -->
+<aside class="right-panel">
+    <h4>이 페이지에서</h4>
+    <a class="on-page-link" href="#overview">개요</a>
+    <a class="on-page-link" href="#install">설치</a>
+    <a class="on-page-link" href="#quickstart">빠른 시작</a>
+    <a class="on-page-link" href="#ask">ask()</a>
+    <a class="on-page-link" href="#compare">ask_all()</a>
+    <a class="on-page-link" href="#fallback">ask_with_fallback()</a>
+    <a class="on-page-link" href="#debate">debate()</a>
+    <a class="on-page-link" href="#personas">페르소나 목록</a>
+    <a class="on-page-link" href="#ask-as">ask_as()</a>
+    <a class="on-page-link" href="#persona-debate">persona_debate()</a>
+    <a class="on-page-link" href="#persona-discuss">persona_discuss()</a>
+    <a class="on-page-link" href="#web-app">웹앱 실행</a>
+    <a class="on-page-link" href="#api-ref">API 레퍼런스</a>
+    <a class="on-page-link" href="#env">환경변수</a>
+    <a class="on-page-link" href="#models">모델 정보</a>
+
+    <br>
+    <h4 style="margin-top:20px;">빠른 링크</h4>
+    <a class="on-page-link" href="https://github.com/shinwookyi-oss/ai-hub" target="_blank" style="color:var(--green)">GitHub ↗</a>
+</aside>
+
+<script>
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            const id = a.getAttribute('href').slice(1);
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    // Active highlight on scroll
+    const mainContent = document.getElementById('mainContent');
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const onPageLinks = document.querySelectorAll('.on-page-link');
+
+    function updateActive() {
+        let current = '';
+        sections.forEach(s => {
+            if (s.getBoundingClientRect().top <= 80) current = s.id;
+        });
+        navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+current));
+        onPageLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+current));
+    }
+    mainContent.addEventListener('scroll', updateActive);
+    updateActive();
+</script>
+</body>
+</html>

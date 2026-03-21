@@ -205,6 +205,7 @@
                 </div>
             </div>
         </div>
+        <div class="panel-divider" id="panelDivider" title="Drag to resize · Double-click to reset"></div>
         <div class="output-panel" id="outputPanel">
             <div class="output-panel-header">
                 <div class="output-panel-title">
@@ -1609,15 +1610,91 @@
         function toggleOutputPanel() {
             const panel = document.getElementById('outputPanel');
             const btn = document.getElementById('openOutputBtn');
+            const divider = document.getElementById('panelDivider');
             const isCollapsed = panel.classList.toggle('collapsed');
             btn.classList.toggle('visible', isCollapsed);
+            if (divider) divider.classList.toggle('hidden', isCollapsed);
             localStorage.setItem('outputPanelCollapsed', isCollapsed ? '1' : '0');
         }
         // Restore output panel state
-        if (localStorage.getItem('outputPanelCollapsed') === '1') {
-            document.getElementById('outputPanel').classList.add('collapsed');
-            document.getElementById('openOutputBtn').classList.add('visible');
-        }
+        (function() {
+            if (localStorage.getItem('outputPanelCollapsed') === '1') {
+                document.getElementById('outputPanel').classList.add('collapsed');
+                document.getElementById('openOutputBtn').classList.add('visible');
+                var d = document.getElementById('panelDivider');
+                if (d) d.classList.add('hidden');
+            }
+        })();
+
+        // ── Panel Divider Drag Resize ──
+        (function initPanelDivider() {
+            const divider = document.getElementById('panelDivider');
+            const outputPanel = document.getElementById('outputPanel');
+            const container = document.querySelector('.container');
+            if (!divider || !outputPanel || !container) return;
+
+            const DEFAULT_RATIO = 0.42;
+            const MIN_OUTPUT = 250;
+            const MAX_OUTPUT_RATIO = 0.70;
+            const MIN_MAIN = 300;
+
+            // Restore saved ratio
+            const saved = parseFloat(localStorage.getItem('panelSplitRatio'));
+            if (saved && saved > 0.1 && saved < 0.85) {
+                outputPanel.style.flex = '0 0 ' + (saved * 100) + '%';
+            }
+
+            let isDragging = false;
+
+            function startDrag(e) {
+                if (outputPanel.classList.contains('collapsed')) return;
+                isDragging = true;
+                divider.classList.add('active');
+                document.body.classList.add('resizing');
+                e.preventDefault();
+            }
+            function onDrag(e) {
+                if (!isDragging) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const rect = container.getBoundingClientRect();
+                const sidebar = document.getElementById('mainSidebar');
+                const sidebarW = sidebar && !sidebar.classList.contains('hidden-sidebar') ? sidebar.offsetWidth : 0;
+                const available = rect.width - sidebarW - 5; // 5px for divider
+                const fromRight = rect.right - clientX;
+                let outputW = Math.max(MIN_OUTPUT, Math.min(fromRight, available * MAX_OUTPUT_RATIO));
+                if (available - outputW < MIN_MAIN) outputW = available - MIN_MAIN;
+                if (outputW < MIN_OUTPUT) outputW = MIN_OUTPUT;
+                const ratio = outputW / rect.width;
+                outputPanel.style.flex = '0 0 ' + outputW + 'px';
+                localStorage.setItem('panelSplitRatio', ratio.toFixed(4));
+            }
+            function endDrag() {
+                if (!isDragging) return;
+                isDragging = false;
+                divider.classList.remove('active');
+                document.body.classList.remove('resizing');
+                // Convert px to % for responsive behavior
+                const rect = container.getBoundingClientRect();
+                const ratio = outputPanel.offsetWidth / rect.width;
+                outputPanel.style.flex = '0 0 ' + (ratio * 100) + '%';
+                localStorage.setItem('panelSplitRatio', ratio.toFixed(4));
+            }
+
+            // Mouse events
+            divider.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            // Touch events (tablet)
+            divider.addEventListener('touchstart', startDrag, {passive: false});
+            document.addEventListener('touchmove', onDrag, {passive: false});
+            document.addEventListener('touchend', endDrag);
+
+            // Double-click to reset
+            divider.addEventListener('dblclick', function() {
+                outputPanel.style.flex = '0 0 ' + (DEFAULT_RATIO * 100) + '%';
+                localStorage.setItem('panelSplitRatio', DEFAULT_RATIO.toFixed(4));
+            });
+        })();
 
         // ── Admin Panel ──
         function initAdmin() {
