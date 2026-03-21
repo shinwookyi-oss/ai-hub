@@ -1685,17 +1685,29 @@
 
         // ── Output Panel Toggle ──
         function toggleOutputPanel() {
+            const isMobile = window.innerWidth <= 768;
             const panel = document.getElementById('outputPanel');
             const btn = document.getElementById('openOutputBtn');
             const divider = document.getElementById('panelDivider');
-            const isCollapsed = panel.classList.toggle('collapsed');
-            btn.classList.toggle('visible', isCollapsed);
-            if (divider) divider.classList.toggle('hidden', isCollapsed);
-            localStorage.setItem('outputPanelCollapsed', isCollapsed ? '1' : '0');
+            if (isMobile) {
+                // On mobile: switch back to Chat tab
+                const isShowingOutput = panel.classList.contains('mobile-show');
+                if (isShowingOutput) {
+                    showMobilePanel('chat');
+                } else {
+                    showMobilePanel('output');
+                }
+            } else {
+                // On desktop: toggle collapsed
+                const isCollapsed = panel.classList.toggle('collapsed');
+                btn.classList.toggle('visible', isCollapsed);
+                if (divider) divider.classList.toggle('hidden', isCollapsed);
+                localStorage.setItem('outputPanelCollapsed', isCollapsed ? '1' : '0');
+            }
         }
-        // Restore output panel state
+        // Restore output panel state (desktop only)
         (function() {
-            if (localStorage.getItem('outputPanelCollapsed') === '1') {
+            if (window.innerWidth > 768 && localStorage.getItem('outputPanelCollapsed') === '1') {
                 document.getElementById('outputPanel').classList.add('collapsed');
                 document.getElementById('openOutputBtn').classList.add('visible');
                 var d = document.getElementById('panelDivider');
