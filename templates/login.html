@@ -33,16 +33,21 @@
         .login-box {
             position: relative;
             z-index: 10;
-            width: 380px;
-            padding: 40px;
+            width: 420px;
+            height: 420px;
+            padding: 50px 55px;
             background: rgba(12, 12, 22, 0.12);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(108, 92, 231, 0.15);
-            border-radius: 20px;
+            border-radius: 50%;
             text-align: center;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25), 0 0 60px rgba(108, 92, 231, 0.05);
             pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         h1 {
             font-size: 28px;
@@ -103,7 +108,7 @@
         <p class="error">{{ error_msg }}</p>
         {% endif %}
 
-        <form method="POST">
+        <form method="POST" style="width:100%;">
             <input type="text" name="username" placeholder="Username" autofocus required>
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
