@@ -205,7 +205,7 @@
                 </div>
             </div>
         </div>
-        <div class="output-panel">
+        <div class="output-panel" id="outputPanel">
             <div class="output-panel-header">
                 <div class="output-panel-title">
                     📄 Result Document
@@ -223,12 +223,14 @@
                         <option value="csv">CSV</option>
                     </select>
                     <button class="output-action-btn" onclick="clearOutput()" data-i18n="clear">Clear</button>
+                    <button class="output-action-btn" onclick="toggleOutputPanel()" title="Close Output Panel" style="font-size:16px;padding:5px 8px;">✕</button>
                 </div>
             </div>
             <div class="output-area" id="outputArea">
                 <div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">AI 분석 결과가<br>여기에 문서화됩니다</p></div>
             </div>
         </div>
+    <button class="open-output-btn" id="openOutputBtn" onclick="toggleOutputPanel()" title="Open Result Document">📄</button>
     </div>
     <script>
         // ── i18n: Browser Language Detection & Translation ──
@@ -1602,6 +1604,20 @@
         setMode = function(m) { origSetMode(m); if(window.innerWidth<=768) toggleSidebar(); };
         const origSetProvider = setProvider;
         setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
+
+        // ── Output Panel Toggle ──
+        function toggleOutputPanel() {
+            const panel = document.getElementById('outputPanel');
+            const btn = document.getElementById('openOutputBtn');
+            const isCollapsed = panel.classList.toggle('collapsed');
+            btn.classList.toggle('visible', isCollapsed);
+            localStorage.setItem('outputPanelCollapsed', isCollapsed ? '1' : '0');
+        }
+        // Restore output panel state
+        if (localStorage.getItem('outputPanelCollapsed') === '1') {
+            document.getElementById('outputPanel').classList.add('collapsed');
+            document.getElementById('openOutputBtn').classList.add('visible');
+        }
 
         // ── Admin Panel ──
         function initAdmin() {
