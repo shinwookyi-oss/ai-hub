@@ -279,7 +279,32 @@ def admin_required(f):
 
 @app.route("/logout")
 def logout():
+    user_tier = session.get("user_tier", "free")
+    username = session.get("username", "")
+    
+    # Guest/free tier: clear ALL data on logout
+    if user_tier in ("free", "guest") or username == "guest":
+        # Clear AI Hub chat history (server-side memory)
+        hub.clear_history()
+        
+        # Delete conversations from Supabase
+        try:
+            if username:
+                supabase_admin.table("conversations").delete().eq("username", username).execute()
+        except Exception:
+            pass
+        
+        # Delete persona memories from Supabase
+        try:
+            if username:
+                supabase_admin.table("persona_memory").delete().eq("username", username).execute()
+        except Exception:
+            pass
+    
     session.clear()
+    # Redirect with cleanup flag for guest users
+    if user_tier in ("free", "guest") or username == "guest":
+        return redirect(url_for("login_page") + "?cleanup=1")
     return redirect(url_for("login_page"))
 
 

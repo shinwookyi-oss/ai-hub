@@ -119,5 +119,15 @@
             <button type="submit">Login</button>
         </form>
     </div>
+    <script>
+        // Guest cleanup: wipe all local data on logout
+        if (new URLSearchParams(window.location.search).get('cleanup') === '1') {
+            try { localStorage.clear(); } catch(e) {}
+            try { sessionStorage.clear(); } catch(e) {}
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
+            console.log('Guest data cleared');
+        }
+    </script>
 </body>
 </html>
