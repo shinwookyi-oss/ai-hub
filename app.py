@@ -366,6 +366,8 @@ MAIN_HTML = r"""
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -1626,28 +1628,93 @@ MAIN_HTML = r"""
             if (!content || content.includes('AI 분석 결과가')) { alert('No content to export'); return; }
             var title = 'AI_Hub_Export_' + new Date().toISOString().slice(0,10);
             
+            // Re-usable style block that mimics the Notion-style CSS for print/export
+            var exportStyle = `
+                <style>
+                    body, .pdf-wrapper { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.75; color: #333; background: #fff; font-size: 15px; }
+                    .doc-query { font-size: 20px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; color: #111; }
+                    .doc-provider { margin-bottom: 30px; }
+                    .doc-provider-name { font-weight: 600; font-size: 14px; color: #555; margin-bottom: 12px; }
+                    h1, h2, h3 { color: #111; margin-top: 1.5em; margin-bottom: 0.75em; font-weight: 600; }
+                    h1 { font-size: 1.8em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+                    h2 { font-size: 1.5em; }
+                    h3 { font-size: 1.25em; }
+                    p { margin-bottom: 1em; }
+                    ul, ol { margin-bottom: 1em; padding-left: 2em; }
+                    pre { background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; font-family: 'Consolas', monospace; font-size: 13px; color: #24292e; margin-bottom: 1em; white-space: pre-wrap; word-wrap: break-word; }
+                    code { font-family: 'Consolas', monospace; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #e83e8c; }
+                    pre code { background: none; padding: 0; color: inherit; }
+                    blockquote { border-left: 4px solid #e2e8f0; margin: 0 0 1em 0; padding: 10px 20px; color: #666; background: #f8f9fa; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+                    th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+                    th { background: #f8f9fa; font-weight: 600; }
+                    .doc-footer { font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 10px; margin-top: 30px; display: flex; justify-content: space-between; }
+                </style>
+            `;
+
             if (format === 'pdf') {
-                window.print();
+                if (typeof html2pdf === 'undefined') { alert('PDF Library is still loading. Please try again in a few seconds.'); return; }
+                
+                var hiddenContainer = document.createElement('div');
+                hiddenContainer.style.position = 'absolute';
+                hiddenContainer.style.left = '-9999px';
+                hiddenContainer.style.top = '-9999px';
+                hiddenContainer.style.width = '800px'; 
+                
+                hiddenContainer.innerHTML = exportStyle + '<div class="pdf-wrapper">' + html + '</div>';
+                document.body.appendChild(hiddenContainer);
+                
+                var opt = {
+                    margin:       12,
+                    filename:     title + '.pdf',
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                
+                html2pdf().set(opt).from(hiddenContainer.querySelector('.pdf-wrapper')).save().then(() => {
+                    document.body.removeChild(hiddenContainer);
+                });
+
             } else if (format === 'html') {
-                var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px;line-height:1.6;color:#333;margin:0 auto;max-width:900px;}</style></head><body>' + html + '</body></html>';
+                var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>' + exportStyle + '</head><body style="max-width:900px;margin:0 auto;">' + html + '</body></html>';
                 var blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8;'});
                 var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
                 a.download = title + '.html'; a.click();
+                
             } else if (format === 'word') {
-                var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title></head><body>' + html + '</body></html>';
+                var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title>' + exportStyle + '</head><body style="max-width:900px;margin:0 auto;">' + html + '</body></html>';
                 var blob = new Blob(['\ufeff', docHtml], {type: 'application/msword'});
                 var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
                 a.download = title + '.doc'; a.click();
-            } else if (format === 'csv') {
-                var csv = content.split('\\n').map(l => '"' + l.replace(/"/g,'""') + '"').join('\\n');
-                var blob = new Blob(['\ufeff', csv], {type: 'text/csv;charset=utf-8;'});
-                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                a.download = title + '.csv'; a.click();
-            } else if (format === 'excel') {
-                var xlsHtml = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>' + html + '</body></html>';
-                var blob = new Blob(['\ufeff', xlsHtml], {type: 'application/vnd.ms-excel'});
-                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                a.download = title + '.xls'; a.click();
+                
+            } else if (format === 'excel' || format === 'csv') {
+                if (typeof XLSX === 'undefined') { alert('Excel Library is still loading. Please try again in a few seconds.'); return; }
+                
+                var tables = outputArea.querySelectorAll('table');
+                var wb = XLSX.utils.book_new();
+                
+                if (tables.length > 0) {
+                    tables.forEach((table, index) => {
+                        var ws = XLSX.utils.table_to_sheet(table);
+                        XLSX.utils.book_append_sheet(wb, ws, "Table " + (index+1));
+                    });
+                } else {
+                    var lines = content.split('\n');
+                    var ws_data = lines.map(l => [l]);
+                    var ws = XLSX.utils.aoa_to_sheet(ws_data);
+                    XLSX.utils.book_append_sheet(wb, ws, "Result");
+                }
+                
+                if (format === 'csv') {
+                    var first_sheet_name = wb.SheetNames[0];
+                    var csv_str = XLSX.utils.sheet_to_csv(wb.Sheets[first_sheet_name]);
+                    var blob = new Blob(['\ufeff', csv_str], {type: 'text/csv;charset=utf-8;'});
+                    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                    a.download = title + '.csv'; a.click();
+                } else {
+                    XLSX.writeFile(wb, title + '.xlsx');
+                }
             }
         }
         async function visualize() {
