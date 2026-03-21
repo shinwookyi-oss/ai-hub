@@ -1397,6 +1397,10 @@
                     updateStreamingMessage(streamId, fullText, true);
                     if (docEl) docEl.innerHTML = renderMarkdown(fullText);
                     document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
+                    // Save AI response to conversation history
+                    if (supabaseEnabled && currentConvId) {
+                        saveMsg({role:'assistant', content: fullText, provider: currentProvider, speaker: currentPersona || currentProvider});
+                    }
                 } else if(currentMode==='compare'){
                     result=await safeFetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({prompt})});
