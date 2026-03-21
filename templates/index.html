@@ -102,7 +102,10 @@
                     <div id="wsFolderList"></div>
                 </div>
                 <div class="ws-files">
-                    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Files</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Files</span>
+                        <button class="ws-btn" id="wsAnalyzeBtn" onclick="analyzeSelectedFiles()" style="display:none;padding:4px 10px;font-size:11px;background:rgba(108,92,231,0.15);color:var(--accent2);border:1px solid var(--accent);border-radius:6px;cursor:pointer;">🔍 Analyze Selected</button>
+                    </div>
                     <div id="wsFileList"><div style="color:var(--text2);font-size:13px;">Select a folder to view files</div></div>
                 </div>
             </div>
@@ -2584,8 +2587,9 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 r.files.forEach(function(f) {
                     var size = (f.size_bytes / 1024).toFixed(1) + ' KB';
                     var time = new Date(f.created_at).toLocaleString();
-                    html += `<div class="ws-file-item" onclick="viewFile('${f.id}')">
-                        <div style="flex:1;overflow:hidden;">
+                    html += `<div class="ws-file-item" style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" class="ws-file-check" data-file-id="${f.id}" onclick="event.stopPropagation();updateAnalyzeBtn();" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+                        <div style="flex:1;overflow:hidden;cursor:pointer;" onclick="viewFile('${f.id}')">
                             <div style="font-weight:600;color:#e0e0ff;font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">📄 ${f.name}</div>
                             <div style="color:var(--text2);font-size:11px;margin-top:4px;">${size} • ${time}</div>
                         </div>
@@ -2612,6 +2616,33 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 closeWorkspace();
                 if (window.innerWidth <= 768) showMobilePanel('output');
             } catch(e) { alert('Error reading file: '+e.message); }
+        }
+
+        function updateAnalyzeBtn() {
+            const checked = document.querySelectorAll('.ws-file-check:checked');
+            const btn = document.getElementById('wsAnalyzeBtn');
+            if (btn) btn.style.display = checked.length > 0 ? 'inline-flex' : 'none';
+        }
+
+        async function analyzeSelectedFiles() {
+            const checks = document.querySelectorAll('.ws-file-check:checked');
+            if (!checks.length) { alert('파일을 선택해주세요.'); return; }
+            const fileIds = Array.from(checks).map(c => c.dataset.fileId);
+            const contents = [];
+            for (const id of fileIds) {
+                try {
+                    const r = await fetch('/api/files/'+id).then(r=>r.json());
+                    if (r.content) contents.push({name: r.name, content: r.content.slice(0, 30000)});
+                } catch(e) { console.warn('File load error:', e); }
+            }
+            if (!contents.length) { alert('선택된 파일을 읽을 수 없습니다.'); return; }
+            closeWorkspace();
+            const fileText = contents.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+            const prompt = `다음 ${contents.length}개 파일의 내용을 분석해주세요.\n\n` +
+                `포함할 내용:\n1. 📋 각 파일 요약\n2. 💡 핵심 인사이트\n3. 🔗 파일간 연관성\n4. 🎯 결론 및 제언\n\n` +
+                `--- 파일 내용 ---\n${fileText}\n--- 끝 ---`;
+            document.getElementById('userInput').value = prompt;
+            send();
         }
 
         async function saveOutputToWorkspace() {
