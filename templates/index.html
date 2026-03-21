@@ -757,26 +757,41 @@
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
         }
-        // Initialize mermaid with dark theme
-        mermaid.initialize({startOnLoad:false, theme:'dark', securityLevel:'loose'});
+        // Initialize mermaid with premium dark theme
+        mermaid.initialize({
+            startOnLoad:false, theme:'dark', securityLevel:'loose',
+            themeVariables: {
+                darkMode: true, background: '#0f0f1e', primaryColor: '#6c5ce7',
+                primaryBorderColor: '#a29bfe', primaryTextColor: '#e0e0f0',
+                secondaryColor: '#1a1a30', lineColor: '#a29bfe', textColor: '#e0e0f0',
+                mainBkg: '#1a1a30', nodeBorder: '#6c5ce7', clusterBkg: '#12121a',
+                titleColor: '#a29bfe', edgeLabelBackground: '#1a1a30',
+                fontSize: '14px', fontFamily: 'Inter, sans-serif',
+            }
+        });
         let chartInstance = null;
 
         function renderMarkdown(text) {
             if(typeof marked === 'undefined') return `<pre>${escapeHtml(text)}</pre>`;
-            // Configure marked
             marked.setOptions({breaks:true, gfm:true});
             return `<div class="md-body">${marked.parse(text)}</div>`;
         }
         async function renderMermaid(container) {
-            const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid');
+            const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid:not(.mermaid-rendered)');
             for(const block of blocks) {
                 const code = block.textContent;
-                const div = document.createElement('div');
-                div.className = 'mermaid';
-                div.textContent = code;
-                block.closest('pre') ? block.closest('pre').replaceWith(div) : block.replaceWith(div);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mermaid-wrapper';
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.textContent = code;
+                wrapper.innerHTML = '<div class="mermaid-header"><span class="mermaid-icon">🗺️</span> Diagram</div>';
+                wrapper.appendChild(mermaidDiv);
+                const target = block.closest('pre') || block;
+                target.replaceWith(wrapper);
             }
-            try { await mermaid.run({nodes: container.querySelectorAll('.mermaid')}); } catch(e) {}
+            try { await mermaid.run({nodes: container.querySelectorAll('.mermaid:not(.mermaid-rendered)')}); } catch(e) {}
+            container.querySelectorAll('.mermaid').forEach(m => m.classList.add('mermaid-rendered'));
         }
         function showDoc(html, query='', footer='') {
             const ts = new Date().toLocaleTimeString();
@@ -1027,28 +1042,85 @@
         }
         function renderChart(data, title) {
             if(chartInstance) chartInstance.destroy();
+            const chartType = data.type || 'bar';
+            const typeIcons = {bar:'📊',line:'📈',pie:'🥧',doughnut:'🍩',radar:'🕸️',polarArea:'🎯'};
+            const icon = typeIcons[chartType] || '📊';
             const container = document.createElement('div');
             container.className = 'chart-container';
-            container.innerHTML = `<div class="doc-sec-title">${title}</div><canvas id="vizChart"></canvas>`;
+            container.innerHTML = `<div class="chart-header">
+                <div class="chart-title"><div class="chart-icon">${icon}</div>${title}</div>
+                <span class="chart-badge">${chartType.toUpperCase()}</span>
+            </div><div class="chart-body"><canvas id="vizChart"></canvas></div>`;
             outputArea.prepend(container);
             const ctx = document.getElementById('vizChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: data.type || 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: data.datasets.map((ds,i) => ({
+            // Premium gradient color palette
+            const palette = [
+                ['#6c5ce7','#a29bfe'],['#00cec9','#55efc4'],['#fd79a8','#fab1a0'],
+                ['#fdcb6e','#ffeaa7'],['#74b9ff','#81ecec'],['#e17055','#fab1a0'],
+                ['#00b894','#55efc4'],['#e84393','#fd79a8'],['#0984e3','#74b9ff'],
+                ['#d63031','#ff7675'],['#6c5ce7','#fd79a8'],['#00cec9','#fdcb6e'],
+                ['#e17055','#fdcb6e'],['#0984e3','#00cec9'],['#6c5ce7','#00cec9'],
+                ['#e84393','#fdcb6e']
+            ];
+            const isPolar = chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea';
+            const datasets = data.datasets.map((ds, i) => {
+                const [c1, c2] = palette[i % palette.length];
+                if (isPolar && ds.data) {
+                    // Multi-color for pie/doughnut
+                    return {
                         ...ds,
-                        backgroundColor: ds.backgroundColor || ['#6c5ce7','#74b9ff','#00cec9','#fd79a8','#fdcb6e','#55efc4'][i%6],
-                        borderColor: ds.borderColor || 'transparent',
-                        borderWidth: 1
-                    }))
-                },
+                        backgroundColor: ds.data.map((_,j) => palette[j % palette.length][0] + 'cc'),
+                        borderColor: ds.data.map((_,j) => palette[j % palette.length][0]),
+                        borderWidth: 2,
+                        hoverOffset: 8,
+                    };
+                }
+                if (chartType === 'line') {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 380);
+                    gradient.addColorStop(0, c1 + '40');
+                    gradient.addColorStop(1, c1 + '05');
+                    return { ...ds, borderColor: c1, backgroundColor: gradient, borderWidth: 2.5, pointBackgroundColor: c1, pointBorderColor: '#0d0d1a', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7, tension: 0.4, fill: true };
+                }
+                if (chartType === 'radar') {
+                    return { ...ds, borderColor: c1, backgroundColor: c1 + '25', borderWidth: 2, pointBackgroundColor: c1, pointBorderColor: c1, pointRadius: 3 };
+                }
+                // Bar: rounded corners + gradient
+                return { ...ds, backgroundColor: ds.backgroundColor || c1 + 'cc', borderColor: ds.borderColor || c1, borderWidth: 1, borderRadius: 6, hoverBackgroundColor: c1 };
+            });
+            chartInstance = new Chart(ctx, {
+                type: chartType,
+                data: { labels: data.labels, datasets },
                 options: {
-                    responsive:true, plugins:{legend:{labels:{color:'#e0e0f0'}},
-                    title:{display:!!data.title, text:data.title, color:'#e0e0f0'}},
-                    scales: data.type==='pie'||data.type==='doughnut' ? {} : {
-                        x:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}},
-                        y:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}}
+                    responsive: true,
+                    animation: { duration: 800, easing: 'easeOutQuart' },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#c0c0e0', font: { size: 12, family: 'Inter' },
+                                padding: 16, usePointStyle: true, pointStyle: 'rectRounded',
+                            }
+                        },
+                        title: { display: !!data.title, text: data.title, color: '#e0e0f0', font: { size: 14, weight: '600', family: 'Inter' }, padding: {top: 4, bottom: 12} },
+                        tooltip: {
+                            backgroundColor: 'rgba(13,13,26,0.92)',
+                            borderColor: 'rgba(108,92,231,0.3)', borderWidth: 1,
+                            titleColor: '#a29bfe', bodyColor: '#e0e0f0',
+                            titleFont: { size: 12, weight: '600' }, bodyFont: { size: 13 },
+                            cornerRadius: 10, padding: 12, boxPadding: 6,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let v = context.parsed.y ?? context.parsed ?? context.raw;
+                                    if (typeof v === 'number') v = v.toLocaleString();
+                                    return ` ${context.dataset.label || ''}: ${v}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: isPolar ? {} : {
+                        x: { ticks: { color: '#7878a0', font: {size:11} }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
+                        y: { ticks: { color: '#7878a0', font: {size:11}, callback: v => typeof v==='number'&&v>=1000 ? (v/1000).toFixed(v%1000?1:0)+'k' : v }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
                     }
                 }
             });
