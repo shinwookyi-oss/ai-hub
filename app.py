@@ -1258,28 +1258,52 @@ def api_conversation_delete(conv_id):
 @app.route("/api/folders", methods=["GET"])
 @login_required
 def api_folders_list():
-    """List all folders"""
+    """List all folders with workspace usage info"""
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
     if not supabase_client:
-        return jsonify({"folders": [], "workspace": False})
+        return jsonify({"folders": [], "workspace": False, "limits": tier_limits})
     try:
+        username = session.get("username", "admin")
         result = supabase_client.table("folders").select("*").eq(
-            "user_id", session.get("username", "admin")
+            "user_id", username
         ).order("created_at", desc=False).execute()
-        return jsonify({"folders": result.data, "workspace": True})
+        # Calculate usage
+        folders = result.data or []
+        file_result = supabase_client.table("workspace_files").select("id,content").eq("user_id", username).execute()
+        files = file_result.data or []
+        total_bytes = sum(len((f.get("content") or "").encode("utf-8")) for f in files)
+        usage = {
+            "folders": len(folders),
+            "files": len(files),
+            "storage_mb": round(total_bytes / (1024 * 1024), 2)
+        }
+        return jsonify({"folders": folders, "workspace": True, "limits": tier_limits, "usage": usage})
     except:
-        return jsonify({"folders": [], "workspace": True})
+        return jsonify({"folders": [], "workspace": True, "limits": tier_limits})
 
 
 @app.route("/api/folders", methods=["POST"])
 @login_required
 def api_folders_create():
-    """Create a new folder"""
+    """Create a new folder (tier-limited)"""
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    # Free tier: no workspace
+    if tier_limits["folders"] == 0:
+        return jsonify({"error": "워크스페이스는 Premium 이상에서 사용 가능합니다. 업그레이드해주세요."}), 403
     try:
+        # Check current folder count
+        username = session.get("username", "admin")
+        existing = supabase_client.table("folders").select("id").eq("user_id", username).execute()
+        current_count = len(existing.data) if existing.data else 0
+        if current_count >= tier_limits["folders"]:
+            return jsonify({"error": f"폴더 최대 {tier_limits['folders']}개까지 생성 가능합니다. ({current_count}/{tier_limits['folders']})"}), 400
         data = request.json
         result = supabase_client.table("folders").insert({
-            "user_id": session.get("username", "admin"),
+            "user_id": username,
             "name": data.get("name", "New Folder"),
             "icon": data.get("icon", "📁"),
             "description": data.get("description", "")
@@ -1339,17 +1363,38 @@ def api_files_list(folder_id):
 @app.route("/api/folders/<folder_id>/files", methods=["POST"])
 @login_required
 def api_files_create(folder_id):
-    """Create/save a file in a folder"""
+    """Create/save a file in a folder (tier-limited)"""
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
+    user_tier = session.get("user_tier", "free")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    # Free tier: no workspace
+    if tier_limits["files"] == 0:
+        return jsonify({"error": "파일 저장은 Premium 이상에서 사용 가능합니다."}), 403
     try:
         data = request.json
+        username = session.get("username", "admin")
+        content = data.get("content", "")
+        # Check file size limit
+        content_size_mb = len(content.encode("utf-8")) / (1024 * 1024)
+        if content_size_mb > tier_limits["file_size_mb"]:
+            return jsonify({"error": f"파일 크기 제한 초과 ({tier_limits['file_size_mb']}MB 이하만 허용)"}), 400
+        # Check total file count
+        all_files = supabase_client.table("workspace_files").select("id,content").eq("user_id", username).execute()
+        current_file_count = len(all_files.data) if all_files.data else 0
+        if current_file_count >= tier_limits["files"]:
+            return jsonify({"error": f"파일 최대 {tier_limits['files']}개까지 저장 가능합니다. ({current_file_count}/{tier_limits['files']})"}), 400
+        # Check total storage
+        total_bytes = sum(len((f.get("content") or "").encode("utf-8")) for f in (all_files.data or []))
+        total_mb = total_bytes / (1024 * 1024)
+        if total_mb + content_size_mb > tier_limits["storage_mb"]:
+            return jsonify({"error": f"저장 공간 한도 초과 ({total_mb:.1f}/{tier_limits['storage_mb']}MB 사용 중)"}), 400
         result = supabase_client.table("workspace_files").insert({
             "folder_id": folder_id,
-            "user_id": session.get("username", "admin"),
+            "user_id": username,
             "name": data.get("name", "Untitled"),
             "type": data.get("type", "note"),  # note, conversation, slides, file
-            "content": data.get("content", ""),
+            "content": content,
             "metadata": data.get("metadata", {})
         }).execute()
         return jsonify({"file": result.data[0] if result.data else {}, "success": True})
