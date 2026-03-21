@@ -512,7 +512,7 @@
                 }
                 if (!userPersonaConfig) {
                     userPersonaConfig = {
-                        personas: DEFAULT_PERSONAS.slice(0, TIER_LIMITS.personas).map(k => ({key: k, group: '기본'})),
+                        personas: [],
                         groups: [{name: '기본', icon: '⭐'}],
                         limits: TIER_LIMITS
                     };

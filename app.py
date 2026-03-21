@@ -326,10 +326,9 @@ def get_user_personas():
             })
     except Exception:
         pass
-    # Return defaults if no DB record
-    defaults = hub.DEFAULT_PERSONAS[:tier_limits["personas"]]
+    # Return empty config for new users — they add personas themselves
     return jsonify({
-        "personas": [{"key": k, "group": "기본"} for k in defaults],
+        "personas": [],
         "groups": [{"name": "기본", "icon": "⭐"}],
         "limits": tier_limits
     })
