@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+            <button class="sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebarCollapse()" title="Toggle sidebar">◀</button>
+            <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi</span></h1>
+        </div>
+        <div class="header-tabs" id="headerTabs">
+            <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="mode">Mode</button>
+            <button class="header-tab" id="tabProvider" onclick="switchSidebarTab('provider')">AI</button>
+            <button class="header-tab" id="tabPersona" onclick="switchSidebarTab('persona')" data-i18n="persona" title="클릭: 패널 열기  ·  다시 클릭: 닫기">Persona</button>
+        </div>
+        <div class="header-right">
+            <div class="status-dots" id="statusDots"></div>
+            <button class="theme-picker-btn" onclick="toggleThemePicker()" title="Theme">🎨</button>
+            <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
+            <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
+        </div>
+    </div>
+    <!-- Theme Picker Popup -->
+    <div class="theme-picker-popup" id="themePickerPopup">
+        <div class="theme-picker-title">🎨 Theme</div>
+        <div class="theme-swatches">
+            <div class="theme-swatch active" id="ts_dark" onclick="applyTheme('dark')" title="Dark" style="background:#0a0a0f;border-color:#6c5ce7;">🌑</div>
+            <div class="theme-swatch" id="ts_dim" onclick="applyTheme('dim')" title="Dim" style="background:#161b22;border-color:#58a6ff;">🌘</div>
+            <div class="theme-swatch" id="ts_light" onclick="applyTheme('light')" title="Light" style="background:#f5f6f8;border-color:#d0d7de;">☀️</div>
+            <div class="theme-swatch" id="ts_warm" onclick="applyTheme('warm')" title="Warm" style="background:#251a0d;border-color:#e8a000;">🔥</div>
+            <div class="theme-swatch" id="ts_ocean" onclick="applyTheme('ocean')" title="Ocean" style="background:#0a2030;border-color:#00b4d8;">🌊</div>
+        </div>
+    </div>
+    <div class="info-strip" id="infoStrip">
+        <span><span class="label">First:</span><span class="value" id="infoFirst">—</span></span>
+        <span><span class="label">Last:</span><span class="value" id="infoLast">—</span></span>
+        <span><span class="label">Total:</span><span class="value" id="infoTotal">—</span></span>
+        <span><span class="label">Session:</span><span class="value" id="infoSession">0:00</span></span>
+        <span><span class="label">IP:</span><span class="value" id="infoIp">—</span></span>
+        <span><span class="label">Location:</span><span class="value" id="infoLocation">—</span></span>
+    </div>
+    <div class="mobile-panel-tabs" id="mobileTabs">
+        <button class="active" onclick="showMobilePanel('chat')">💬 Chat</button>
+        <button onclick="showMobilePanel('output')">📄 Output</button>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <!-- Admin Panel Modal -->
+    <div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdmin()">
+        <div class="admin-modal">
+            <div class="admin-header">
+                <h2>⚙️ User Management</h2>
+                <button class="ws-close" onclick="closeAdmin()">×</button>
+            </div>
+            <div class="admin-body">
+                <table class="admin-table">
+                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <tbody id="adminUserList"><tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr></tbody>
+                </table>
+                <div class="admin-add-form" id="adminAddForm">
+                    <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
+                    <input type="password" id="newPassword" placeholder="Password" style="width:100px;">
+                    <input type="text" id="newDisplayName" placeholder="Display Name" style="width:120px;">
+                    <input type="email" id="newEmail" placeholder="Email" style="width:140px;">
+                    <input type="tel" id="newPhone" placeholder="Phone" style="width:120px;">
+                    <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option><option value="owner">Owner</option></select>
+                    <button onclick="adminAddUser()">+ Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+    <!-- Workspace Modal -->
+    <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
+        <div class="ws-modal">
+            <div class="ws-header">
+                <h2 data-i18n="workspace">📂 My Workspace</h2>
+                <button class="ws-close" onclick="closeWorkspace()">×</button>
+            </div>
+            <div class="ws-body">
+                <div class="ws-folders">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;" data-i18n="folders">Folders</span>
+                        <button class="ws-btn ws-btn-green" onclick="createFolder()" style="padding:4px 10px;font-size:11px;">+ New</button>
+                    </div>
+                    <div id="wsFolderList"></div>
+                </div>
+                <div class="ws-files">
+                    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Files</div>
+                    <div id="wsFileList"><div style="color:var(--text2);font-size:13px;">Select a folder to view files</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+        <div class="sidebar" id="mainSidebar">
+            <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <!-- Mode Section -->
+            <div class="sidebar-section active" id="sectionMode">
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
+            <div id="modeBasic">
+                <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
+                <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
+                <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
+                <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
+                <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
+            </div>
+            </div>
+            <!-- Provider Section -->
+            <div class="sidebar-section" id="sectionProvider">
+            <h3 data-i18n="provider">Provider</h3>
+            <button class="mode-btn active" data-provider="chatgpt" onclick="setProvider('chatgpt')">ChatGPT</button>
+            <button class="mode-btn" data-provider="gemini" onclick="setProvider('gemini')">Gemini</button>
+            <button class="mode-btn" data-provider="azure" onclick="setProvider('azure')">Azure OpenAI</button>
+            <button class="mode-btn" data-provider="claude" onclick="setProvider('claude')">Claude</button>
+            <button class="mode-btn" data-provider="grok" onclick="setProvider('grok')">Grok</button>
+            </div>
+            <!-- Persona Section -->
+            <div class="sidebar-section" id="sectionPersona">
+            <h3 style="display:flex;justify-content:space-between;align-items:center;"><span data-i18n="persona">Persona</span> <span style="display:flex;gap:4px;"><button onclick="resetHiddenPersonas()" title="숨긴 페르소나 복원" style="font-size:10px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;">↺</button><button onclick="addCustomPersona()" style="font-size:10px;padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" data-i18n="custom">+ Custom</button><button onclick="switchSidebarTab('persona')" title="사이드바 닫기" style="font-size:12px;padding:2px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;">✕</button></span></h3>
+            <!-- Persona Modes at top of Persona tab -->
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+                <button class="mode-btn" data-mode="persona_debate" onclick="setMode('persona_debate')" data-i18n="p_debate">🎭 Persona Debate</button>
+                <button class="mode-btn" data-mode="persona_discuss" onclick="setMode('persona_discuss')" data-i18n="p_discuss">🧠 Persona Discussion</button>
+                <button class="mode-btn" data-mode="persona_report" onclick="setMode('persona_report')" data-i18n="p_report">📊 Multi-Report</button>
+                <button class="mode-btn" data-mode="persona_vote" onclick="setMode('persona_vote')" data-i18n="vote">🗳️ Persona Vote</button>
+                <button class="mode-btn" data-mode="persona_chain" onclick="setMode('persona_chain')" data-i18n="chain">🔗 Chain Analysis</button>
+            </div>
+            <div style="font-size:10px;color:var(--text2);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px;border-top:1px solid var(--border);padding-top:8px;">Active Persona</div>
+            <div class="persona-grid" id="personaGrid"></div>
+            <div class="persona-memory-panel" id="personaMemoryPanel">
+                <div class="mem-header"><span>🧠 <span id="memPersonaName">Persona</span> Memory</span><span style="display:flex;align-items:center;gap:8px;"><span id="memCount">0</span><span onclick="togglePersona(currentPersona)" title="닫기" style="cursor:pointer;color:var(--text2);font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">✕</span></span></div>
+                <div class="mem-list" id="memList"></div>
+                <div class="mem-actions">
+                    <button onclick="addPersonaMemory()" data-i18n="add_mem">+ Add Memory</button>
+                    <button onclick="clearPersonaMemory()" data-i18n="clear_all">🗑 Clear All</button>
+                </div>
+            </div>
+            </div>
+            <!-- History always visible -->
+            <div class="history-section">
+                <h3 data-i18n="history">Chat History</h3>
+                <button class="new-chat-btn" onclick="newConversation()" data-i18n="new_chat">+ New Chat</button>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">Loading...</div>
+                </div>
+            </div>
+        </div>
+        <div class="main-panel">
+            <div class="chat-area" id="chatArea"></div>
+            <div class="input-area">
+                <div class="persona-selectors hidden" id="personaSelectors">
+                    <div><label data-i18n="lbl_for">FOR</label><select id="personaFor"></select></div>
+                    <div><label data-i18n="lbl_against">AGAINST</label><select id="personaAgainst"></select></div>
+                </div>
+                <div id="personaMultiSelect" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px;">
+                    <div style="width:100%; font-size:11px; color:#8888aa; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span data-i18n="select_personas">Select personas (2+):</span><button onclick="setMode('chat')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;padding:2px 8px;border-radius:5px;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">Close ✕</button></div>
+                    <div id="personaCheckboxes" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
+                <div id="dmPanel" style="display:none; margin-bottom:10px; padding:8px; background:#1a1a2e; border:1px solid #2a2a3e; border-radius:10px; font-size:11px;">
+                    <div style="color:#8888aa; margin-bottom:4px;" data-i18n="dm_title">⚖️ Decision Matrix Setup</div>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);" data-i18n="dm_options">Options (comma-sep):</label>
+                        <input id="dmOptions" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Option A, Option B, Option C"></div>
+                    <div style="margin-bottom:4px;"><label style="color:var(--text2);" data-i18n="dm_criteria">Criteria (comma-sep):</label>
+                        <input id="dmCriteria" style="width:100%;padding:4px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;color:var(--text);font-size:11px;" placeholder="Cost, Risk, Revenue, Feasibility"></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;" id="dmPersonaCheckboxes"></div>
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
+                    <button onclick="toggleInputTools()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="Show/hide tools" data-i18n="tools">📎 Tools ▾</button>
+                    <button onclick="exportPDF()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Export output to PDF">📄 PDF</button>
+                </div>
+                <div id="inputToolsPanel" style="display:none;">
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
+                    <button onclick="savePrompt()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Save current input as prompt template" data-i18n="save_prompt">📋 Save Prompt</button>
+                    <button onclick="loadPrompts()" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;" title="Load saved prompts" data-i18n="load_prompt">📂 Load Prompt</button>
+                </div>
+                <div class="file-bar" id="fileBar">
+                    <span>📎</span>
+                    <span id="fileLabel" data-i18n="file_drop">Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)</span>
+                    <span class="file-name hidden" id="fileName"></span>
+                    <span class="file-size hidden" id="fileSize"></span>
+                    <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕ Clear</button>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse</button>
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx,.mp3,.wav,.m4a,.ogg,.webm" style="display:none" multiple>
+                </div>
+                <div class="url-bar" id="urlBar">
+                    <span>🌐</span>
+                    <input type="text" id="urlInput" placeholder="https://... 웹사이트 URL 입력 후 Enter" style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;font-family:'Inter',sans-serif;">
+                    <button class="upload-btn" id="urlFetchBtn" onclick="fetchUrl()">Fetch</button>
+                </div>
+                </div>
+                <div class="input-row">
+                    <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
+                    <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
+                    <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
+                </div>
+            </div>
+        </div>
+        <div class="output-panel">
+            <div class="output-panel-header">
+                <div class="output-panel-title">
+                    📄 Result Document
+                    <span class="output-panel-badge" id="outputBadge">✓ Ready</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button class="output-action-btn" id="vizBtn" onclick="visualize()" data-i18n="visualize">📊 Visualize</button>
+                    <button class="output-action-btn" onclick="copyOutput()" data-i18n="copy">Copy</button>
+                    <select id="exportSelect" class="output-action-btn" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);cursor:pointer;outline:none;" onchange="if(this.value){exportDocument(this.value);this.value='';}">
+                        <option value="" disabled selected>📥 Download ▾</option>
+                        <option value="html">HTML</option>
+                        <option value="word">Word (.doc)</option>
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel (.xls)</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                    <button class="output-action-btn" onclick="clearOutput()" data-i18n="clear">Clear</button>
+                </div>
+            </div>
+            <div class="output-area" id="outputArea">
+                <div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">AI 분석 결과가<br>여기에 문서화됩니다</p></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // ── i18n: Browser Language Detection & Translation ──
+        const LANG = (navigator.language || navigator.userLanguage || 'en').slice(0,2);
+        const I18N = {
+            en: {
+                mode:'🎯 Mode', provider:'Provider', persona:'Persona', custom:'+ Custom',
+                chat:'💬 Chat', compare:'🔄 Compare All', debate:'⚔️ Debate', discuss:'🗣️ Discussion',
+                best:'🏆 Best Answer', p_debate:'🎭 Persona Debate', p_discuss:'🧠 Persona Discussion',
+                p_report:'📊 Multi-Report', dm:'⚖️ Decision Matrix', chain:'🔗 Chain Analysis',
+                vote:'🗳️ Persona Vote', history:'Chat History', new_chat:'+ New Chat',
+                workspace:'📂 My Workspace', folders:'Folders', files:'Files', new_folder:'+ New',
+                select_folder:'Select a folder to view files', logout:'Logout',
+                result:'📄 Result Document', ready:'✓ Ready', visualize:'📊 Visualize',
+                copy:'Copy', clear:'Clear', empty_output:'AI analysis results\nwill be documented here',
+                ph_chat:'Type your message...', ph_compare:'Ask all AIs...', ph_debate:'Debate topic...',
+                ph_discuss:'Discussion topic...', ph_best:'Question for best answer...',
+                ph_p_debate:'Persona debate topic...', ph_p_discuss:'Topic for group discussion...',
+                ph_p_report:'Topic for multi-persona report...', ph_dm:'(Configure options above, then type topic)',
+                ph_chain:'Topic for chain analysis (select personas ↑)...',
+                ph_vote:'Proposal to vote on (select personas ↑)...',
+                send:'Send', memory:'Memory', add_mem:'+ Add Memory', clear_all:'🗑 Clear All',
+                save_prompt:'📋 Save Prompt', load_prompt:'📂 Load Prompt', pdf:'📄 PDF',
+                dm_title:'⚖️ Decision Matrix Setup', dm_options:'Options (comma-sep):',
+                dm_criteria:'Criteria (comma-sep):', select_personas:'Select personas (2+):',
+                select_eval:'Select evaluators:', loading:'Loading...', new_note:'📝 New Note',
+                save_chat:'💬 Save Chat', save_slides:'📊 Save Slides', save_file:'💾 Save File',
+                pin:'📌', ask_ai:'🤖 Ask AI', continue_ai:'▶ Continue', develop:'🔨 Develop',
+                grp_persona:'🎭 Persona Modes', grp_analysis:'📐 Analysis Modes',
+                tools:'📎 Tools ▾', file_drop:'Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'FOR', lbl_against:'AGAINST', browse:'Browse', fetch:'Fetch',
+                download:'📥 Download ▾',
+            },
+            ko: {
+                mode:'🎯 모드', provider:'제공자', persona:'페르소나', custom:'+ 커스텀',
+                chat:'💬 채팅', compare:'🔄 전체 비교', debate:'⚔️ 토론', discuss:'🗣️ 토의',
+                best:'🏆 최적 답변', p_debate:'🎭 페르소나 토론', p_discuss:'🧠 페르소나 토의',
+                p_report:'📊 다중 리포트', dm:'⚖️ 결정 매트릭스', chain:'🔗 체인 분석',
+                vote:'🗳️ 페르소나 투표', history:'대화 기록', new_chat:'+ 새 대화',
+                workspace:'📂 내 작업공간', folders:'폴더', files:'파일', new_folder:'+ 새로 만들기',
+                select_folder:'폴더를 선택하세요', logout:'로그아웃',
+                result:'📄 결과 문서', ready:'✓ 준비됨', visualize:'📊 시각화',
+                copy:'복사', clear:'지우기', empty_output:'AI 분석 결과가\n여기에 문서화됩니다',
+                ph_chat:'메시지를 입력하세요...', ph_compare:'모든 AI에게 질문...', ph_debate:'토론 주제...',
+                ph_discuss:'토의 주제...', ph_best:'최적 답변 질문...', ph_p_debate:'페르소나 토론 주제...',
+                ph_p_discuss:'그룹 토의 주제...', ph_p_report:'다중 페르소나 리포트 주제...',
+                ph_dm:'(위에서 옵션 설정 후 주제 입력)', ph_chain:'체인 분석 주제 (위에서 페르소나 선택)...',
+                ph_vote:'투표할 제안 (위에서 페르소나 선택)...',
+                send:'전송', memory:'메모리', add_mem:'+ 기억 추가', clear_all:'🗑 전체 삭제',
+                save_prompt:'📋 프롬프트 저장', load_prompt:'📂 프롬프트 불러오기', pdf:'📄 PDF',
+                dm_title:'⚖️ 결정 매트릭스 설정', dm_options:'옵션 (쉼표 구분):',
+                dm_criteria:'기준 (쉼표 구분):', select_personas:'페르소나 선택 (2명 이상):',
+                select_eval:'평가자 선택:', loading:'로딩 중...', new_note:'📝 새 노트',
+                save_chat:'💬 대화 저장', save_slides:'📊 슬라이드 저장', save_file:'💾 파일 저장',
+                pin:'📌', ask_ai:'🤖 AI에게 질문', continue_ai:'▶ 이어하기', develop:'🔨 발전',
+                grp_persona:'🎭 페르소나 모드', grp_analysis:'📐 분석 모드',
+                tools:'📎 도구 ▾', file_drop:'파일 드래그 또는 찾아보기 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'찬성', lbl_against:'반대', browse:'찾기', fetch:'가져오기',
+                download:'📥 다운로드 ▾',
+            },
+            ja: {
+                mode:'モード', provider:'プロバイダー', persona:'ペルソナ', custom:'+ カスタム',
+                chat:'💬 チャット', compare:'🔄 全比較', debate:'⚔️ ディベート', discuss:'🗣️ ディスカッション',
+                best:'🏆 ベスト回答', p_debate:'🎭 ペルソナ討論', p_discuss:'🧠 ペルソナ議論',
+                p_report:'📊 マルチレポート', dm:'⚖️ 意思決定', chain:'🔗 チェーン分析',
+                vote:'🗳️ ペルソナ投票', history:'チャット履歴', new_chat:'+ 新規チャット',
+                workspace:'📂 ワークスペース', folders:'フォルダ', files:'ファイル', new_folder:'+ 新規',
+                select_folder:'フォルダを選択', logout:'ログアウト',
+                result:'📄 結果文書', ready:'✓ 準備完了', visualize:'📊 可視化',
+                copy:'コピー', clear:'クリア', empty_output:'AI分析結果が\nここに表示されます',
+                ph_chat:'メッセージを入力...', send:'送信', memory:'メモリ',
+                add_mem:'+ メモリ追加', clear_all:'🗑 全削除',
+                save_prompt:'📋 保存', load_prompt:'📂 読込', pdf:'📄 PDF',
+                dm_title:'⚖️ 意思決定マトリックス', dm_options:'選択肢 (カンマ区切り):',
+                dm_criteria:'基準 (カンマ区切り):', select_personas:'ペルソナ選択 (2+):',
+                select_eval:'評価者選択:', loading:'読込中...',
+                grp_persona:'🎭 ペルソナモード', grp_analysis:'📐 分析モード',
+                tools:'📎 ツール ▾', file_drop:'ファイルをドロップまたは参照 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'賀成', lbl_against:'反対', browse:'参照', fetch:'取得',
+                download:'📥 ダウンロード ▾',
+            },
+            zh: {
+                mode:'模式', provider:'提供商', persona:'角色', custom:'+ 自定义',
+                chat:'💬 聊天', compare:'🔄 全部比较', debate:'⚔️ 辩论', discuss:'🗣️ 讨论',
+                best:'🏆 最佳答案', p_debate:'🎭 角色辩论', p_discuss:'🧠 角色讨论',
+                p_report:'📊 多角色报告', dm:'⚖️ 决策矩阵', chain:'🔗 链式分析',
+                vote:'🗳️ 角色投票', history:'聊天记录', new_chat:'+ 新对话',
+                workspace:'📂 工作空间', logout:'退出',
+                result:'📄 结果文档', ready:'✓ 就绪', visualize:'📊 可视化',
+                copy:'复制', clear:'清除', send:'发送', memory:'记忆',
+                grp_persona:'🎭 角色模式', grp_analysis:'📐 分析模式',
+                tools:'📎 工具 ▾', file_drop:'拖放文件或浏览 (TXT, PDF, CSV, DOCX...)',
+                lbl_for:'赞成', lbl_against:'反对', browse:'浏览', fetch:'获取',
+                download:'📥 下载 ▾',
+            },
+            es: {
+                mode:'Modo', provider:'Proveedor', persona:'Persona', custom:'+ Personalizar',
+                chat:'💬 Chat', compare:'🔄 Comparar', debate:'⚔️ Debate', discuss:'🗣️ Discusión',
+                best:'🏆 Mejor Respuesta', p_debate:'🎭 Debate Persona', p_discuss:'🧠 Discusión Persona',
+                p_report:'📊 Multi-Reporte', dm:'⚖️ Matriz', chain:'🔗 Análisis Cadena',
+                vote:'🗳️ Votación', history:'Historial', new_chat:'+ Nuevo Chat',
+                workspace:'📂 Espacio', logout:'Salir',
+                result:'📄 Documento', ready:'✓ Listo', visualize:'📊 Visualizar',
+                copy:'Copiar', clear:'Limpiar', send:'Enviar', memory:'Memoria',
+                download:'📥 Descargar ▾',
+            },
+        };
+        function t(key) { return (I18N[LANG]||{})[key] || (I18N['en']||{})[key] || key; }
+        function applyLang() {
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n');
+                const val = t(key);
+                if (el.tagName === 'INPUT') el.placeholder = val;
+                else el.textContent = val;
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+                el.title = t(el.getAttribute('data-i18n-title'));
+            });
+        }
+        const PH_MAP = {
+            chat:t('ph_chat'), compare:t('ph_compare')||'Ask all AIs...', debate:t('ph_debate')||'Debate topic...',
+            discuss:t('ph_discuss')||'Discussion topic...', best:t('ph_best')||'Question for best answer...',
+            persona_debate:t('ph_p_debate')||'Persona debate topic...', persona_discuss:t('ph_p_discuss')||'Topic for group discussion...',
+            persona_report:t('ph_p_report')||'Topic for multi-persona report...', decision_matrix:t('ph_dm')||'(Configure options above)',
+            persona_chain:t('ph_chain')||'Topic for chain analysis...', persona_vote:t('ph_vote')||'Proposal to vote on...',
+        };
+
+        let currentMode='chat', currentProvider='chatgpt', currentPersona='',
+            uploadedFileContent='', uploadedFileName='',
+            uploadedFiles=[];  // array of {name, content, size, chars}
+        let personas = {{ personas | safe }};
+        let personaGroups = {{ personaGroups | safe }};
+        const CURRENT_USERNAME = '{{ username }}';
+        const USER_TIER = '{{ usertier }}';
+        const chatArea = document.getElementById('chatArea');
+        const outputArea = document.getElementById('outputArea');
+
+        // ── Theme Switcher ──
+        function applyTheme(name) {
+            document.body.removeAttribute('data-theme');
+            if (name !== 'dark') document.body.setAttribute('data-theme', name);
+            localStorage.setItem('ai_hub_theme', name);
+            document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+            const el = document.getElementById('ts_' + name);
+            if (el) el.classList.add('active');
+            document.getElementById('themePickerPopup').classList.remove('open');
+        }
+        function toggleThemePicker() {
+            document.getElementById('themePickerPopup').classList.toggle('open');
+        }
+        function initTheme() {
+            const saved = localStorage.getItem('ai_hub_theme') || 'dark';
+            applyTheme(saved);
+        }
+        document.addEventListener('click', function(e) {
+            const popup = document.getElementById('themePickerPopup');
+            if (popup.classList.contains('open') && !popup.contains(e.target) && !e.target.classList.contains('theme-picker-btn')) {
+                popup.classList.remove('open');
+            }
+        });
+
+        function initStatus() {
+            const status = {{ ai_status | safe }};
+            const c = document.getElementById('statusDots');
+            c.innerHTML = '';
+            for (const [n,s] of Object.entries(status)) {
+                c.innerHTML += `<div class="status-dot"><span class="dot ${s==='Ready'?'':'off'}"></span>${n}</div>`;
+            }
+        }
+        
+        function getCustomPersonas() {
+            try { return JSON.parse(localStorage.getItem('customPersonas_' + CURRENT_USERNAME) || '[]'); }
+            catch(e) { return []; }
+        }
+        function saveCustomPersonas(pcs) {
+            localStorage.setItem('customPersonas_' + CURRENT_USERNAME, JSON.stringify(pcs));
+        }
+
+        function addCustomPersona() {
+            let limit = 0;
+            if (USER_TIER === 'premium') limit = 5;
+            else if (USER_TIER === 'admin') limit = 10;
+            else if (USER_TIER === 'owner') limit = Infinity;
+            
+            let pcs = getCustomPersonas();
+            if (pcs.length >= limit) {
+                alert(`Your tier (${USER_TIER}) allows up to ${limit} custom personas.`);
+                return;
+            }
+
+            const name = prompt(t('new_persona_name') || "Enter Custom Persona Name (e.g. My AI):");
+            if (!name) return;
+            
+            const traits = prompt("Enter Persona traits to Auto-Generate instructions using AI.\n(Or leave blank to write manually)");
+            
+            if (traits && traits.trim() !== '') {
+                generateCustomPersonaPrompt(name, traits);
+            } else {
+                const promptText = prompt(t('new_persona_prompt') || "Enter Persona Instructions:");
+                if (!promptText) return;
+                saveAndRenderNewPersona(name, promptText);
+            }
+        }
+        async function generateCustomPersonaPrompt(name, traits) {
+            var loadId = addLoading('Generating Persona Instructions...');
+            try {
+                var ai_req = `You are an expert prompt engineer. Create a system instruction for an AI assistant based on the following traits: "${traits}". Output ONLY the raw system instructions, no conversational text, no markdown.`;
+                var resp = await fetch('/api/chat', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: ai_req, provider: currentProvider || 'chatgpt', mode: 'chat'})
+                });
+                var data = await resp.json();
+                removeLoading(loadId);
+                var aiText = data.response || data.responses?.[0]?.response || '';
+                if (!aiText) { alert("Failed to generate instructions."); return; }
+                
+                var finalPrompt = prompt("Generated prompt (you can edit):", aiText.trim());
+                if (!finalPrompt) return;
+                saveAndRenderNewPersona(name, finalPrompt);
+            } catch(e) { 
+                removeLoading(loadId); 
+                alert('Error generating: ' + e.message); 
+            }
+        }
+        function saveAndRenderNewPersona(name, promptText) {
+            const newKey = 'custom_' + Date.now();
+            let pcs = getCustomPersonas();
+            pcs.push({ key: newKey, name: name, prompt: promptText });
+            saveCustomPersonas(pcs);
+            initPersonas();
+            togglePersona(newKey);
+            addMessage('System', `Custom persona "${name}" added!`, 'system-msg');
+        }
+        function deleteCustomPersona(key, event) {
+            if(event) event.stopPropagation();
+            if(!confirm("이 커스텀 페르소나를 삭제하겠습니까?\n(저장된 메모리/성향 기록도 함께 삭제됩니다)")) return;
+            let pcs = getCustomPersonas();
+            pcs = pcs.filter(p => p.key !== key);
+            saveCustomPersonas(pcs);
+            delete personas[key];
+            if(currentPersona === key) togglePersona('');
+            // Also delete all memories for this persona from Supabase
+            fetch('/api/persona/' + key + '/memory/clear', {method:'DELETE'})
+                .catch(() => {}); // silently ignore if no memories
+            initPersonas();
+        }
+        function hidePersona(key, event) {
+            if(event) event.stopPropagation();
+            if(!confirm('이 페르소나를 목록에서 숨기겠습니까?\n(아래 Reset 버튼으로 복원 가능)')) return;
+            let hidden = JSON.parse(localStorage.getItem('hiddenPersonas') || '[]');
+            if(!hidden.includes(key)) hidden.push(key);
+            localStorage.setItem('hiddenPersonas', JSON.stringify(hidden));
+            if(currentPersona === key) togglePersona('');
+            initPersonas();
+        }
+        function resetHiddenPersonas() {
+            localStorage.removeItem('hiddenPersonas');
+            initPersonas();
+            addMessage('System', '숨긴 페르소나가 모두 복원됐습니다.', 'system-msg');
+        }
+        function initPersonas() {
+            const g=document.getElementById('personaGrid'),
+                  f=document.getElementById('personaFor'),
+                  a=document.getElementById('personaAgainst');
+            g.innerHTML=''; f.innerHTML=''; a.innerHTML='';
+            const cb=document.getElementById('personaCheckboxes'); cb.innerHTML='';
+
+            let groupsToRender = JSON.parse(JSON.stringify(personaGroups));
+            const hiddenPersonas = JSON.parse(localStorage.getItem('hiddenPersonas') || '[]');
+            // Filter hidden built-in personas from each group
+            groupsToRender = groupsToRender.map(gr => ({...gr, personas: gr.personas.filter(p => !hiddenPersonas.includes(p.key))})).filter(gr => gr.personas.length > 0);
+            const cps = getCustomPersonas();
+            if (cps.length > 0) {
+                cps.forEach(p => { personas[p.key] = { name: p.name, prompt: p.prompt, icon: "👤", group: "custom" }; });
+                groupsToRender.unshift({
+                    key: 'custom_group', name: 'My Custom Personas', icon: '👤',
+                    personas: cps
+                });
+            }
+
+            groupsToRender.forEach(function(group) {
+                g.innerHTML += `<div class="persona-group-header" onclick="togglePersonaGroup('${group.key}')">`
+                    + `<span class="pg-toggle" id="pgToggle_${group.key}">▼</span> ${group.icon} ${group.name}</div>`;
+                g.innerHTML += `<div class="persona-group-body" id="pgBody_${group.key}">`
+                    + group.personas.map(function(p) {
+                        const isCustom = p.key.startsWith('custom_');
+                        const delTitle = isCustom ? 'Delete persona' : 'Hide persona (can restore)';
+                        const delHtml = `<span title="${delTitle}" style="float:right;color:var(--red);padding-left:10px;cursor:pointer;opacity:0.6;" onclick="${isCustom ? `deleteCustomPersona('${p.key}',event)` : `hidePersona('${p.key}',event)`}">×</span>`;
+                        return `<div class="persona-chip" data-key="${p.key}" onclick="togglePersona('${p.key}')"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span><span class="persona-del" title="${delTitle}" style="flex-shrink:0;color:var(--red);cursor:pointer;opacity:0;font-size:13px;line-height:1;" onclick="${isCustom ? `deleteCustomPersona('${p.key}',event)` : `hidePersona('${p.key}',event)`}">×</span></div>`;
+                    }).join('') + '</div>';
+                // Populate debate selectors and checkboxes with group headers
+                f.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
+                    + group.personas.map(function(p) { return `<option value="${p.key}">${p.name}</option>`; }).join('')
+                    + '</optgroup>';
+                a.innerHTML += `<optgroup label="${group.icon} ${group.name}">`
+                    + group.personas.map(function(p) { return `<option value="${p.key}">${p.name}</option>`; }).join('')
+                    + '</optgroup>';
+                cb.innerHTML += `<div style="width:100%;font-size:10px;color:var(--accent2);margin-top:6px;">${group.icon} ${group.name}</div>`;
+                group.personas.forEach(function(p) {
+                    cb.innerHTML += `<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#12121a;border:1px solid #2a2a3e;border-radius:6px;font-size:11px;cursor:pointer;"><input type="checkbox" value="${p.key}" class="persona-cb"> ${p.name}</label>`;
+                });
+            });
+            const keys=Object.keys(personas);
+            if (keys.length>=2) a.value=keys[1];
+        }
+        function togglePersonaGroup(key) {
+            var body = document.getElementById('pgBody_' + key);
+            var toggle = document.getElementById('pgToggle_' + key);
+            if (body) body.classList.toggle('collapsed');
+            if (toggle) toggle.classList.toggle('collapsed');
+        }
+        async function loadPersonaMemory(personaKey) {
+            const panel = document.getElementById('personaMemoryPanel');
+            if (!personaKey) { panel.classList.remove('active'); return; }
+            try {
+                const [memRes, convRes] = await Promise.all([
+                    fetch('/api/persona/' + personaKey + '/memory').then(r=>r.json()),
+                    fetch('/api/persona/' + personaKey + '/conversations').then(r=>r.json()).catch(()=>({conversations:[]}))
+                ]);
+                const list = document.getElementById('memList');
+                const name = personas[personaKey] || personaKey;
+                const memCount = (memRes.memories||[]).length;
+                const convCount = (convRes.conversations||[]).length;
+                document.getElementById('memPersonaName').textContent = name;
+                document.getElementById('memCount').textContent = memCount + convCount;
+                list.innerHTML = '';
+                // Show insights
+                if (memRes.memories && memRes.memories.length > 0) {
+                    list.innerHTML += '<div style="color:var(--accent);font-size:10px;font-weight:600;margin:4px 0;">💡 Insights (' + memCount + ')</div>';
+                    memRes.memories.forEach(function(m) {
+                        list.innerHTML += '<div class="mem-item"><span>' + escapeHtml(m.content) + '</span>'
+                            + '<span class="mem-del" onclick="deleteMemory(\'' + m.id + '\')">&times;</span></div>';
+                    });
+                }
+                // Show Q&A history
+                if (convRes.conversations && convRes.conversations.length > 0) {
+                    list.innerHTML += '<div style="color:var(--accent2);font-size:10px;font-weight:600;margin:6px 0 4px;">💬 Q&A History (' + convCount + ')</div>';
+                    convRes.conversations.forEach(function(c) {
+                        list.innerHTML += '<div class="mem-item" style="flex-direction:column;gap:2px;">'
+                            + '<div style="color:var(--accent);font-size:9px;">Q: ' + escapeHtml((c.question||'').slice(0,100)) + '</div>'
+                            + '<div style="font-size:9px;">A: ' + escapeHtml((c.answer||'').slice(0,150)) + '</div></div>';
+                    });
+                }
+                if (!memCount && !convCount) {
+                    list.innerHTML = '<div style="color:#555;padding:8px;text-align:center;">No memories yet. Conversations will auto-generate memories.</div>';
+                }
+                panel.classList.add('active');
+            } catch(e) { panel.classList.remove('active'); }
+        }
+        async function addPersonaMemory() {
+            if (!currentPersona) return;
+            var content = prompt('Add memory for ' + (personas[currentPersona]||currentPersona) + ':');
+            if (!content) return;
+            await fetch('/api/persona/' + currentPersona + '/memory', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({content: content})
+            });
+            loadPersonaMemory(currentPersona);
+        }
+        async function deleteMemory(memId) {
+            await fetch('/api/persona/memory/' + memId, {method:'DELETE'});
+            loadPersonaMemory(currentPersona);
+        }
+        async function clearPersonaMemory() {
+            if (!currentPersona) return;
+            if (!confirm('Clear all memories for ' + (personas[currentPersona]||currentPersona) + '?')) return;
+            await fetch('/api/persona/' + currentPersona + '/memory/clear', {method:'DELETE'});
+            loadPersonaMemory(currentPersona);
+        }
+        function setMode(m) {
+            if (currentMode === m && m !== 'chat') { m = 'chat'; } // toggle off
+            currentMode=m;
+            document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
+            document.querySelector(`.mode-btn[data-mode="${m}"]`)?.classList.add('active');
+            document.getElementById('personaSelectors').classList.toggle('hidden', m!=='persona_debate');
+            const multiModes = ['persona_discuss','persona_report','persona_chain','persona_vote'];
+            const isMulti = multiModes.includes(m);
+            document.getElementById('personaMultiSelect').style.display = isMulti ? 'flex' : 'none';
+            document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
+            document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
+        }
+        function setProvider(p) {
+            currentProvider=p;
+            document.querySelectorAll('.mode-btn[data-provider]').forEach(b=>b.classList.remove('active'));
+            document.querySelector(`.mode-btn[data-provider="${p}"]`)?.classList.add('active');
+        }
+        function togglePersona(k) {
+            const chips=document.querySelectorAll('.persona-chip');
+            if(currentPersona===k){currentPersona='';chips.forEach(c=>c.classList.remove('selected'));loadPersonaMemory('');}
+            else{currentPersona=k;chips.forEach(c=>c.classList.toggle('selected',c.dataset.key===k));loadPersonaMemory(k);}
+        }
+        function addMessage(h,b,cls='',badge='',time='') {
+            const m=document.createElement('div');m.className='message';
+            let bH=badge?`<span class="badge">${badge}</span>`:'';
+            let tH=time?`<span class="time">${time}</span>`:'';
+            m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${escapeHtml(b)}</div>`;
+            chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
+        }
+        function addStreamingMessage(id, h, badge='', time='') {
+            const m = document.createElement('div');
+            m.className = 'message';
+            m.id = 'stream-' + id;
+            let bH = badge ? `<span class="badge">${badge}</span>` : '';
+            let tH = time ? `<span class="time">${time}</span>` : '';
+            m.innerHTML = `<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body"></div>`;
+            chatArea.appendChild(m);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        function updateStreamingMessage(id, content, renderMd=false) {
+            const m = document.getElementById('stream-' + id);
+            if (m) {
+                const body = m.querySelector('.msg-body');
+                if (renderMd) {
+                    body.innerHTML = renderMarkdown(content);
+                } else {
+                    body.textContent = content + ' █';
+                }
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        }
+        // Initialize mermaid with dark theme
+        mermaid.initialize({startOnLoad:false, theme:'dark', securityLevel:'loose'});
+        let chartInstance = null;
+
+        function renderMarkdown(text) {
+            if(typeof marked === 'undefined') return `<pre>${escapeHtml(text)}</pre>`;
+            // Configure marked
+            marked.setOptions({breaks:true, gfm:true});
+            return `<div class="md-body">${marked.parse(text)}</div>`;
+        }
+        async function renderMermaid(container) {
+            const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid');
+            for(const block of blocks) {
+                const code = block.textContent;
+                const div = document.createElement('div');
+                div.className = 'mermaid';
+                div.textContent = code;
+                block.closest('pre') ? block.closest('pre').replaceWith(div) : block.replaceWith(div);
+            }
+            try { await mermaid.run({nodes: container.querySelectorAll('.mermaid')}); } catch(e) {}
+        }
+        function showDoc(html, query='', footer='') {
+            const ts = new Date().toLocaleTimeString();
+            outputArea.innerHTML = `
+                ${query ? `<div class="doc-query">${escapeHtml(query)}</div>` : ''}
+                ${html}
+                <div class="doc-footer"><span>${ts}</span><span>${escapeHtml(footer)}</span></div>`;
+            outputArea.scrollTop = 0;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+            renderMermaid(outputArea);
+        }
+        function showDocMarkdown(text, query='', footer='') {
+            showDoc(renderMarkdown(text), query, footer);
+        }
+        function clearOutput() {
+            outputArea.innerHTML = '<div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;">Result will appear here</p></div>';
+            document.getElementById('outputBadge').style.display = 'none';
+            if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        }
+        // ── Spreadsheet ──
+        var ssData = null;
+        function parseTabularData(text) {
+            if (!text || !text.trim()) return null;
+            var lines = text.split('\n').filter(function(l){return l.trim();});
+            if (lines.length < 2) return null;
+            var sep = '\t';
+            if (lines[0].indexOf('\t') < 0 && lines[0].indexOf(',') >= 0) sep = ',';
+            var rows = [];
+            for (var i = 0; i < lines.length; i++) {
+                var cells;
+                if (sep === ',') {
+                    cells = []; var cur = ''; var inQ = false;
+                    for (var c = 0; c < lines[i].length; c++) {
+                        var ch = lines[i][c];
+                        if (ch === '"') { inQ = !inQ; }
+                        else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+                        else { cur += ch; }
+                    }
+                    cells.push(cur.trim());
+                } else {
+                    cells = lines[i].split(sep);
+                }
+                if (cells.length > 1 || rows.length > 0) rows.push(cells);
+            }
+            if (rows.length < 2 || rows[0].length < 2) return null;
+            return rows;
+        }
+        function colLetter(n) {
+            var s = ''; n++;
+            while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+            return s;
+        }
+        function renderSpreadsheet(rows, title, fileName) {
+            if (!rows || rows.length < 2) return;
+            ssData = rows;
+            var maxCols = 0;
+            rows.forEach(function(r){if(r.length>maxCols)maxCols=r.length;});
+            var html = '<div class="ss-wrapper">';
+            html += '<div class="ss-toolbar">';
+            html += '<span>📊 ' + (title || 'Spreadsheet') + '</span>';
+            html += '<button class="ws-btn" style="font-size:11px;" onclick="ssAnalyze()">🤖 AI 분석</button>';
+            html += '<button class="ws-btn" style="font-size:11px;" onclick="ssExportCSV()">💾 CSV</button>';
+            html += '<span class="ss-info">' + (rows.length-1) + ' rows × ' + maxCols + ' cols</span>';
+            html += '</div>';
+            html += '<div class="ss-scroll"><table class="ss-table"><thead><tr>';
+            html += '<th class="ss-corner"></th>';
+            for (var c = 0; c < maxCols; c++) html += '<th>' + colLetter(c) + '</th>';
+            html += '</tr><tr><th class="ss-rownum" style="background:#1a1a2e;">H</th>';
+            for (var c = 0; c < maxCols; c++) html += '<th style="color:var(--green);">' + escapeHtml(rows[0][c]||'') + '</th>';
+            html += '</tr></thead><tbody>';
+            var maxRows = Math.min(rows.length, 501);
+            for (var r = 1; r < maxRows; r++) {
+                html += '<tr><td class="ss-rownum">' + r + '</td>';
+                for (var c = 0; c < maxCols; c++) {
+                    html += '<td contenteditable="true" data-r="'+r+'" data-c="'+c+'">' + escapeHtml(rows[r] && rows[r][c] ? rows[r][c] : '') + '</td>';
+                }
+                html += '</tr>';
+            }
+            if (rows.length > 501) {
+                html += '<tr><td class="ss-rownum">...</td>';
+                for (var c = 0; c < maxCols; c++) html += '<td style="color:var(--text2);font-style:italic;">+' + (rows.length-501) + ' more</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table></div></div>';
+            if (fileName) {
+                html = '<div class="doc-query">' + escapeHtml(fileName) + '</div>' + html;
+            }
+            outputArea.innerHTML = html;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+            if (window.innerWidth <= 768) showMobilePanel('output');
+        }
+        function ssAnalyze() {
+            if (!ssData || !ssData.length) return;
+            var header = ssData[0].join(', ');
+            var sample = ssData.slice(1, Math.min(11, ssData.length)).map(function(r){return r.join(', ');}).join('\n');
+            var input = document.getElementById('userInput');
+            input.value = '다음 스프레드시트 데이터를 분석해 주세요.\n\n헤더: ' + header + '\n\n샘플 데이터 (처음 10행):\n' + sample + '\n\n총 ' + (ssData.length-1) + '행입니다. 주요 패턴, 통계, 인사이트를 알려주세요.';
+            send();
+        }
+        function ssExportCSV() {
+            if (!ssData) return;
+            var csv = ssData.map(function(r){return r.map(function(c){return '"'+(c||"").replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+            var blob = new Blob([csv], {type:'text/csv'});
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'spreadsheet.csv'; a.click();
+        }
+        function isTabularContent(text, fileName) {
+            if (!text) return false;
+            var fn = (fileName || '').toLowerCase();
+            if (fn.endsWith('.csv') || fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.tsv')) return true;
+            var lines = text.split('\n').filter(function(l){return l.trim();});
+            if (lines.length < 3) return false;
+            var tabCount = 0; var commaCount = 0;
+            for (var i = 0; i < Math.min(5, lines.length); i++) {
+                tabCount += (lines[i].match(/\t/g) || []).length;
+                commaCount += (lines[i].match(/,/g) || []).length;
+            }
+            return (tabCount >= 5) || (commaCount >= 10 && lines.length >= 3);
+        }
+        function copyOutput() {
+            navigator.clipboard.writeText(outputArea.innerText).then(() => {
+                const b = document.querySelector('.output-action-btn');
+                b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 1500);
+            });
+        }
+        function exportDocument(format) {
+            var content = outputArea.innerText;
+            var html = outputArea.innerHTML;
+            if (!content || content.includes('AI 분석 결과가')) { alert('No content to export'); return; }
+            var title = 'AI_Hub_Export_' + new Date().toISOString().slice(0,10);
+            
+            // Re-usable style block that mimics the Notion-style CSS for print/export
+            var exportStyle = `
+                <style>
+                    body, .pdf-wrapper { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.75; color: #333; background: #fff; font-size: 15px; }
+                    .doc-query { font-size: 20px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; color: #111; }
+                    .doc-provider { margin-bottom: 30px; }
+                    .doc-provider-name { font-weight: 600; font-size: 14px; color: #555; margin-bottom: 12px; }
+                    h1, h2, h3 { color: #111; margin-top: 1.5em; margin-bottom: 0.75em; font-weight: 600; }
+                    h1 { font-size: 1.8em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+                    h2 { font-size: 1.5em; }
+                    h3 { font-size: 1.25em; }
+                    p { margin-bottom: 1em; }
+                    ul, ol { margin-bottom: 1em; padding-left: 2em; }
+                    pre { background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; font-family: 'Consolas', monospace; font-size: 13px; color: #24292e; margin-bottom: 1em; white-space: pre-wrap; word-wrap: break-word; }
+                    code { font-family: 'Consolas', monospace; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #e83e8c; }
+                    pre code { background: none; padding: 0; color: inherit; }
+                    blockquote { border-left: 4px solid #e2e8f0; margin: 0 0 1em 0; padding: 10px 20px; color: #666; background: #f8f9fa; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+                    th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+                    th { background: #f8f9fa; font-weight: 600; }
+                    .doc-footer { font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 10px; margin-top: 30px; display: flex; justify-content: space-between; }
+                </style>
+            `;
+
+            if (format === 'pdf') {
+                if (typeof html2pdf === 'undefined') { alert('PDF Library is still loading. Please try again in a few seconds.'); return; }
+                
+                var hiddenContainer = document.createElement('div');
+                hiddenContainer.style.position = 'absolute';
+                hiddenContainer.style.left = '-9999px';
+                hiddenContainer.style.top = '-9999px';
+                hiddenContainer.style.width = '800px'; 
+                
+                hiddenContainer.innerHTML = exportStyle + '<div class="pdf-wrapper">' + html + '</div>';
+                document.body.appendChild(hiddenContainer);
+                
+                var opt = {
+                    margin:       12,
+                    filename:     title + '.pdf',
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                
+                html2pdf().set(opt).from(hiddenContainer.querySelector('.pdf-wrapper')).save().then(() => {
+                    document.body.removeChild(hiddenContainer);
+                });
+
+            } else if (format === 'html') {
+                var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>' + exportStyle + '</head><body style="max-width:900px;margin:0 auto;">' + html + '</body></html>';
+                var blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8;'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.html'; a.click();
+                
+            } else if (format === 'word') {
+                var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title>' + exportStyle + '</head><body style="max-width:900px;margin:0 auto;">' + html + '</body></html>';
+                var blob = new Blob(['\ufeff', docHtml], {type: 'application/msword'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = title + '.doc'; a.click();
+                
+            } else if (format === 'excel' || format === 'csv') {
+                if (typeof XLSX === 'undefined') { alert('Excel Library is still loading. Please try again in a few seconds.'); return; }
+                
+                var tables = outputArea.querySelectorAll('table');
+                var wb = XLSX.utils.book_new();
+                
+                if (tables.length > 0) {
+                    tables.forEach((table, index) => {
+                        var ws = XLSX.utils.table_to_sheet(table);
+                        XLSX.utils.book_append_sheet(wb, ws, "Table " + (index+1));
+                    });
+                } else {
+                    var lines = content.split('\n');
+                    var ws_data = lines.map(l => [l]);
+                    var ws = XLSX.utils.aoa_to_sheet(ws_data);
+                    XLSX.utils.book_append_sheet(wb, ws, "Result");
+                }
+                
+                if (format === 'csv') {
+                    var first_sheet_name = wb.SheetNames[0];
+                    var csv_str = XLSX.utils.sheet_to_csv(wb.Sheets[first_sheet_name]);
+                    var blob = new Blob(['\ufeff', csv_str], {type: 'text/csv;charset=utf-8;'});
+                    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                    a.download = title + '.csv'; a.click();
+                } else {
+                    XLSX.writeFile(wb, title + '.xlsx');
+                }
+            }
+        }
+        async function visualize() {
+            const btn = document.getElementById('vizBtn');
+            const currentText = outputArea.innerText;
+            const fileCtx = uploadedFileContent ? uploadedFileContent.slice(0,8000) : '';
+            const context = fileCtx || currentText.slice(0, 8000);
+            if(!context.trim()) { addMessage('Error','먼저 파일을 업로드하거나 AI 응답이 있어야 합니다.','error-msg'); return; }
+            btn.textContent = '⏳ Analyzing...'; btn.disabled = true;
+            try {
+                const resp = await fetch('/api/visualize', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({context})
+                });
+                const ct = resp.headers.get('content-type') || '';
+                if(!ct.includes('application/json')) { addMessage('Error','세션 만료 또는 서버 오류. 새로고침 후 다시 시도해주세요.','error-msg'); return; }
+                const r = await resp.json();
+                if(r.success && r.chart_data) {
+                    renderChart(r.chart_data, r.title || '📊 Data Visualization');
+                } else if(r.diagram) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<div class="doc-sec-title">🗺️ ${r.title||'Diagram'}</div><div class="mermaid">${r.diagram}</div>`;
+                    outputArea.prepend(div);
+                    renderMermaid(outputArea);
+                } else {
+                    addMessage('Error', r.error || 'Visualization failed', 'error-msg');
+                }
+            } catch(e) { addMessage('Error', 'Viz error: '+e.message, 'error-msg'); }
+            btn.textContent = '📊 Visualize'; btn.disabled = false;
+        }
+        function renderChart(data, title) {
+            if(chartInstance) chartInstance.destroy();
+            const container = document.createElement('div');
+            container.className = 'chart-container';
+            container.innerHTML = `<div class="doc-sec-title">${title}</div><canvas id="vizChart"></canvas>`;
+            outputArea.prepend(container);
+            const ctx = document.getElementById('vizChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: data.type || 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets.map((ds,i) => ({
+                        ...ds,
+                        backgroundColor: ds.backgroundColor || ['#6c5ce7','#74b9ff','#00cec9','#fd79a8','#fdcb6e','#55efc4'][i%6],
+                        borderColor: ds.borderColor || 'transparent',
+                        borderWidth: 1
+                    }))
+                },
+                options: {
+                    responsive:true, plugins:{legend:{labels:{color:'#e0e0f0'}},
+                    title:{display:!!data.title, text:data.title, color:'#e0e0f0'}},
+                    scales: data.type==='pie'||data.type==='doughnut' ? {} : {
+                        x:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}},
+                        y:{ticks:{color:'#8888aa'},grid:{color:'#2a2a3e'}}
+                    }
+                }
+            });
+            outputArea.scrollTop = 0;
+            document.getElementById('outputBadge').style.display = 'inline-flex';
+        }
+        function addCompareCards(results) {
+            const m=document.createElement('div');m.className='message';
+            let h='<div class="compare-grid">';
+            for(const r of results){
+                h+=`<div class="compare-card ${r.success?'':'error-msg'}">
+                    <div class="provider">${r.provider} (${r.model})</div>
+                    <div class="content">${escapeHtml(r.success?r.content:r.error)}</div>
+                    <div class="meta">${r.elapsed_seconds}s</div></div>`;
+            }
+            h+='</div>';m.innerHTML=h;chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
+        }
+        function addLoading(id){const m=document.createElement('div');m.className='message';m.id=id;
+            m.innerHTML='<div class="loading"><div class="spinner"></div>Processing...</div>';
+            chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;}
+        function removeLoading(id){document.getElementById(id)?.remove();}
+        function escapeHtml(t){if(!t)return'';const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+        async function safeFetch(url, options) {
+            const resp = await fetch(url, options);
+            const ct = resp.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                if (resp.status === 401) throw new Error('세션 만료 — 페이지를 새로고침하고 다시 로그인해주세요.');
+                if (resp.status >= 500) throw new Error(`서버 오류 (${resp.status}) — 잠시 후 다시 시도해주세요.`);
+                throw new Error(`응답 오류 (${resp.status}) — 새로고침 후 다시 시도해주세요.`);
+            }
+            return resp.json();
+        }
+
+        // File upload
+        const fileInput=document.getElementById('fileInput'), fileBar=document.getElementById('fileBar');
+        fileInput.addEventListener('change',async e=>{for(const f of e.target.files) await uploadFile(f);});
+        fileBar.addEventListener('dragover',e=>{e.preventDefault();fileBar.classList.add('dragover');});
+        fileBar.addEventListener('dragleave',()=>{fileBar.classList.remove('dragover');});
+        fileBar.addEventListener('drop',async e=>{
+            e.preventDefault();fileBar.classList.remove('dragover');
+            if(e.dataTransfer.files.length) {
+                for(const f of e.dataTransfer.files) await uploadFile(f);
+            }
+        });
+
+        async function uploadFile(file) {
+            const fd=new FormData(); fd.append('file',file);
+            try{
+                const resp = await fetch('/api/upload', {method:'POST', body:fd});
+                const ct = resp.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    if (resp.status === 401) {
+                        addMessage('Error', '⚠️ 세션 만료. 페이지를 새로고침하고 다시 로그인해주세요.', 'error-msg');
+                    } else {
+                        addMessage('Error', `서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`, 'error-msg');
+                    }
+                    return;
+                }
+                const r = await resp.json();
+                if(r.success){
+                    // Add to uploadedFiles array
+                    uploadedFiles.push({name: r.filename, content: r.content, size: r.size, chars: r.char_count});
+                    // Combine all file contents
+                    uploadedFileContent = uploadedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+                    uploadedFileName = uploadedFiles.map(f=>f.name).join(', ');
+                    const kb=(r.size/1024).toFixed(1);
+                    document.getElementById('fileLabel').classList.add('hidden');
+                    document.getElementById('fileName').textContent = uploadedFiles.length > 1
+                        ? `${uploadedFiles.length}개 파일 (송: ${uploadedFileName})`
+                        : r.filename;
+                    document.getElementById('fileName').classList.remove('hidden');
+                    document.getElementById('fileSize').textContent = uploadedFiles.length > 1
+                        ? `여러 파일`
+                        : `${kb} KB`;
+                    document.getElementById('fileSize').classList.remove('hidden');
+                    document.getElementById('removeFileBtn').classList.remove('hidden');
+                    fileBar.classList.add('has-file');
+                    addMessage('System',`📄 업로드: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()}자)${
+                        uploadedFiles.length > 1 ? ` — 역대 업로드 ${uploadedFiles.length}개` : ''
+                    }`,'system-msg');
+                    // Auto-render spreadsheet for CSV/Excel
+                    if (isTabularContent(r.content, r.filename)) {
+                        var rows = parseTabularData(r.content);
+                        if (rows) renderSpreadsheet(rows, r.filename, r.filename);
+                    }
+                }else{addMessage('Error',r.error||'Upload failed','error-msg');}
+            }catch(e){addMessage('Error','업로드 오류: '+e.message,'error-msg');}
+        }
+        function removeFile(){
+            uploadedFileContent='';uploadedFileName='';uploadedFiles=[];
+            document.getElementById('fileLabel').classList.remove('hidden');
+            document.getElementById('fileName').classList.add('hidden');
+            document.getElementById('fileSize').classList.add('hidden');
+            document.getElementById('removeFileBtn').classList.add('hidden');
+            fileBar.classList.remove('has-file');fileInput.value='';
+        }
+
+        // URL bar setup
+        const urlInput = document.getElementById('urlInput');
+        urlInput.addEventListener('keydown', e => { if(e.key==='Enter') fetchUrl(); });
+
+        async function fetchUrl() {
+            const url = urlInput.value.trim();
+            if(!url) return;
+            const btn = document.getElementById('urlFetchBtn');
+            btn.textContent = 'Loading...'; btn.disabled = true;
+            try {
+                const r = await fetch('/api/fetch_url', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({url})
+                }).then(r => r.json());
+                if(r.success) {
+                    uploadedFileContent = r.content;
+                    uploadedFileName = `[웹페이지] ${r.title}`;
+                    document.getElementById('urlBar').classList.add('has-url');
+                    addMessage('System', `🌐 URL 로드 완료: ${r.title}\n${r.url}\n(${r.char_count.toLocaleString()} 글자)`, 'system-msg');
+                    addMessage('System', '이제 질문을 입력하면 이 웹페이지 내용을 바탕으로 분석합니다.', 'system-msg');
+                } else {
+                    addMessage('Error', 'URL 로드 실패: ' + r.error, 'error-msg');
+                }
+            } catch(e) {
+                addMessage('Error', 'URL 로드 오류: ' + e.message, 'error-msg');
+            }
+            btn.textContent = 'Fetch'; btn.disabled = false;
+        }
+
+        async function send() {
+            const input=document.getElementById('userInput'), text=input.value.trim();
+            if(!text) return;
+            let prompt=text;
+            if(uploadedFileContent) {
+                const q = text || '이 파일의 내용을 분석하고 요약해 주세요.';
+                // Divide char limit proportionally among all files
+                const maxChars = 100000;
+                let chunk, truncNote;
+                if(uploadedFiles.length > 1) {
+                    const perFile = Math.floor(maxChars / uploadedFiles.length);
+                    const parts = uploadedFiles.map(f => {
+                        const c = f.content.slice(0, perFile);
+                        const note = f.content.length > perFile ? ` [${perFile.toLocaleString()}자로 축약]` : '';
+                        return `=== ${f.name}${note} ===\n${c}`;
+                    });
+                    chunk = parts.join('\n\n');
+                    truncNote = `\n\n[📎 총 ${uploadedFiles.length}개 파일, 파일당 최대 ${perFile.toLocaleString()}자]`;
+                } else {
+                    chunk = uploadedFileContent.slice(0, maxChars);
+                    truncNote = uploadedFileContent.length > maxChars
+                        ? `\n\n[⚠️ 파일이 길어 처음 ${maxChars.toLocaleString()}자만 전송됨. 총 ${uploadedFileContent.length.toLocaleString()}자]`
+                        : '';
+                }
+                prompt = `아래는 업로드된 파일 "${uploadedFileName}"의 내용입니다. 이 내용을 바탕으로 사용자의 질문에 답하거나 분석해 주세요.\n\n--- 파일 내용 시작 ---\n${chunk}${truncNote}\n--- 파일 내용 끝 ---\n\n사용자 질문: ${q}`;
+            }
+            input.value=''; document.getElementById('sendBtn').disabled=true;
+            addMessage('You',text,'user-msg');
+            const loadId='load-'+Date.now(); addLoading(loadId);
+            try {
+                let result;
+                if(currentMode==='chat'){
+                    const streamId = Date.now().toString();
+                    removeLoading(loadId);
+                    addStreamingMessage(streamId, currentProvider, currentPersona ? 'Persona' : '');
+                    
+                    const response = await fetch('/api/ask_stream', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt, provider: currentProvider, persona: currentPersona})
+                    });
+                    
+                    if (!response.ok) {
+                        addMessage('Error', 'Stream request failed', 'error-msg');
+                        return;
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let done = false;
+                    let fullText = '';
+                    const persona_label = currentPersona ? `Persona: ${currentPersona}` : currentProvider;
+                    
+                    // Show initial loading doc
+                    showDoc(`<div class="doc-sec-title">💬 Response</div><div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(currentProvider)} </div><div class="doc-answer" id="doc-stream-${streamId}">Typing...</div></div>`, text, persona_label);
+                    const docEl = document.getElementById(`doc-stream-${streamId}`);
+                    
+                    while (!done) {
+                        const { value, done: readerDone } = await reader.read();
+                        done = readerDone;
+                        if (value) {
+                            const chunk = decoder.decode(value, {stream: true});
+                            fullText += chunk;
+                            updateStreamingMessage(streamId, fullText, false);
+                            if (docEl) docEl.textContent = fullText + ' █';
+                        }
+                    }
+                    // finalized update
+                    updateStreamingMessage(streamId, fullText, true);
+                    if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                    document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
+                } else if(currentMode==='compare'){
+                    result=await safeFetch('/api/compare',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({prompt})});
+                    removeLoading(loadId); addCompareCards(result.results);
+                    let docCards = result.results.map(r => `<div class="doc-provider"><div class="doc-provider-name"><span class="dot ${r.success?'':'off'}"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s · ${r.model}</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
+                    showDoc(`<div class="doc-sec-title">🔄 All AI Responses</div>${docCards}`, text, 'Compare All');
+                } else if(currentMode==='debate'){
+                    result=await safeFetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text})});
+                    removeLoading(loadId);
+                    addMessage('System',`DEBATE: ${text}\n${result.for_name} vs ${result.against_name}`,'system-msg');
+                    for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
+                    addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                    let debRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">⚔️ Debate Log</div>${debRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict — ${escapeHtml(result.judge)}</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
+                } else if(currentMode==='discuss'){
+                    result=await safeFetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text})});
+                    removeLoading(loadId);
+                    const disParticipants = result.participants || [];
+                    addMessage('System',`DISCUSSION: ${text}`,'system-msg');
+                    for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
+                    addMessage('Summary',result.summary||result.error,'judge-msg','CONCLUSION');
+                    let disRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary||result.error||'')}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);
+                } else if(currentMode==='best'){
+                    result=await safeFetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({question:text})});
+                    removeLoading(loadId);
+                    addMessage('System',`Finding Best: ${text}`,'system-msg');
+                    addCompareCards(result.answers);
+                    for(const e of result.evaluations) addMessage(`${e.evaluator}`,e.evaluation,'','EVAL');
+                    addMessage('Winner',`${result.winner}\nVotes: ${JSON.stringify(result.votes)}`,'judge-msg','WINNER');
+                    let bestCards = result.answers.map(r=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
+                    showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(result.winner)}</div></div>`, text, `Votes: ${JSON.stringify(result.votes)}`);
+                } else if(currentMode==='persona_debate'){
+                    const p1=document.getElementById('personaFor').value, p2=document.getElementById('personaAgainst').value;
+                    result=await safeFetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({topic:text,persona_for:p1,persona_against:p2})});
+                    removeLoading(loadId);
+                    addMessage('System',`${result.for_name} vs ${result.against_name}: ${text}`,'system-msg');
+                    for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
+                    addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                    let pdRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                    showDoc(`<div class="doc-sec-title">🎭 Persona Debate</div>${pdRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
+                } else if(currentMode==='persona_discuss'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
+                    else{
+                        result=await safeFetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel})});
+                        removeLoading(loadId);
+                        const pdsParticipants = result.participants || [];
+                        addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${pdsParticipants.join(', ')}`,'system-msg');
+                        for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
+                        addMessage('Synthesis',result.synthesis||result.error,'judge-msg','CONCLUSION');
+                        let pdsRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||result.error||'')}</div></div>`, text, `Participants: ${pdsParticipants.join(', ')}`);
+                    }
+                } else if(currentMode==='persona_report'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<1){removeLoading(loadId);addMessage('Error','Select at least 1 persona.','error-msg');}
+                    else{
+                        const anaCards=[];let personaCount=sel.length;
+                        addMessage('System',`MULTI-PERSONA REPORT: ${text}\nAnalyzing ${personaCount} perspectives...`,'system-msg');
+                        const resp=await fetch('/api/persona_report',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='persona'){addMessage(ck.persona_name,ck.analysis,'',`[${ck.index+1}/${personaCount}]`);anaCards.push(`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(ck.persona_name)}</div><div class="doc-answer">${escapeHtml(ck.analysis)}</div></div><hr class="doc-divider">`);
+                                    }else if(ck.type==='synthesis'){removeLoading(loadId);addMessage('Report',ck.report||'','judge-msg','EXECUTIVE REPORT');showDoc(`<div class="doc-sec-title">📊 Multi-Persona Report (${ck.persona_count} perspectives)</div>${anaCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">📋 Executive Report</div><div class="doc-verdict-text">${escapeHtml(ck.report||'')}</div></div>`,text,`Report: ${ck.persona_count} personas`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
+                        }
+                        removeLoading(loadId);
+                    }
+                } else if(currentMode==='decision_matrix'){
+                    const opts=document.getElementById('dmOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
+                    const crit=document.getElementById('dmCriteria').value.split(',').map(s=>s.trim()).filter(Boolean);
+                    const sel=Array.from(document.querySelectorAll('#dmPersonaCheckboxes input:checked')).map(c=>c.value);
+                    if(opts.length<2||crit.length<1||sel.length<1){removeLoading(loadId);addMessage('Error','Need ≥2 options, ≥1 criteria, ≥1 persona','error-msg');}
+                    else{
+                        result=await safeFetch('/api/decision_matrix',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({options:opts,criteria:crit,personas:sel})});
+                        removeLoading(loadId);
+                        if(result.error){addMessage('Error',result.error,'error-msg');}
+                        else{
+                            let evalCards=(result.evaluations||[]).map(e=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(e.persona_name)}</div><div class="doc-answer">${escapeHtml(e.evaluation)}</div></div><hr class="doc-divider">`).join('');
+                            addMessage('System',`DECISION MATRIX: ${opts.join(' vs ')}`,'system-msg');
+                            addMessage('Matrix Result',result.synthesis||'','judge-msg','SCORECARD');
+                            showDoc(`<div class="doc-sec-title">⚖️ Decision Matrix</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Options: ${opts.join(', ')} | Criteria: ${crit.join(', ')}</div>${evalCards}<div class="doc-verdict"><div class="doc-verdict-label">📊 Final Scorecard</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||'')}</div></div>`, text, `Matrix: ${opts.join(' vs ')}`);
+                        }
+                    }
+                } else if(currentMode==='persona_chain'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas for chain.','error-msg');}
+                    else{
+                        const chainCards=[];addMessage('System',`CHAIN ANALYSIS: ${text}`,'system-msg');
+                        const resp=await fetch('/api/persona_chain',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({topic:prompt,personas:sel,provider:currentProvider})});
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='step'){addMessage(ck.persona_name,ck.analysis,'',`Step ${ck.step}`);chainCards.push(`<div class="doc-round"><div class="doc-round-meta">Step ${ck.step}</div><div class="doc-round-speaker">${escapeHtml(ck.persona_name)}</div><div class="doc-round-text">${escapeHtml(ck.analysis)}</div></div>`);
+                                    }else if(ck.type==='conclusion'){removeLoading(loadId);addMessage('Conclusion',ck.conclusion||'','judge-msg','FINAL');showDoc(`<div class="doc-sec-title">🔗 Chain Analysis (${ck.steps} steps)</div>${chainCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">🎯 Final Conclusion</div><div class="doc-verdict-text">${escapeHtml(ck.conclusion||'')}</div></div>`,text,`Chain: ${ck.steps} steps`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
+                        }
+                        removeLoading(loadId);
+                    }
+                } else if(currentMode==='persona_vote'){
+                    const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
+                    if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
+                    else{
+                        const voteCards=[];const voteColors={APPROVE:'#4caf50',OPPOSE:'#f44336',CONDITIONAL:'#ff9800',ABSTAIN:'#666'};
+                        addMessage('System',`PROPOSAL VOTE: ${text}`,'system-msg');
+                        const resp=await fetch('/api/persona_vote',{method:'POST',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({proposal:prompt,personas:sel,provider:currentProvider})});
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='vote'){const col=voteColors[ck.vote]||'#666';addMessage(ck.persona_name,`${ck.vote}\n${ck.response}`,'','Vote');voteCards.push(`<div class="doc-provider"><div class="doc-provider-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px;"></span>${escapeHtml(ck.persona_name)} <span style="color:${col};font-weight:600;">${ck.vote}</span></div><div class="doc-answer">${escapeHtml(ck.response)}</div></div><hr class="doc-divider">`);
+                                    }else if(ck.type==='tally'){removeLoading(loadId);const t=ck.tally||{};const decisionCol=ck.decision==='APPROVED'?'#4caf50':ck.decision==='REJECTED'?'#f44336':'#ff9800';let tallyBar=`<div style="display:flex;gap:10px;margin:8px 0;font-size:12px;font-weight:600;"><span style="color:#4caf50;">✅ ${t.APPROVE||0}</span><span style="color:#f44336;">❌ ${t.OPPOSE||0}</span><span style="color:#ff9800;">⚠️ ${t.CONDITIONAL||0}</span></div>`;addMessage('Summary',ck.summary||'','judge-msg',ck.decision);showDoc(`<div class="doc-sec-title">🗳️ Persona Voting (${sel.length} votes)</div>${tallyBar}<div style="text-align:center;font-size:18px;font-weight:700;color:${decisionCol};margin:10px 0;">${ck.decision}</div>${voteCards.join('')}<div class="doc-verdict"><div class="doc-verdict-label">📋 Summary</div><div class="doc-verdict-text">${escapeHtml(ck.summary||'')}</div></div>`,text,`Vote: ${ck.decision}`);
+                                    }else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
+                        }
+                        removeLoading(loadId);
+                    }
+                }
+            }catch(e){removeLoading(loadId);addMessage('Error',e.message,'error-msg');}
+            document.getElementById('sendBtn').disabled=false;input.focus();
+        }
+        document.getElementById('userInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+        // ── Convenience: Prompt Library ──
+        async function savePrompt() {
+            const input=document.getElementById('userInput').value.trim();
+            if(!input){addMessage('System','Type a prompt first to save it.','system-msg');return;}
+            const name=prompt('Save prompt as:',input.slice(0,50));
+            if(!name)return;
+            await fetch('/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name,prompt:input,mode:currentMode,personas:currentPersona?[currentPersona]:[]})});
+            addMessage('System','✅ Prompt saved: '+name,'system-msg');
+        }
+        async function loadPrompts() {
+            const r=await fetch('/api/prompts').then(r=>r.json());
+            const list=r.prompts||[];
+            if(!list.length){addMessage('System','No saved prompts yet.','system-msg');return;}
+            let html='<div class="doc-sec-title">📋 Prompt Library</div>';
+            list.forEach(function(p){
+                html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin:4px 0;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;">
+                    <div style="cursor:pointer;flex:1;" onclick="document.getElementById('userInput').value='${escapeHtml(p.prompt).replace(/'/g,"\\'")}';"><div style="font-weight:600;font-size:12px;">${escapeHtml(p.name)}</div><div style="font-size:10px;color:var(--text2);">${escapeHtml((p.prompt||'').slice(0,80))}</div></div>
+                    <span style="cursor:pointer;color:#666;font-size:12px;" onclick="deletePrompt('${p.id}')">&times;</span></div>`;
+            });
+            showDoc(html,'Prompt Library','📋 Prompts');
+        }
+        async function deletePrompt(id){await fetch('/api/prompts/'+id,{method:'DELETE'});loadPrompts();}
+
+        // ── Convenience: PDF Export ──
+        function exportPDF() {
+            const output=document.getElementById('outputArea');
+            if(!output||!output.innerHTML.trim()){addMessage('System','Nothing to export. Generate output first.','system-msg');return;}
+            const w=window.open('','_blank');
+            w.document.write(`<html><head><title>AI Hub Export</title><style>body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#333;line-height:1.6;}h1{color:#1a1a2e;border-bottom:2px solid #6c5ce7;padding-bottom:8px;}.doc-sec-title{font-size:18px;font-weight:700;margin:20px 0 10px;}.doc-provider-name{font-weight:600;margin:8px 0;}.doc-answer{margin:8px 0 16px;padding:10px;background:#f8f9fa;border-radius:8px;white-space:pre-wrap;}.doc-verdict{margin:20px 0;padding:15px;background:#f0f4ff;border:1px solid #6c5ce7;border-radius:8px;}.doc-verdict-label{font-weight:700;}.doc-round{margin:10px 0;padding:10px;background:#f8f9fa;border-radius:6px;}.doc-round-speaker{font-weight:600;}.doc-divider{border:none;border-top:1px solid #eee;margin:10px 0;}@media print{body{margin:0;}}</style></head><body><h1>AI Hub Report</h1><div style="font-size:12px;color:#666;margin-bottom:20px;">${new Date().toLocaleString()}</div>`+output.innerHTML+'</body></html>');
+            w.document.close();
+            setTimeout(function(){w.print();},500);
+        }
+
+
+
+        // ── Convenience: Custom Persona ──
+        function addCustomPersona() {
+            const name=prompt('Persona display name:');
+            if(!name)return;
+            const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+            const desc=prompt('Describe this persona\'s role and expertise:');
+            if(!desc)return;
+            fetch('/api/add_custom_persona',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({key:key,name:name,prompt:desc})}).then(function(){
+                    personas[key]=name;
+                    const g=document.getElementById('personaGrid');
+                    const lastBody=g.querySelector('.persona-group-body:last-child');
+                    if(lastBody)lastBody.innerHTML+=`<div class="persona-chip" data-key="${key}" onclick="togglePersona('${key}')">${name}</div>`;
+                    addMessage('System','✅ Custom persona added: '+name,'system-msg');
+                });
+        }
+
+        // ── Init Decision Matrix Checkboxes ──
+        function initDmCheckboxes() {
+            const c=document.getElementById('dmPersonaCheckboxes');
+            c.innerHTML='<div style="width:100%;font-size:10px;color:var(--accent2);margin-bottom:4px;">Select evaluators:</div>';
+            personaGroups.forEach(function(group){
+                group.personas.forEach(function(p){
+                    c.innerHTML+=`<label style="display:flex;align-items:center;gap:4px;padding:3px 6px;background:#12121a;border:1px solid #2a2a3e;border-radius:5px;font-size:10px;cursor:pointer;"><input type="checkbox" value="${p.key}"> ${p.name}</label>`;
+                });
+            });
+        }
+
+        // ── Conversation History (Supabase) ──
+        let currentConvId = null;
+        let supabaseEnabled = false;
+
+        async function initHistory() {
+            try {
+                const r = await fetch('/api/conversations').then(r=>r.json());
+                supabaseEnabled = r.supabase;
+                if (!supabaseEnabled) {
+                    document.getElementById('historyList').innerHTML = '<div class="history-empty">No DB connected</div>';
+                    return;
+                }
+                renderHistory(r.conversations || []);
+            } catch(e) {
+                document.getElementById('historyList').innerHTML = '<div class="history-empty">Error loading</div>';
+            }
+        }
+
+        function renderHistory(convs) {
+            const list = document.getElementById('historyList');
+            if (!convs.length) {
+                list.innerHTML = '<div class="history-empty">No conversations yet</div>';
+                return;
+            }
+            list.innerHTML = convs.map(c => {
+                const active = c.id === currentConvId ? ' active' : '';
+                const date = new Date(c.updated_at).toLocaleDateString();
+                return `<div class="history-item${active}" onclick="loadConversation('${c.id}')">
+                    <span class="title">${escapeHtml(c.title)}</span>
+                    <button class="del-btn" onclick="event.stopPropagation();deleteConversation('${c.id}')" title="Delete">🗑</button>
+                </div>`;
+            }).join('');
+        }
+
+        async function newConversation() {
+            currentConvId = null;
+            chatArea.innerHTML = '';
+            if (typeof docPanel !== 'undefined' && docPanel) docPanel.innerHTML = '';
+            initHistory();
+        }
+
+        async function ensureConversation(firstMsg) {
+            if (currentConvId || !supabaseEnabled) return;
+            try {
+                const title = firstMsg.substring(0, 50);
+                const r = await fetch('/api/conversations', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({title: title, mode: currentMode})
+                }).then(r=>r.json());
+                if (r.conversation) currentConvId = r.conversation.id;
+            } catch(e) { console.log('Conv create error:', e); }
+        }
+
+        async function saveMsg(data) {
+            if (!currentConvId || !supabaseEnabled) return;
+            try {
+                await fetch(`/api/conversations/${currentConvId}/messages`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } catch(e) { console.log('Save msg error:', e); }
+        }
+
+        async function loadConversation(convId) {
+            currentConvId = convId;
+            chatArea.innerHTML = '';
+            initHistory();
+            try {
+                const r = await fetch(`/api/conversations/${convId}/messages`).then(r=>r.json());
+                for (const m of (r.messages || [])) {
+                    if (m.role === 'user') {
+                        addMessage('You', m.content, 'user-msg');
+                    } else {
+                        addMessage(m.speaker || m.provider || 'AI', m.content, '', m.badge || m.model || '', m.elapsed_seconds ? m.elapsed_seconds+'s' : '');
+                    }
+                }
+            } catch(e) { addMessage('Error', 'Failed to load conversation', 'error-msg'); }
+        }
+
+        async function deleteConversation(convId) {
+            if (!confirm('Delete this conversation?')) return;
+            try {
+                await fetch(`/api/conversations/${convId}`, {method:'DELETE'});
+                if (currentConvId === convId) { currentConvId = null; chatArea.innerHTML = ''; }
+                initHistory();
+            } catch(e) { console.log('Delete error:', e); }
+        }
+
+        // Patch send() to auto-save messages
+        const _origSend = send;
+        send = async function() {
+            const text = document.getElementById('userInput').value.trim();
+            if (text && supabaseEnabled) {
+                await ensureConversation(text);
+                saveMsg({role:'user', content:text, update_title: !currentConvId});
+            }
+            await _origSend();
+            // Refresh history after sending
+            if (supabaseEnabled) setTimeout(()=>initHistory(), 1000);
+        };
+
+        // ── Mobile Responsive ──
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+        }
+        function showMobilePanel(panel) {
+            const tabs = document.querySelectorAll('.mobile-panel-tabs button');
+            tabs.forEach(t => t.classList.remove('active'));
+            const mp = document.querySelector('.main-panel');
+            const op = document.querySelector('.output-panel');
+            if (panel === 'chat') {
+                tabs[0].classList.add('active');
+                if(mp) { mp.classList.remove('mobile-hide'); }
+                if(op) { op.classList.remove('mobile-show'); }
+            } else {
+                tabs[1].classList.add('active');
+                if(mp) { mp.classList.add('mobile-hide'); }
+                if(op) { op.classList.add('mobile-show'); }
+            }
+        }
+        // Auto-close sidebar on mobile when mode/provider is selected
+        const origSetMode = setMode;
+        setMode = function(m) { origSetMode(m); if(window.innerWidth<=768) toggleSidebar(); };
+        const origSetProvider = setProvider;
+        setProvider = function(p) { origSetProvider(p); if(window.innerWidth<=768) toggleSidebar(); };
+
+        // ── Admin Panel ──
+        function initAdmin() {
+            if (USER_TIER === 'owner') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
+            }
+        }
+        function openAdmin() {
+            document.getElementById('adminOverlay').classList.add('open');
+            adminLoadUsers();
+        }
+        function closeAdmin() {
+            document.getElementById('adminOverlay').classList.remove('open');
+        }
+        async function adminLoadUsers() {
+            const tbody = document.getElementById('adminUserList');
+            tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/users');
+                const data = await res.json();
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--orange);text-align:center;padding:12px;">⚠️ ${data.error}<br><button onclick="adminLoadUsers()" style="margin-top:8px;padding:4px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;cursor:pointer;">🔄 Retry</button></td></tr>`; return; }
+                if (!data.users.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);">No users yet</td></tr>'; return; }
+                tbody.innerHTML = data.users.map(u => {
+                    const tierClass = `tier-${u.tier}`;
+                    const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString() : '-';
+                    const statusIcon = u.is_active ? '🟢' : '🔴';
+                    return `<tr>
+                        <td><strong>${u.username}</strong></td>
+                        <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
+                        <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
+                            <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
+                            <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
+                            <option value="admin" ${u.tier==='admin'?'selected':''}>Admin</option>
+                            <option value="owner" ${u.tier==='owner'?'selected':''}>Owner</option>
+                        </select></td>
+                        <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
+                        <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
+                        <td><button class="admin-btn-sm" onclick="adminResetPw('${u.id}','${u.username}')" title="비밀번호 변경">🔑</button> <button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
+                    </tr>`;
+                }).join('');
+            } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);">Error: ${e.message}</td></tr>`; }
+        }
+        async function adminAddUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const display_name = document.getElementById('newDisplayName').value.trim() || username;
+            const tier = document.getElementById('newTier').value;
+            if (!username || !password) { alert('Username and password are required'); return; }
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({username, password, display_name, tier})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('newUsername').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('newDisplayName').value = '';
+                    document.getElementById('newEmail').value = '';
+                    document.getElementById('newPhone').value = '';
+                    adminLoadUsers();
+                } else { alert(data.error); }
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminDeleteUser(id, name) {
+            if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {method:'DELETE'});
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminToggleActive(id, active) {
+            try {
+                await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({is_active: active})
+                });
+                adminLoadUsers();
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminUpdateTier(id, tier) {
+            try {
+                await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({tier})
+                });
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminResetPw(id, username) {
+            const pw = prompt(`"${username}" 의 새 비밀번호를 입력하세요:`);
+            if (!pw || !pw.trim()) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({password: pw.trim()})
+                });
+                const data = await res.json();
+                if (data.success) alert(`✅ "${username}" 비밀번호가 변경되었습니다.`);
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminSetTempPw(id, username) {
+            const pw = prompt(`"${username}" 의 임시 비밀번호를 입력하세요:`);
+            if (pw === null) return;
+            if (!pw.trim()) { alert('비밀번호를 입력해주세요.'); return; }
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({temp_password: pw.trim()})
+                });
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        async function adminClearTempPw(id) {
+            if (!confirm('임시 비밀번호를 삭제하겠습니까?')) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({temp_password: null})
+                });
+                const data = await res.json();
+                if (data.success) adminLoadUsers();
+                else alert(data.error);
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+
+        // ── UI Toggle Functions ──
+        let currentSidebarTab = 'mode';
+        function switchSidebarTab(tab) {
+            const sidebar = document.getElementById('mainSidebar');
+            // If clicking the same tab, toggle sidebar
+            if (currentSidebarTab === tab && !sidebar.classList.contains('hidden-sidebar')) {
+                sidebar.classList.add('hidden-sidebar');
+                document.getElementById('sidebarToggleBtn').textContent = '▶';
+                return;
+            }
+            // Ensure sidebar is visible
+            sidebar.classList.remove('hidden-sidebar');
+            document.getElementById('sidebarToggleBtn').textContent = '◀';
+            currentSidebarTab = tab;
+            // Switch sections
+            document.querySelectorAll('.sidebar-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('section' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            // Highlight active tab
+            document.querySelectorAll('.header-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+        }
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('mainSidebar');
+            const btn = document.getElementById('sidebarToggleBtn');
+            sidebar.classList.toggle('hidden-sidebar');
+            btn.textContent = sidebar.classList.contains('hidden-sidebar') ? '▶' : '◀';
+        }
+        function toggleModeGroup(id) {
+            const el = document.getElementById(id);
+            const arrow = document.getElementById(id + 'Arrow');
+            el.classList.toggle('collapsed');
+            if (arrow) arrow.textContent = el.classList.contains('collapsed') ? '▶' : '▼';
+        }
+        function toggleInputTools() {
+            const p = document.getElementById('inputToolsPanel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        }
+        // Mode names for header label
+        const MODE_LABELS = {chat:t('chat'),compare:t('compare'),debate:t('debate'),discuss:t('discuss'),best:t('best'),persona_debate:t('p_debate'),persona_discuss:t('p_discuss'),persona_report:t('p_report'),decision_matrix:t('dm'),persona_chain:t('chain'),persona_vote:t('vote')};
+        const PROVIDER_LABELS = {chatgpt:'ChatGPT',gemini:'Gemini',azure:'Azure',claude:'Claude',grok:'Grok'};
+        // Wrap setMode to update header label + auto-expand groups
+        const origSetMode2 = setMode;
+        setMode = function(m) {
+            origSetMode2(m);
+            document.getElementById('tabMode').textContent = MODE_LABELS[m] || m;
+            const personaModes = ['persona_debate','persona_discuss','persona_report','persona_vote'];
+            const analysisModes = ['decision_matrix','persona_chain'];
+            if (personaModes.includes(m)) {
+                document.getElementById('modePersona').classList.remove('collapsed');
+                document.getElementById('modePersonaArrow').textContent = '▼';
+            }
+            if (analysisModes.includes(m)) {
+                document.getElementById('modeAnalysis').classList.remove('collapsed');
+                document.getElementById('modeAnalysisArrow').textContent = '▼';
+            }
+        };
+        // Wrap setProvider to update header label
+        const origSetProvider2 = setProvider;
+        setProvider = function(p) {
+            origSetProvider2(p);
+            document.getElementById('tabProvider').textContent = PROVIDER_LABELS[p] || p;
+        };
+
+        // ── Session Info ──
+        let sessionStartSecs = 0;
+        function fmtDuration(secs) {
+            const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+            return h > 0 ? h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+                         : m + ':' + String(s).padStart(2,'0');
+        }
+        function fmtDate(iso) {
+            if (!iso || iso === 'N/A (env admin)') return iso || '—';
+            try { const d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+            catch(e) { return iso; }
+        }
+        function fmtTotalTime(mins) {
+            if (!mins) return '0m';
+            const h = Math.floor(mins / 60), m = mins % 60;
+            return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        }
+        function initSessionInfo() {
+            fetch('/api/user/session-info').then(r=>r.json()).then(d => {
+                document.getElementById('infoFirst').textContent = fmtDate(d.first_login);
+                document.getElementById('infoLast').textContent = fmtDate(d.last_login);
+                document.getElementById('infoTotal').textContent = fmtTotalTime(d.total_time_minutes);
+                document.getElementById('infoIp').textContent = d.ip || '—';
+                document.getElementById('infoLocation').textContent = d.location || '—';
+                sessionStartSecs = d.current_session_seconds || 0;
+                document.getElementById('infoSession').textContent = fmtDuration(sessionStartSecs);
+                // Live timer
+                setInterval(function() {
+                    sessionStartSecs++;
+                    document.getElementById('infoSession').textContent = fmtDuration(sessionStartSecs);
+                }, 1000);
+                // Force password change if temp password was set by admin
+                if (d.must_change_password) showForcedPasswordChange();
+            }).catch(()=>{});
+        }
+        function showForcedPasswordChange() {
+            const overlay = document.createElement('div');
+            overlay.id = 'forcedPwOverlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#12121a;border:1px solid #a29bfe;border-radius:16px;padding:32px;width:360px;text-align:center;">
+                    <div style="font-size:32px;margin-bottom:12px;">🔑</div>
+                    <h3 style="color:#a29bfe;margin-bottom:8px;">임시 비밀번호 변경 필요</h3>
+                    <p style="color:#8888aa;font-size:13px;margin-bottom:20px;">관리자가 임시 비밀번호를 설정했습니다.<br>계속하려면 새 비밀번호를 설정해주세요.</p>
+                    <input id="fpCurrentPw" type="password" placeholder="현재 (임시) 비밀번호" style="width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <input id="fpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)" style="width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <input id="fpConfirmPw" type="password" placeholder="새 비밀번호 확인" style="width:100%;padding:10px;margin-bottom:16px;background:#1a1a2e;color:#fff;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;">
+                    <div id="fpError" style="color:#ff6b6b;font-size:12px;margin-bottom:10px;display:none;"></div>
+                    <button onclick="submitForcedPasswordChange()" style="width:100%;padding:12px;background:linear-gradient(135deg,#a29bfe,#74b9ff);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">비밀번호 변경</button>
+                </div>`;
+            document.body.appendChild(overlay);
+        }
+        async function submitForcedPasswordChange() {
+            const cur = document.getElementById('fpCurrentPw').value;
+            const np = document.getElementById('fpNewPw').value;
+            const cp = document.getElementById('fpConfirmPw').value;
+            const err = document.getElementById('fpError');
+            if (np !== cp) { err.textContent = '새 비밀번호가 일치하지 않습니다.'; err.style.display='block'; return; }
+            if (np.length < 4) { err.textContent = '비밀번호는 4자 이상이어야 합니다.'; err.style.display='block'; return; }
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({current_password: cur, new_password: np})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('forcedPwOverlay').remove();
+                    addMessage('System', '✅ 비밀번호가 변경됐습니다. 이제 새 비밀번호로 로그인하세요.', 'system-msg');
+                } else { err.textContent = data.error || '오류가 발생했습니다.'; err.style.display='block'; }
+            } catch(e) { err.textContent = '네트워크 오류: ' + e.message; err.style.display='block'; }
+        }
+
+        initTheme(); initStatus(); initPersonas(); initHistory(); initDmCheckboxes(); applyLang(); initAdmin(); initSessionInfo();
+
+        // ── Voice Support (Web Speech API) ──
+        let recognition = null;
+        let isRecording = false;
+        const micBtn = document.getElementById('micBtn');
+
+        // Speech-to-Text
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SR();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = navigator.language || 'en-US';
+            recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039); };
+            recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
+            recognition.onresult = function(e) {
+                var t = '';
+                for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+                document.getElementById('userInput').value = t;
+                if (e.results[e.results.length-1].isFinal) setTimeout(function(){ send(); }, 300);
+            };
+            recognition.onerror = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
+        } else {
+            micBtn.style.display = 'none';
+        }
+
+        function toggleMic() {
+            if (!recognition) return;
+            if (isRecording) recognition.stop(); else recognition.start();
+        }
+
+        // Text-to-Speech (OpenAI TTS with browser fallback)
+        var currentAudio = null;
+        async function speakText(text) {
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            var cleaned = text.replace(/[#*`_~>|\\-]/g, '').replace(/\n+/g, '. ').substring(0, 4000);
+            try {
+                var resp = await fetch('/api/tts', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: cleaned, voice: 'nova'})
+                });
+                if (resp.ok) {
+                    var ct = resp.headers.get('content-type') || '';
+                    if (ct.indexOf('audio') >= 0) {
+                        var blob = await resp.blob();
+                        currentAudio = new Audio(URL.createObjectURL(blob));
+                        currentAudio.play();
+                        return;
+                    }
+                }
+            } catch(e) { console.log('TTS fallback:', e); }
+            if ('speechSynthesis' in window) {
+                var u = new SpeechSynthesisUtterance(cleaned);
+                u.lang = navigator.language || 'en-US';
+                window.speechSynthesis.speak(u);
+            }
+        }
+
+        // Audio file transcription (Whisper)
+        async function transcribeAudio(file) {
+            try {
+                var fd = new FormData();
+                fd.append('file', file);
+                var loadId = addLoading('Transcribing audio...');
+                var resp = await fetch('/api/transcribe', {method: 'POST', body: fd});
+                var data = await resp.json();
+                removeLoading(loadId);
+                if (data.success) {
+                    addMessage('System', 'Transcription: ' + file.name, 'system-msg');
+                    document.getElementById('userInput').value = data.text;
+                    send();
+                } else {
+                    addMessage('Error', data.error || 'Transcription failed', 'error-msg');
+                }
+            } catch(e) { addMessage('Error', 'Transcription error: ' + e.message, 'error-msg'); }
+        }
+
+        // Add speaker buttons to AI messages
+        var chatObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType !== 1) return;
+                    var mb = node.querySelector ? node.querySelector('.msg-body:not(.user-msg):not(.system-msg)') : null;
+                    if (mb && !mb.querySelector('.speak-btn')) {
+                        var btn = document.createElement('button');
+                        btn.className = 'speak-btn';
+                        btn.title = 'Read aloud';
+                        btn.textContent = String.fromCodePoint(128266);
+                        btn.onclick = function() { speakText(mb.textContent); };
+                        var hdr = node.querySelector('.msg-header');
+                        if (hdr) hdr.appendChild(btn);
+                    }
+                });
+            });
+        });
+        chatObserver.observe(chatArea, { childList: true });
+
+        // ── Slide Generation ──
+        async function generateSlides(topic) {
+            if (!topic) { topic = prompt('Enter presentation topic:'); if (!topic) return; }
+            var loadId = addLoading('Generating slides...');
+            try {
+                var prompt_text = 'Create a presentation about: ' + topic + '. Return ONLY valid JSON array with this exact format: [{"title":"Title Slide","content":"Subtitle","bullets":[]},{"title":"Slide 2 Title","content":"","bullets":["Point 1","Point 2","Point 3"]}]. Create 6-10 slides. No markdown, no explanation, ONLY the JSON array.';
+                var resp = await safeFetch('/api/chat', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: prompt_text, provider: currentProvider || 'gemini', mode: 'chat'})
+                });
+                var data = await resp.json();
+                removeLoading(loadId);
+                var aiText = data.response || data.responses?.[0]?.response || '';
+                // Extract JSON from response
+                var jsonMatch = aiText.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) { addMessage('Error', 'Could not parse slides. Try again.', 'error-msg'); return; }
+                var slides = JSON.parse(jsonMatch[0]);
+                currentSlides = slides;
+                currentSlideTopic = topic;
+                // Show in output panel
+                showSlidesPreview(slides, topic);
+                addMessage('System', 'Slides generated! Check Output panel for preview & download.', 'system-msg');
+                // Switch to output on mobile
+                if (window.innerWidth <= 768) showMobilePanel('output');
+            } catch(e) { removeLoading(loadId); addMessage('Error', 'Slides error: ' + e.message, 'error-msg'); }
+        }
+        var currentSlides = null;
+        var currentSlideTopic = '';
+
+        function showSlidesPreview(slides, topic) {
+            var outputArea = document.querySelector('.output-area') || document.getElementById('outputArea');
+            if (!outputArea) return;
+            var html = '<div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+            html += '<span style="font-size:18px;font-weight:700;color:var(--accent2);">Presentation: ' + topic + '</span>';
+            html += '<button onclick="downloadPptx()" style="padding:8px 16px;border:1px solid var(--green);border-radius:8px;background:#0a2a1a;color:var(--green);cursor:pointer;font-family:Inter,sans-serif;font-size:12px;">Download PPTX</button>';
+            html += '<button onclick="toggleSlideshow()" style="padding:8px 16px;border:1px solid var(--accent);border-radius:8px;background:#1a1a3a;color:var(--accent2);cursor:pointer;font-family:Inter,sans-serif;font-size:12px;">Slideshow</button>';
+            html += '</div>';
+            slides.forEach(function(s, i) {
+                html += '<div style="background:#12121f;border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:12px;">';
+                html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Slide ' + (i+1) + '</div>';
+                html += '<div style="font-size:' + (i===0?'24px':'18px') + ';font-weight:700;color:#e0e0ff;margin-bottom:12px;">' + s.title + '</div>';
+                if (s.content) html += '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">' + s.content + '</div>';
+                if (s.bullets && s.bullets.length) {
+                    s.bullets.forEach(function(b) { html += '<div style="color:#bbb;font-size:14px;padding:4px 0 4px 16px;">• ' + b + '</div>'; });
+                }
+                html += '</div>';
+            });
+            outputArea.innerHTML = html;
+        }
+
+        async function downloadPptx() {
+            if (!currentSlides) return;
+            try {
+                var resp = await fetch('/api/slides', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({slides: currentSlides, title: currentSlideTopic})
+                });
+                if (resp.ok) {
+                    var blob = await resp.blob();
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = (currentSlideTopic || 'presentation') + '.pptx';
+                    a.click();
+                }
+            } catch(e) { addMessage('Error', 'Download failed: ' + e.message, 'error-msg'); }
+        }
+
+        function toggleSlideshow() {
+            if (!currentSlides) return;
+            var w = window.open('', '_blank');
+            var html = '<!DOCTYPE html><html><head><title>' + currentSlideTopic + '</title>';
+            html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.css">';
+            html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/theme/black.min.css">';
+            html += '<style>.reveal{font-family:Inter,sans-serif;} .reveal h2{color:#e0e0ff;} .reveal li{font-size:0.85em;margin:8px 0;}</style></head>';
+            html += '<body><div class="reveal"><div class="slides">';
+            currentSlides.forEach(function(s, i) {
+                html += '<section>';
+                html += '<h2>' + s.title + '</h2>';
+                if (s.content) html += '<p style="color:#aaa;">' + s.content + '</p>';
+                if (s.bullets && s.bullets.length) {
+                    html += '<ul style="text-align:left;">';
+                    s.bullets.forEach(function(b) { html += '<li>' + b + '</li>'; });
+                    html += '</ul>';
+                }
+                html += '</section>';
+            });
+            html += '</div></div>';
+            html += '<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.min.js"><\/script>';
+            html += '<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</html>
