@@ -504,7 +504,7 @@
             
             const defaultKeys = tierDefaults[USER_TIER] || tierDefaults['basic'];
             if (defaultKeys && defaultKeys.length > 0) {
-                const defaultPersonasOptions = defaultKeys.map(k => ({key: k, name: personas[k]?.name || k, prompt: personas[k]?.prompt || '', icon: "⭐"}));
+                const defaultPersonasOptions = defaultKeys.map(k => ({key: k, name: (typeof personas[k] === 'string' ? personas[k] : (personas[k]?.name || k)), icon: "⭐"}));
                 groupsToRender.unshift({
                     key: 'tier_default_group', name: '⭐ 내 등급 기본 페르소나', icon: '⭐',
                     personas: defaultPersonasOptions
