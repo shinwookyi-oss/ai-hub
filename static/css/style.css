@@ -605,7 +605,7 @@
         .ws-tag-add-btn:hover { opacity:1; }
         /* ── Automation Hub ── */
         .auto-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:300; align-items:center; justify-content:center; }
-        .auto-overlay.open { display:flex; }
+        .auto-overlay.open { display:flex !important; }
         .auto-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:16px; width:92%; max-width:660px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
         .auto-form-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:14px; width:92%; max-width:500px; max-height:90vh; display:flex; flex-direction:column; overflow-y:auto; }
         .auto-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }

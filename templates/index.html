@@ -204,7 +204,7 @@
         </div>
     </div>
     <!-- Automation Modal -->
-    <div class="auto-overlay" id="autoOverlay" onclick="if(event.target===this)closeAutomation()">
+    <div class="auto-overlay" id="autoOverlay" style="display:none;" onclick="if(event.target===this)closeAutomation()">
         <div class="auto-modal">
             <div class="auto-header">
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -313,7 +313,7 @@
     </div>
 
     <!-- Schedule Create/Edit Modal -->
-    <div class="auto-overlay" id="schedCreateOverlay" onclick="if(event.target===this)closeSchedCreate()" style="z-index:310;">
+    <div class="auto-overlay" id="schedCreateOverlay" onclick="if(event.target===this)closeSchedCreate()" style="display:none;z-index:310;">
         <div class="auto-form-modal">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="schedCreateTitle">⏰ New Schedule</h3>
@@ -363,7 +363,7 @@
     </div>
 
     <!-- Workflow Create/Edit Modal -->
-    <div class="auto-overlay" id="wfCreateOverlay" onclick="if(event.target===this)closeWfCreate()" style="z-index:310;">
+    <div class="auto-overlay" id="wfCreateOverlay" onclick="if(event.target===this)closeWfCreate()" style="display:none;z-index:310;">
         <div class="auto-form-modal" style="max-width:580px;">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="wfCreateTitle">🔗 New Workflow</h3>
@@ -392,7 +392,7 @@
     </div>
 
     <!-- Webhook Create Modal -->
-    <div class="auto-overlay" id="whCreateOverlay" onclick="if(event.target===this)closeWhCreate()" style="z-index:310;">
+    <div class="auto-overlay" id="whCreateOverlay" onclick="if(event.target===this)closeWhCreate()" style="display:none;z-index:310;">
         <div class="auto-form-modal">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);">🔔 New Webhook</h3>
@@ -424,7 +424,7 @@
     </div>
 
     <!-- Group Create Modal -->
-    <div class="auto-overlay" id="grpCreateOverlay" onclick="if(event.target===this)closeGrpCreate()" style="z-index:310;">
+    <div class="auto-overlay" id="grpCreateOverlay" onclick="if(event.target===this)closeGrpCreate()" style="display:none;z-index:310;">
         <div class="auto-form-modal" style="max-width:440px;">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="grpCreateTitle">👥 New Group</h3>
@@ -443,7 +443,7 @@
     </div>
 
     <!-- Group Members Modal -->
-    <div class="auto-overlay" id="grpMembersOverlay" onclick="if(event.target===this)closeGrpMembers()" style="z-index:310;">
+    <div class="auto-overlay" id="grpMembersOverlay" onclick="if(event.target===this)closeGrpMembers()" style="display:none;z-index:310;">
         <div class="auto-form-modal" style="max-width:480px;">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="grpMembersTitle">👥 멤버 관리</h3>
@@ -471,7 +471,7 @@
     </div>
 
     <!-- Integration Config Modal -->
-    <div class="auto-overlay" id="intModalOverlay" onclick="if(event.target===this)closeIntModal()" style="z-index:310;">
+    <div class="auto-overlay" id="intModalOverlay" onclick="if(event.target===this)closeIntModal()" style="display:none;z-index:310;">
         <div class="auto-form-modal" style="max-width:480px;">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="intModalTitle">🔌 Integration 설정</h3>
@@ -482,7 +482,7 @@
     </div>
 
     <!-- Workflow Run Modal -->
-    <div class="auto-overlay" id="wfRunOverlay" onclick="if(event.target===this)closeWfRun()" style="z-index:310;">
+    <div class="auto-overlay" id="wfRunOverlay" onclick="if(event.target===this)closeWfRun()" style="display:none;z-index:310;">
         <div class="auto-form-modal" style="max-width:520px;">
             <div class="auto-header">
                 <h3 style="font-size:14px;color:var(--text);" id="wfRunTitle">▶ Run Workflow</h3>
