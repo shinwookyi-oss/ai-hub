@@ -162,7 +162,7 @@
     </div>
 
     <!-- Admin Panel Modal -->
-    <div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdmin()">
+    <div class="admin-overlay" id="adminOverlay" style="display:none;" onclick="if(event.target===this)closeAdmin()">
         <div class="admin-modal">
             <div class="admin-header">
                 <h2>⚙️ User Management</h2>
@@ -2989,11 +2989,11 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             }
         }
         function openAdmin() {
-            document.getElementById('adminOverlay').classList.add('open');
+            document.getElementById('adminOverlay').style.display = 'flex';
             adminLoadUsers();
         }
         function closeAdmin() {
-            document.getElementById('adminOverlay').classList.remove('open');
+            document.getElementById('adminOverlay').style.display = 'none';
         }
 
         // ── Style Settings (Owner Only) ──

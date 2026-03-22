@@ -544,8 +544,7 @@
         .open-output-btn:hover { transform:scale(1.1); box-shadow:0 4px 20px rgba(108,92,231,0.4); }
         .open-output-btn.visible { display:flex; }
         /* ── Admin Panel Modal ── */
-        .admin-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:250; }
-        .admin-overlay.open { display:flex; align-items:center; justify-content:center; }
+        .admin-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:350; align-items:center; justify-content:center; }
         .admin-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:16px; width:90%; max-width:750px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; }
         .admin-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
         .admin-header h2 { font-size:18px; margin:0; }
