@@ -445,7 +445,9 @@
             .input-row textarea { font-size: 14px; max-height: 80px; }
             .panel-divider { display: none !important; }
             .output-panel { display: none; width: 100%; min-width: 0; flex: none !important; flex-direction: column; }
-            .output-panel.mobile-show { display: flex; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--bg); }
+            .output-panel.mobile-show { display: flex; position: static; flex: 1; min-height: 0; width: 100%; min-width: 0; background: var(--bg); }
+            .output-panel.mobile-show .output-panel-header { flex-shrink: 0; flex-wrap: nowrap; overflow-x: auto; padding: 6px 10px; gap: 4px; }
+            .output-panel.mobile-show .output-panel-header > div:last-child { flex-shrink: 0; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
             .output-panel.mobile-show .output-area { flex: 1; overflow-y: auto; min-height: 0; }
             .main-panel.mobile-hide { display: none; }
             .compare-grid { grid-template-columns: 1fr; }
@@ -454,16 +456,50 @@
             .settings-btn { font-size: 14px; padding: 3px 5px; }
             .theme-picker-btn { font-size: 14px; }
             .open-output-btn { right: 8px; bottom: 70px; width: 38px; height: 38px; font-size: 15px; }
-            /* ── Mobile: tighter line spacing ── */
-            .chat-area { gap: 6px; }
-            .message { margin-bottom: 5px; }
-            .msg-body { line-height: 1.15; padding: 6px 10px; font-size: 13px; }
-            .msg-body p { margin: 0 0 0.75px; line-height: 1.15; }
-            .msg-body li { line-height: 1.15; }
-            .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin: 2px 0 0.5px; line-height: 1.1; }
-            .msg-body pre { margin: 3px 0; padding: 8px 10px; line-height: 1.3; }
-            .msg-body blockquote { margin: 3px 0; padding: 4px 10px; }
-            .msg-body ul,.msg-body ol { margin: 0 0 0.75px; }
+            /* ── Mobile: tighter line spacing — 아래 간격 제거 ── */
+            .chat-area { gap: 4px; }
+            .message { margin-bottom: 3px; }
+            .msg-body { line-height: 1.1; padding: 5px 10px; font-size: 13px; }
+            .msg-body p { margin: 0; line-height: 1.1; }
+            .msg-body li { margin: 0; line-height: 1.1; }
+            .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin: 0; line-height: 1.1; }
+            .msg-body pre { margin: 2px 0; padding: 6px 10px; line-height: 1.25; }
+            .msg-body blockquote { margin: 2px 0; padding: 3px 10px; }
+            .msg-body ul,.msg-body ol { margin: 0; }
+            /* ── Mobile: doc-answer (output panel) — 아래 간격 제거 ── */
+            .doc-answer { font-size: 13px; line-height: 1.1; }
+            .doc-answer h1,.doc-answer h2,.doc-answer h3 { margin: 0; line-height: 1.1; }
+            .doc-answer h1 { font-size: 15px; }
+            .doc-answer h2 { font-size: 13.5px; }
+            .doc-answer h3 { font-size: 12.5px; }
+            .doc-answer p { margin: 0; line-height: 1.1; }
+            .doc-answer ul,.doc-answer ol { margin: 0; }
+            .doc-answer li { margin: 0; line-height: 1.1; }
+            .doc-answer pre { margin: 2px 0; padding: 6px 10px; line-height: 1.25; font-size: 11px; }
+            .doc-answer blockquote { margin: 2px 0; padding: 3px 10px; font-size: 12px; }
+            .doc-answer code { font-size: 11px; }
+            .doc-answer table { font-size: 11px; }
+            .doc-answer th { font-size: 10px; padding: 3px 6px; }
+            .doc-answer td { padding: 2px 6px; }
+            .doc-answer hr { margin: 3px 0; }
+            .doc-answer img { margin: 2px 0; }
+            .doc-query { padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+            .doc-sec-title { font-size: 10px; margin: 12px 0 6px; padding-bottom: 4px; letter-spacing: 1.2px; }
+            .doc-provider { margin-bottom: 12px; }
+            .doc-provider-name { font-size: 13px; margin-bottom: 4px; }
+            .doc-round { padding: 10px 12px; margin-bottom: 6px; }
+            .doc-round-meta { font-size: 9px; margin-bottom: 3px; }
+            .doc-round-speaker { font-size: 12px; margin-bottom: 4px; }
+            .doc-round-text { font-size: 13px; line-height: 1.1; }
+            .doc-verdict { padding: 10px; margin-top: 10px; }
+            .doc-verdict-label { font-size: 9px; margin-bottom: 4px; }
+            .doc-verdict-text { font-size: 13px; line-height: 1.1; }
+            .doc-winner { padding: 10px 12px; margin-top: 8px; }
+            .doc-winner-label { font-size: 9px; margin-bottom: 3px; }
+            .doc-winner-text { font-size: 13px; line-height: 1.1; }
+            .doc-divider { margin: 6px 0; }
+            .doc-footer { font-size: 10px; margin-top: 6px; padding-top: 4px; }
+            .output-area { padding: 10px; }
         }
         /* ── Mobile Back Button ── */
         .mobile-back-btn { display:none; }
