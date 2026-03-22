@@ -2379,7 +2379,7 @@ class AIHub:
             dict with debate_log, judgment, winner
         """
         debate_log = []
-        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI"}
+        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI", "claude": "Claude", "grok": "Grok"}
         for_name = names.get(ai_for, ai_for)
         against_name = names.get(ai_against, ai_against)
 
@@ -2463,7 +2463,7 @@ class AIHub:
             dict with discussion_log and summary
         """
         available = self.available_providers()
-        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI"}
+        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI", "claude": "Claude", "grok": "Grok"}
         discussion_log = []
 
         for r in range(1, rounds + 1):
@@ -2505,6 +2505,47 @@ class AIHub:
             "summary": summary_resp.content,
         }
 
+    def discuss_stream(self, topic: str, rounds: int = 3):
+        """SSE generator for discuss — yields each turn and final summary."""
+        available = self.available_providers()
+        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI", "claude": "Claude", "grok": "Grok"}
+        discussion_log = []
+
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+
+        yield {"type": "start", "participants": [names.get(p, p) for p in available]}
+
+        for r in range(1, rounds + 1):
+            for provider in available:
+                ai_name = names.get(provider, provider)
+                sys_prompt = (
+                    f"You are {ai_name} participating in a group discussion about: '{topic}'. "
+                    f"Other participants: {', '.join(names.get(p, p) for p in available if p != provider)}. "
+                    f"Be thoughtful, build on others' ideas, and offer unique perspectives. "
+                    f"Keep responses under 100 words."
+                )
+                if r == 1 and provider == available[0]:
+                    prompt = f"Start the discussion on: '{topic}'. Share your initial thoughts."
+                else:
+                    recent = discussion_log[-min(len(discussion_log), len(available)):]
+                    context = "\n".join([f"{e['speaker']}: {e['content']}" for e in recent])
+                    prompt = f"The discussion so far (Round {r}):\n\n{context}\n\nShare your thoughts, respond to others, or add new perspectives."
+
+                resp = self.ask(prompt, provider=provider, system_prompt=sys_prompt)
+                entry = {"round": r, "speaker": ai_name, "provider": provider, "content": resp.content}
+                discussion_log.append(entry)
+                yield {"type": "entry", **entry}
+
+        # Summary
+        full_discussion = "\n".join([f"[R{e['round']}] {e['speaker']}: {e['content']}" for e in discussion_log])
+        summary_resp = self.ask(
+            f"Summarize this group discussion about '{topic}':\n\n{full_discussion}\n\n"
+            f"Identify: key points of agreement, disagreements, and main conclusions. Under 200 words.",
+            provider=available[0], system_prompt="You are a neutral discussion moderator.")
+        yield {"type": "summary", "summary": summary_resp.content, "discussion_log": discussion_log}
+
     # ──────────────────────────── Find Best Answer ────────────────────────────
 
     def find_best(self, question: str, callback=None) -> dict:
@@ -2519,7 +2560,7 @@ class AIHub:
             dict with answers, evaluations, and winner
         """
         available = self.available_providers()
-        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI"}
+        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI", "claude": "Claude", "grok": "Grok"}
 
         # Step 1: All AIs answer
         if callback:

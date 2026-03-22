@@ -1582,24 +1582,49 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     let docCards = result.results.map(r => `<div class="doc-provider"><div class="doc-provider-name"><span class="dot ${r.success?'':'off'}"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s · ${r.model}</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
                     showDoc(`<div class="doc-sec-title">🔄 All AI Responses</div>${docCards}`, text, 'Compare All');
                 } else if(currentMode==='debate'){
-                    result=await safeFetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                    addMessage('System',`⚔️ Debate: ${text}\nLoading...`,'system-msg');
+                    const resp=await fetch('/api/debate',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text})});
+                    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                    while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                        buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                        for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                            if(ds==='[DONE]'){rdone=true;break;}
+                            try{const result=JSON.parse(ds);
+                                removeLoading(loadId);
+                                if(result.error){addMessage('Error',result.error,'error-msg');}
+                                else{
+                                    for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
+                                    addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
+                                    let debRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                                    showDoc(`<div class="doc-sec-title">⚔️ Debate Log</div>${debRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict — ${escapeHtml(result.judge)}</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result['for']} vs ${result['against']}`);
+                                }
+                            }catch(e){}
+                        }
+                    }
                     removeLoading(loadId);
-                    addMessage('System',`DEBATE: ${text}\n${result.for_name} vs ${result.against_name}`,'system-msg');
-                    for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
-                    addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
-                    let debRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                    showDoc(`<div class="doc-sec-title">⚔️ Debate Log</div>${debRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict — ${escapeHtml(result.judge)}</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
                 } else if(currentMode==='discuss'){
-                    result=await safeFetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                    addMessage('System',`🗣️ Discussion: ${text}\nLoading...`,'system-msg');
+                    const disEntries=[];let disParticipants=[];
+                    const resp=await fetch('/api/discuss',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text})});
+                    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                    while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                        buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                        for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                            if(ds==='[DONE]'){rdone=true;break;}
+                            try{const ck=JSON.parse(ds);
+                                if(ck.type==='start'){disParticipants=ck.participants||[];}
+                                else if(ck.type==='entry'){disEntries.push(ck);addMessage(ck.speaker,ck.content,'',`Round ${ck.round}`);}
+                                else if(ck.type==='summary'){removeLoading(loadId);
+                                    addMessage('Summary',ck.summary,'judge-msg','CONCLUSION');
+                                    let disRounds = disEntries.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(ck.summary)}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);}
+                                else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                            }catch(e){}
+                        }
+                    }
                     removeLoading(loadId);
-                    const disParticipants = result.participants || [];
-                    addMessage('System',`DISCUSSION: ${text}`,'system-msg');
-                    for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
-                    addMessage('Summary',result.summary||result.error,'judge-msg','CONCLUSION');
-                    let disRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                    showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary||result.error||'')}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);
                 } else if(currentMode==='best'){
                     addMessage('System',`🏆 Finding Best Answer: ${text}\nEvaluating...`,'system-msg');
                     const bestAnswers=[];const bestEvals=[];let bestWinner='',bestVotes={};

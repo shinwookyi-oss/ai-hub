@@ -700,24 +700,34 @@ def api_debate():
     try:
         topic = request.json.get("topic", "")
         av = hub.available_providers()
-        result = hub.debate(topic=topic, rounds=2, ai_for=av[0],
-            ai_against=av[1] if len(av) > 1 else av[0],
-            judge=av[2] if len(av) >= 3 else av[0])
-        return jsonify({"topic": result["topic"], "for_name": result["for"],
-            "against_name": result["against"], "judge": result["judge"],
-            "debate_log": result["debate_log"], "judgment": result["judgment"]})
+        def generate():
+            try:
+                result = hub.debate(topic=topic, rounds=2, ai_for=av[0],
+                    ai_against=av[1] if len(av) > 1 else av[0],
+                    judge=av[2] if len(av) >= 3 else av[0])
+                yield f"data: {json.dumps(result, ensure_ascii=False, default=str)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/discuss", methods=["POST"])
 @login_required
 def api_discuss():
     try:
         topic = request.json.get("topic", "")
-        result = hub.discuss(topic=topic, rounds=2)
-        return jsonify({"topic": result["topic"], "participants": result["participants"],
-            "discussion_log": result["discussion_log"], "summary": result["summary"]})
+        def generate():
+            try:
+                for chunk in hub.discuss_stream(topic=topic, rounds=2):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
