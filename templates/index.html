@@ -909,10 +909,9 @@
                 <div class="file-bar" id="fileBar">
                     <span>📎</span>
                     <span id="fileLabel" data-i18n="file_drop">Drop file(s) or Browse (TXT, PDF, CSV, DOCX...)</span>
-                    <span class="file-name hidden" id="fileName"></span>
-                    <span class="file-size hidden" id="fileSize"></span>
-                    <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()">✕ Clear</button>
-                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Browse</button>
+                    <div id="fileList" class="hidden" style="display:none;flex:1;overflow-x:auto;white-space:nowrap;gap:4px;align-items:center;"></div>
+                    <button class="remove-file-btn hidden" id="removeFileBtn" onclick="removeFile()" style="font-size:10px;">✕ Clear All</button>
+                    <button class="upload-btn" id="browseBtn" onclick="document.getElementById('fileInput').click()">Browse</button>
                     <input type="file" id="fileInput" accept=".txt,.pdf,.csv,.md,.json,.py,.js,.html,.css,.xml,.log,.docx,.xlsx,.mp3,.wav,.m4a,.ogg,.webm" style="display:none" multiple>
                 </div>
                 <div class="url-bar" id="urlBar">
@@ -2322,27 +2321,12 @@
                 }
                 const r = await resp.json();
                 if(r.success){
-                    // Add to uploadedFiles array
                     uploadedFiles.push({name: r.filename, content: r.content, size: r.size, chars: r.char_count});
-                    // Combine all file contents
                     uploadedFileContent = uploadedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
                     uploadedFileName = uploadedFiles.map(f=>f.name).join(', ');
-                    const kb=(r.size/1024).toFixed(1);
-                    document.getElementById('fileLabel').classList.add('hidden');
-                    document.getElementById('fileName').textContent = uploadedFiles.length > 1
-                        ? `${uploadedFiles.length}개 파일 (송: ${uploadedFileName})`
-                        : r.filename;
-                    document.getElementById('fileName').classList.remove('hidden');
-                    document.getElementById('fileSize').textContent = uploadedFiles.length > 1
-                        ? `여러 파일`
-                        : `${kb} KB`;
-                    document.getElementById('fileSize').classList.remove('hidden');
-                    document.getElementById('removeFileBtn').classList.remove('hidden');
-                    fileBar.classList.add('has-file');
-                    addMessage('System',`📄 업로드: ${r.filename} (${kb} KB, ${r.char_count.toLocaleString()}자)${
-                        uploadedFiles.length > 1 ? ` — 역대 업로드 ${uploadedFiles.length}개` : ''
-                    }`,'system-msg');
-                    // Auto-render spreadsheet for CSV/Excel
+                    // Update file list UI
+                    _updateFileListUI();
+                    addMessage('System',`📄 업로드: ${r.filename} (${(r.size/1024).toFixed(1)} KB, ${r.char_count.toLocaleString()}자)${uploadedFiles.length > 1 ? ` — 총 ${uploadedFiles.length}개 파일` : ''}`,'system-msg');
                     if (isTabularContent(r.content, r.filename)) {
                         var rows = parseTabularData(r.content);
                         if (rows) renderSpreadsheet(rows, r.filename, r.filename);
@@ -2350,13 +2334,37 @@
                 }else{addMessage('Error',r.error||'Upload failed','error-msg');}
             }catch(e){addMessage('Error','업로드 오류: '+e.message,'error-msg');}
         }
-        function removeFile(){
-            uploadedFileContent='';uploadedFileName='';uploadedFiles=[];
-            document.getElementById('fileLabel').classList.remove('hidden');
-            document.getElementById('fileName').classList.add('hidden');
-            document.getElementById('fileSize').classList.add('hidden');
-            document.getElementById('removeFileBtn').classList.add('hidden');
-            fileBar.classList.remove('has-file');fileInput.value='';
+        function removeFile(idx){
+            if (typeof idx === 'number') {
+                uploadedFiles.splice(idx, 1);
+            } else {
+                uploadedFiles = [];
+            }
+            if (uploadedFiles.length === 0) {
+                uploadedFileContent=''; uploadedFileName='';
+                document.getElementById('fileLabel').style.display = '';
+                document.getElementById('fileList').style.display = 'none';
+                document.getElementById('removeFileBtn').classList.add('hidden');
+                fileBar.classList.remove('has-file'); fileInput.value='';
+                document.getElementById('browseBtn').textContent = 'Browse';
+            } else {
+                uploadedFileContent = uploadedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+                uploadedFileName = uploadedFiles.map(f=>f.name).join(', ');
+                _updateFileListUI();
+            }
+        }
+        function _updateFileListUI() {
+            document.getElementById('fileLabel').style.display = 'none';
+            var listEl = document.getElementById('fileList');
+            listEl.style.display = 'flex';
+            listEl.innerHTML = uploadedFiles.map(function(f, i) {
+                return '<span style="display:inline-flex;align-items:center;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--text);">' +
+                    '📄 ' + f.name +
+                    ' <button onclick="removeFile(' + i + ')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:11px;padding:0 2px;">✕</button></span>';
+            }).join('');
+            document.getElementById('removeFileBtn').classList.remove('hidden');
+            document.getElementById('browseBtn').textContent = '+ 추가';
+            fileBar.classList.add('has-file');
         }
 
         // URL bar setup
