@@ -170,6 +170,7 @@
                 <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
                 <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
+                <button class="mode-btn" data-mode="image" onclick="setMode('image')" style="background:linear-gradient(135deg,rgba(232,67,147,0.15),rgba(108,92,231,0.1));border-color:rgba(232,67,147,0.4);color:#e84393;">🎨 Image Gen</button>
             </div>
             <!-- Templates -->
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;" onclick="toggleModeGroup('modeTemplates')">📋 Templates <span id="modeTemplatesArrow" style="float:right;">▶</span></h3>
@@ -233,6 +234,57 @@
         </div>
         <div class="main-panel">
             <div class="chat-area" id="chatArea"></div>
+
+            <!-- ── Image Generation Panel ── -->
+            <div id="imagePanelWrap" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+                <div id="imageGallery" class="img-gallery">
+                    <div id="imgGalleryEmpty" class="img-gallery-empty">
+                        <div style="font-size:52px;opacity:0.15;">🎨</div>
+                        <p>이미지 프롬프트를 입력하고 Generate를 누르세요</p>
+                        <p style="font-size:11px;margin-top:4px;color:#666;">Powered by DALL-E 3</p>
+                    </div>
+                </div>
+                <div class="img-input-area">
+                    <div class="img-options-row">
+                        <div class="img-option-group">
+                            <label>📐 Size</label>
+                            <div class="img-opt-btns" id="imgSizeGroup">
+                                <button class="img-opt-btn active" data-val="1024x1024" onclick="selectImgOpt('size',this,'imgSizeGroup')">1:1</button>
+                                <button class="img-opt-btn" data-val="1792x1024" onclick="selectImgOpt('size',this,'imgSizeGroup')">16:9</button>
+                                <button class="img-opt-btn" data-val="1024x1792" onclick="selectImgOpt('size',this,'imgSizeGroup')">9:16</button>
+                            </div>
+                        </div>
+                        <div class="img-option-group">
+                            <label>✨ Quality</label>
+                            <div class="img-opt-btns" id="imgQualGroup">
+                                <button class="img-opt-btn active" data-val="standard" onclick="selectImgOpt('quality',this,'imgQualGroup')">Standard</button>
+                                <button class="img-opt-btn" data-val="hd" onclick="selectImgOpt('quality',this,'imgQualGroup')">HD</button>
+                            </div>
+                        </div>
+                        <div class="img-option-group">
+                            <label>🎭 Style</label>
+                            <div class="img-opt-btns" id="imgStyleGroup">
+                                <button class="img-opt-btn active" data-val="vivid" onclick="selectImgOpt('style',this,'imgStyleGroup')">Vivid</button>
+                                <button class="img-opt-btn" data-val="natural" onclick="selectImgOpt('style',this,'imgStyleGroup')">Natural</button>
+                            </div>
+                        </div>
+                        <div class="img-option-group" style="margin-left:auto;">
+                            <label style="visibility:hidden;">.</label>
+                            <button class="img-opt-btn" onclick="clearImageGallery()" style="border-color:var(--red);color:var(--red);">🗑 Clear</button>
+                        </div>
+                    </div>
+                    <div class="input-row" style="margin-top:8px;">
+                        <textarea id="imgPromptInput" placeholder="이미지 설명을 입력하세요... (예: A futuristic Seoul skyline at night with neon lights, cinematic photography)" style="min-height:50px;height:60px;"></textarea>
+                        <button class="send-btn" id="imgGenBtn" onclick="generateImageMode()" style="background:linear-gradient(135deg,#e84393,#6c5ce7);white-space:nowrap;">✨ Generate</button>
+                    </div>
+                    <div style="font-size:10px;color:var(--text2);margin-top:5px;display:flex;gap:12px;align-items:center;">
+                        <span>💡 OpenAI API Key 필요</span>
+                        <span id="imgGenStatus"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ── /Image Panel End ── -->
+
             <div class="input-area">
                 <div class="persona-selectors hidden" id="personaSelectors">
                     <div><label data-i18n="lbl_for">FOR</label><select id="personaFor"></select></div>
@@ -787,6 +839,14 @@
             await fetch('/api/persona/' + currentPersona + '/memory/clear', {method:'DELETE'});
             loadPersonaMemory(currentPersona);
         }
+        // ── Image Gen options state ──
+        const imgOpts = { size:'1024x1024', quality:'standard', style:'vivid' };
+        function selectImgOpt(type, btn, groupId) {
+            document.querySelectorAll(`#${groupId} .img-opt-btn`).forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            imgOpts[type] = btn.dataset.val;
+        }
+
         function setMode(m) {
             if (currentMode === m && m !== 'chat') { m = 'chat'; } // toggle off
             currentMode=m;
@@ -797,8 +857,79 @@
             const isMulti = multiModes.includes(m);
             document.getElementById('personaMultiSelect').style.display = isMulti ? 'flex' : 'none';
             document.getElementById('dmPanel').style.display = (m==='decision_matrix') ? 'block' : 'none';
-            document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
+            // Image mode: swap UI
+            const isImage = (m==='image');
+            document.getElementById('chatArea').style.display = isImage ? 'none' : '';
+            document.getElementById('imagePanelWrap').style.display = isImage ? 'flex' : 'none';
+            document.querySelector('.input-area').style.display = isImage ? 'none' : '';
+            if (!isImage) document.getElementById('userInput').placeholder = PH_MAP[m] || t('ph_chat');
         }
+
+        async function generateImageMode() {
+            const prompt = document.getElementById('imgPromptInput').value.trim();
+            if (!prompt) { document.getElementById('imgPromptInput').focus(); return; }
+            const btn = document.getElementById('imgGenBtn');
+            const status = document.getElementById('imgGenStatus');
+            const gallery = document.getElementById('imageGallery');
+            // Show generating indicator
+            btn.disabled = true; btn.textContent = '⏳ Generating...';
+            status.textContent = '⏳ 이미지 생성 중... (최대 30초)';
+            const loadDiv = document.createElement('div');
+            loadDiv.className = 'img-generating'; loadDiv.id = 'imgLoadIndicator';
+            loadDiv.innerHTML = '<div class="spinner"></div><span>DALL-E 3 이미지 생성 중...</span>';
+            gallery.prepend(loadDiv);
+            document.getElementById('imgGalleryEmpty')?.remove();
+            try {
+                const resp = await fetch('/api/generate-image', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ prompt, size: imgOpts.size, quality: imgOpts.quality, style: imgOpts.style })
+                });
+                const r = await resp.json();
+                loadDiv.remove();
+                if (r.success && r.image_url) {
+                    const sizeLabel = {'1024x1024':'1:1','1792x1024':'16:9','1024x1792':'9:16'}[imgOpts.size] || imgOpts.size;
+                    const card = document.createElement('div');
+                    card.className = 'img-card';
+                    card.innerHTML = `
+                        <div class="img-card-header">
+                            <span style="font-size:12px;font-weight:600;color:var(--accent2);">🎨 DALL-E 3</span>
+                            <span class="img-card-badge">${sizeLabel} · ${imgOpts.quality.toUpperCase()} · ${imgOpts.style}</span>
+                        </div>
+                        <img src="${r.image_url}" alt="${escapeHtml(prompt)}" loading="lazy" onclick="window.open(this.src,'_blank')" title="클릭하면 원본 크기로 열림">
+                        <div class="img-card-meta">
+                            <strong>Prompt:</strong> ${escapeHtml(prompt.length>120?prompt.slice(0,120)+'...':prompt)}
+                            ${r.revised_prompt&&r.revised_prompt!==prompt?`<br><span style="color:var(--accent2);font-size:10px;">✨ Enhanced by DALL-E</span>`:''}
+                        </div>
+                        <div class="img-card-actions">
+                            <a href="${r.image_url}" download="aihub-${Date.now()}.png" class="img-card-btn">💾 Download</a>
+                            <button class="img-card-btn" onclick="navigator.clipboard.writeText('${r.image_url}').then(()=>{this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 URL',1500)})">📋 URL</button>
+                        </div>`;
+                    gallery.prepend(card);
+                    status.textContent = '✅ 완료';
+                    setTimeout(()=>status.textContent='', 3000);
+                } else {
+                    status.textContent = '❌ ' + (r.error || '생성 실패');
+                    setTimeout(()=>status.textContent='', 5000);
+                }
+            } catch(e) {
+                loadDiv.remove();
+                status.textContent = '❌ 네트워크 오류';
+                setTimeout(()=>status.textContent='', 5000);
+            }
+            btn.disabled=false; btn.textContent='✨ Generate';
+        }
+
+        function clearImageGallery() {
+            const g = document.getElementById('imageGallery');
+            g.innerHTML = '<div id="imgGalleryEmpty" class="img-gallery-empty"><div style="font-size:52px;opacity:0.15;">🎨</div><p>이미지 프롬프트를 입력하고 Generate를 누르세요</p><p style="font-size:11px;margin-top:4px;color:#666;">Powered by DALL-E 3</p></div>';
+        }
+
+        // Enter key in image prompt = generate
+        document.addEventListener('DOMContentLoaded', ()=>{
+            document.getElementById('imgPromptInput')?.addEventListener('keydown', e=>{
+                if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); generateImageMode(); }
+            });
+        });
         function setProvider(p) {
             currentProvider=p;
             document.querySelectorAll('.mode-btn[data-provider]').forEach(b=>b.classList.remove('active'));
