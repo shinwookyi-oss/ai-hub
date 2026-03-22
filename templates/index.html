@@ -620,12 +620,48 @@
             </div>
         </div>
     </div>
+    <!-- Quick Notes Overlay -->
+    <div class="ws-overlay" id="qnOverlay" onclick="if(event.target===this)closeQuickNotes()" style="z-index:1100;">
+        <div class="ws-modal" style="max-width:520px;height:85vh;display:flex;flex-direction:column;">
+            <div class="ws-header">
+                <h2>📝 Quick Notes</h2>
+                <button class="ws-close" onclick="closeQuickNotes()">×</button>
+            </div>
+            <div style="padding:0 20px 10px;display:flex;gap:6px;">
+                <button onclick="qnNewNote()" style="flex:1;padding:6px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">+ 새 메모</button>
+                <button onclick="qnSyncToWorkspace()" style="flex:1;padding:6px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;" title="선택된 메모를 Workspace에 저장">📂 Workspace 동기화</button>
+            </div>
+            <div id="qnList" style="flex:1;overflow-y:auto;padding:0 20px 10px;">
+                <div style="color:var(--text2);font-size:12px;text-align:center;padding:40px 0;">메모가 없습니다. '새 메모'를 클릭하세요.</div>
+            </div>
+            <div id="qnEditor" style="display:none;flex:1;flex-direction:column;padding:0 20px 15px;">
+                <input id="qnTitle" type="text" placeholder="메모 제목..." style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;margin-bottom:8px;box-sizing:border-box;outline:none;">
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
+                    <select id="qnColor" style="padding:4px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;">
+                        <option value="#6c5ce7">💜 보라</option>
+                        <option value="#00b894">💚 초록</option>
+                        <option value="#fdcb6e">💛 노랑</option>
+                        <option value="#e17055">🧡 주황</option>
+                        <option value="#74b9ff">💙 파랑</option>
+                        <option value="#ff7675">❤️ 빨강</option>
+                    </select>
+                    <span id="qnCharCount" style="font-size:10px;color:var(--text2);margin-left:auto;align-self:center;">0자</span>
+                </div>
+                <textarea id="qnContent" placeholder="메모 내용을 입력하세요..." style="flex:1;min-height:200px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'Inter',sans-serif;resize:none;outline:none;line-height:1.6;" oninput="document.getElementById('qnCharCount').textContent=this.value.length+'자'"></textarea>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button onclick="qnSaveNote()" style="flex:1;padding:7px;font-size:12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 저장</button>
+                    <button onclick="qnCancelEdit()" style="flex:1;padding:7px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
             {% if usertier == 'owner' %}
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
             {% endif %}
-            <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:12px;" onclick="openYtModal()">▶ YouTube</button>
+            <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="openYtModal()">▶ YouTube</button>
+            <button class="mode-btn" id="qnBtn" style="background:#1a1a0a;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:12px;" onclick="openQuickNotes()">📝 Quick Notes <span id="qnBadge" style="font-size:9px;background:#fdcb6e;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
@@ -4643,6 +4679,116 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             const checked = document.querySelectorAll('.ws-file-check:checked');
             const btn = document.getElementById('wsAnalyzeBtn');
             if (btn) btn.style.display = checked.length > 0 ? 'inline-flex' : 'none';
+        }
+
+        // ── Quick Notes Functions ──
+        var qnNotes = JSON.parse(localStorage.getItem('qn_notes') || '[]');
+        var qnEditingId = null;
+
+        function openQuickNotes() {
+            document.getElementById('qnOverlay').classList.add('open');
+            qnShowList();
+        }
+        function closeQuickNotes() { document.getElementById('qnOverlay').classList.remove('open'); }
+
+        function qnSaveAll() {
+            localStorage.setItem('qn_notes', JSON.stringify(qnNotes));
+            qnUpdateBadge();
+        }
+        function qnUpdateBadge() {
+            var badge = document.getElementById('qnBadge');
+            if (qnNotes.length > 0) { badge.textContent = qnNotes.length; badge.style.display = 'inline'; }
+            else { badge.style.display = 'none'; }
+        }
+        qnUpdateBadge();
+
+        function qnShowList() {
+            document.getElementById('qnEditor').style.display = 'none';
+            document.getElementById('qnList').style.display = 'block';
+            var el = document.getElementById('qnList');
+            if (qnNotes.length === 0) {
+                el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:40px 0;">메모가 없습니다. \'새 메모\'를 클릭하세요.</div>';
+                return;
+            }
+            var html = '';
+            qnNotes.forEach(function(n, i) {
+                var date = new Date(n.updated).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+                var preview = (n.content || '').substring(0, 80).replace(/</g,'&lt;');
+                html += '<div style="padding:10px 12px;margin-bottom:6px;background:var(--surface2);border-left:3px solid '+(n.color||'#6c5ce7')+';border-radius:6px;cursor:pointer;position:relative;" onclick="qnEditNote('+i+')">';
+                html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;padding-right:24px;">'+(n.title||'제목 없음')+'</div>';
+                html += '<div style="font-size:11px;color:var(--text2);line-height:1.4;">'+(preview||'(내용 없음)')+'</div>';
+                html += '<div style="font-size:9px;color:var(--text2);margin-top:4px;opacity:0.7;">'+date+' \u00b7 '+((n.content||'').length)+'자</div>';
+                html += '<button onclick="event.stopPropagation();qnDeleteNote('+i+')" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:2px;" title="삭제">🗑</button>';
+                html += '</div>';
+            });
+            el.innerHTML = html;
+        }
+
+        function qnNewNote() {
+            qnEditingId = null;
+            document.getElementById('qnTitle').value = '';
+            document.getElementById('qnContent').value = '';
+            document.getElementById('qnColor').value = '#6c5ce7';
+            document.getElementById('qnCharCount').textContent = '0자';
+            document.getElementById('qnList').style.display = 'none';
+            document.getElementById('qnEditor').style.display = 'flex';
+            document.getElementById('qnTitle').focus();
+        }
+
+        function qnEditNote(idx) {
+            var n = qnNotes[idx];
+            qnEditingId = idx;
+            document.getElementById('qnTitle').value = n.title || '';
+            document.getElementById('qnContent').value = n.content || '';
+            document.getElementById('qnColor').value = n.color || '#6c5ce7';
+            document.getElementById('qnCharCount').textContent = (n.content||'').length + '자';
+            document.getElementById('qnList').style.display = 'none';
+            document.getElementById('qnEditor').style.display = 'flex';
+        }
+
+        function qnSaveNote() {
+            var title = document.getElementById('qnTitle').value.trim() || '메모 ' + new Date().toLocaleDateString('ko-KR');
+            var content = document.getElementById('qnContent').value;
+            var color = document.getElementById('qnColor').value;
+            var now = new Date().toISOString();
+            if (qnEditingId !== null && qnEditingId >= 0 && qnEditingId < qnNotes.length) {
+                qnNotes[qnEditingId].title = title;
+                qnNotes[qnEditingId].content = content;
+                qnNotes[qnEditingId].color = color;
+                qnNotes[qnEditingId].updated = now;
+            } else {
+                qnNotes.unshift({id: Date.now(), title: title, content: content, color: color, created: now, updated: now});
+            }
+            qnSaveAll();
+            qnShowList();
+        }
+
+        function qnCancelEdit() { qnShowList(); }
+
+        function qnDeleteNote(idx) {
+            if (!confirm('"' + (qnNotes[idx].title||'메모') + '" 를 삭제할까요?')) return;
+            qnNotes.splice(idx, 1);
+            qnSaveAll();
+            qnShowList();
+        }
+
+        async function qnSyncToWorkspace() {
+            if (!wsCurrentFolder) { alert('먼저 Workspace를 열고 폴더를 선택해주세요.'); openWorkspace(); return; }
+            if (qnNotes.length === 0) { alert('동기화할 메모가 없습니다.'); return; }
+            var text = '';
+            qnNotes.forEach(function(n) {
+                text += '# ' + (n.title||'Untitled') + '\n';
+                text += '📅 ' + new Date(n.updated).toLocaleString('ko-KR') + '\n\n';
+                text += (n.content||'') + '\n\n---\n\n';
+            });
+            var fd = new FormData();
+            var blob = new Blob([text], {type:'text/plain'});
+            fd.append('file', blob, 'quick_notes_' + new Date().toISOString().slice(0,10) + '.md');
+            fd.append('folder_id', wsCurrentFolder);
+            try {
+                await fetch('/api/upload_workspace', {method:'POST', body:fd});
+                alert('✅ ' + qnNotes.length + '개 메모가 Workspace에 저장되었습니다.');
+            } catch(e) { alert('동기화 실패: ' + e.message); }
         }
 
         async function analyzeSelectedFiles() {
