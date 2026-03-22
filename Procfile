@@ -1,1 +1,1 @@
-web: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 2 --max-requests 500 --max-requests-jitter 50 --preload-app
+web: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 2 --max-requests 500 --max-requests-jitter 50 --preload-app

@@ -34,6 +34,7 @@ from ai_hub import AIHub
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(hours=int(os.getenv("SESSION_TIMEOUT_HOURS", "2")))
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB upload limit
 
 hub = AIHub()
 
@@ -1110,7 +1111,7 @@ def api_upload():
             except Exception as e:
                 print(f"Warning: Failed to index document for RAG: {e}")
 
-        if len(content) > 50000: content = content[:50000] + "\n\n[... truncated ...]"
+        if len(content) > 100000: content = content[:100000] + "\n\n[... truncated ...]"
         return jsonify({
             "success": True, 
             "filename": file.filename,
