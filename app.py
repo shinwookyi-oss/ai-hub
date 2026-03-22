@@ -3167,30 +3167,76 @@ def api_youtube_transcript():
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "URL이 필요합니다."}), 400
-    # Extract video ID
     import re
     m = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/live/|youtube\.com/shorts/)([a-zA-Z0-9_-]{11})", url)
     if not m:
         return jsonify({"error": "올바른 YouTube URL이 아닙니다."}), 400
     vid = m.group(1)
+
+    def _get_text(snippet):
+        """dict 또는 객체 모두 처리 (youtube-transcript-api 버전 호환)"""
+        if isinstance(snippet, dict):
+            return snippet.get("text", "")
+        return getattr(snippet, "text", str(snippet))
+
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
-        # Try Korean first, then English, then auto-generated
+        from youtube_transcript_api import YouTubeTranscriptApi
+        transcript = None
+        lang_used = ""
+
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(vid)
-            try:
-                transcript = transcript_list.find_transcript(["ko", "en", "en-US"]).fetch()
-            except Exception:
-                transcript = transcript_list.find_generated_transcript(["ko", "en", "en-US"]).fetch()
+            tlist = YouTubeTranscriptApi.list_transcripts(vid)
+            # 1) 수동 자막: ko → en → 기타
+            for lang in ["ko", "en", "en-US", "en-GB"]:
+                try:
+                    transcript = tlist.find_transcript([lang]).fetch()
+                    lang_used = lang
+                    break
+                except Exception:
+                    pass
+            # 2) 자동 생성 자막
+            if transcript is None:
+                try:
+                    auto = tlist.find_generated_transcript(["ko", "en", "en-US"])
+                    transcript = auto.fetch()
+                    lang_used = "auto"
+                except Exception:
+                    pass
+            # 3) 첫 번째 사용 가능한 자막
+            if transcript is None:
+                for t in tlist:
+                    transcript = t.fetch()
+                    lang_used = t.language_code
+                    break
         except Exception:
+            pass
+
+        # 4) 최후 수단
+        if transcript is None:
             transcript = YouTubeTranscriptApi.get_transcript(vid)
-        text = " ".join([t["text"] for t in transcript])
-        # Limit to 12000 chars to avoid token overflow
-        if len(text) > 12000:
-            text = text[:12000] + "...(이하 생략)"
-        return jsonify({"transcript": text, "video_id": vid, "success": True})
+            lang_used = "default"
+
+        text = " ".join([_get_text(s) for s in transcript if _get_text(s).strip()])
+
+        if not text.strip():
+            return jsonify({"error": "자막 내용이 비어 있습니다."}), 400
+
+        if len(text) > 14000:
+            text = text[:14000] + "\n...(이하 생략)"
+
+        return jsonify({"transcript": text, "video_id": vid, "lang": lang_used, "success": True})
+
     except Exception as e:
-        return jsonify({"error": f"자막을 가져올 수 없습니다: {str(e)}"}), 400
+        err = str(e)
+        if "TranscriptsDisabled" in err or "disabled" in err.lower():
+            msg = "이 영상은 자막이 비활성화되어 있습니다."
+        elif "NoTranscriptFound" in err or "Could not find" in err:
+            msg = "사용 가능한 자막이 없습니다. (자막 없는 영상)"
+        elif "VideoUnavailable" in err:
+            msg = "영상을 찾을 수 없습니다. (비공개 또는 삭제됨)"
+        else:
+            msg = f"자막 오류: {err}"
+        return jsonify({"error": msg}), 400
 
 
 if __name__ == "__main__":

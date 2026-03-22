@@ -2090,21 +2090,35 @@
         async function ytAnalyze(command) {
             if (!ytCurrentUrl) return;
             var status = document.getElementById('ytAnalyzeStatus');
-            status.textContent = '자막 불러오는 중...';
+            status.style.color = 'var(--text2)';
+            status.textContent = '⏳ 자막 불러오는 중...';
+            // disable buttons during fetch
+            document.querySelectorAll('.yt-analyze-btn').forEach(function(b){ b.disabled = true; });
             try {
                 var r = await fetch('/api/youtube/transcript', {
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({url: ytCurrentUrl})
                 });
                 var data = await r.json();
-                if (!data.success) { status.textContent = '❌ ' + (data.error || '자막 없음'); return; }
-                status.textContent = 'AI 분석 중...';
-                closeYtModal();
-                var prompt = '다음은 YouTube 영상의 자막입니다. ' + command + '해주세요.\n\n[자막]\n' + data.transcript;
-                document.getElementById('userInput').value = prompt;
-                await send();
+                if (!data.success) {
+                    status.style.color = 'var(--red)';
+                    status.textContent = '❌ ' + (data.error || '자막 없음');
+                    document.querySelectorAll('.yt-analyze-btn').forEach(function(b){ b.disabled = false; });
+                    return;
+                }
+                status.style.color = 'var(--green)';
+                status.textContent = '✅ 자막 로드 완료 — AI 분석 시작...';
+                var langNote = data.lang ? ' (자막: ' + data.lang + ')' : '';
+                setTimeout(function() {
+                    closeYtModal();
+                    var prompt = '다음은 YouTube 영상의 자막입니다' + langNote + '. ' + command + '해주세요.\n\n[자막]\n' + data.transcript;
+                    document.getElementById('userInput').value = prompt;
+                    send();
+                }, 800);
             } catch(e) {
-                status.textContent = '❌ 오류: ' + e.message;
+                status.style.color = 'var(--red)';
+                status.textContent = '❌ 네트워크 오류: ' + e.message;
+                document.querySelectorAll('.yt-analyze-btn').forEach(function(b){ b.disabled = false; });
             }
         }
 
