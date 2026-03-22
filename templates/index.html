@@ -25,7 +25,7 @@
         .speaker-mode-btn { width: 50px !important; height: 50px !important; font-size: 24px !important; border-radius: 50% !important; }
         body.speaker-mode #userInput { display: none !important; }
         body.speaker-mode #sendBtn { display: none !important; }
-        body.speaker-mode #langBtn { display: none !important; }
+        body.speaker-mode #langSelect { display: none !important; }
         body.speaker-mode .file-bar { display: none !important; }
         body.speaker-mode .url-bar { display: none !important; }
         body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; }
@@ -919,7 +919,15 @@
                 <div class="input-row" id="inputRow">
                     <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
-                    <button class="mic-btn" id="langBtn" onclick="toggleSttLang()" title="음성 언어 변경" style="font-size:14px;padding:8px 10px;">🇰🇷</button>
+                    <select id="langSelect" onchange="setSttLang(this.value)" title="음성 언어" style="padding:8px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">
+                        <option value="ko-KR">🇰🇷 한국어</option>
+                        <option value="en-US">🇺🇸 English</option>
+                        <option value="ja-JP">🇯🇵 日本語</option>
+                        <option value="zh-CN">🇨🇳 中文</option>
+                        <option value="es-ES">🇪🇸 Español</option>
+                        <option value="fr-FR">🇫🇷 Français</option>
+                        <option value="de-DE">🇩🇪 Deutsch</option>
+                    </select>
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
@@ -3988,15 +3996,9 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             if (isRecording) recognition.stop(); else recognition.start();
         }
 
-        // Language toggle for STT
-        function toggleSttLang() {
-            if (!window._sttLangs) return;
-            window._sttLangIdx = (window._sttLangIdx + 1) % window._sttLangs.length;
-            var lang = window._sttLangs[window._sttLangIdx];
+        // Language select for STT
+        function setSttLang(lang) {
             if (recognition) recognition.lang = lang;
-            var label = window._sttLangLabels[window._sttLangIdx];
-            document.getElementById('langBtn').textContent = label;
-            addMessage('System', '🌐 음성 입력 언어: ' + label, 'system-msg');
         }
 
         // Auto-detect text language for TTS
