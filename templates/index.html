@@ -537,7 +537,16 @@
     </div>
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
-            <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:12px;" onclick="openAutomation()">⚡ Automations</button>
+            <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
+            <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="toggleYtPanel()">▶ YouTube</button>
+            <!-- YouTube Panel (Option A) -->
+            <div class="yt-panel" id="ytPanel">
+                <div class="yt-input-row">
+                    <input class="yt-input" id="ytUrlInput" placeholder="YouTube URL 붙여넣기..." onkeydown="if(event.key==='Enter')ytLoad()">
+                    <button class="yt-load-btn" onclick="ytLoad()">▶ 재생</button>
+                </div>
+                <div id="ytEmbedArea"></div>
+            </div>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
@@ -1960,9 +1969,39 @@
             btn.textContent = 'Fetch'; btn.disabled = false;
         }
 
+        // ── YouTube helpers ──
+        function extractYtId(url) {
+            var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+            return m ? m[1] : null;
+        }
+        function toggleYtPanel() {
+            var p = document.getElementById('ytPanel');
+            p.classList.toggle('open');
+            if (p.classList.contains('open')) document.getElementById('ytUrlInput').focus();
+        }
+        function ytLoad() {
+            var url = document.getElementById('ytUrlInput').value.trim();
+            var vid = extractYtId(url);
+            var area = document.getElementById('ytEmbedArea');
+            if (!vid) { area.innerHTML = '<div style="color:var(--red);font-size:11px;">올바른 YouTube URL을 입력하세요.</div>'; return; }
+            area.innerHTML = '<div class="yt-embed-wrap"><iframe src="https://www.youtube.com/embed/'+vid+'?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+        }
+
         async function send() {
             const input=document.getElementById('userInput'), text=input.value.trim();
             if(!text) return;
+
+            // ── Option B: YouTube URL 자동 감지 ──
+            var ytId = extractYtId(text);
+            if (ytId) {
+                input.value = '';
+                addMessage('You', text, 'user-msg');
+                var m = document.createElement('div'); m.className = 'message';
+                m.innerHTML = '<div class="msg-header">YouTube</div><div class="yt-chat-embed"><iframe src="https://www.youtube.com/embed/'+ytId+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+                chatArea.appendChild(m); chatArea.scrollTop = chatArea.scrollHeight;
+                document.getElementById('sendBtn').disabled = false;
+                return;
+            }
             let prompt=text;
             input.value=''; document.getElementById('sendBtn').disabled=true;
 
