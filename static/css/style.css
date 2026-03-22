@@ -769,9 +769,8 @@
             .img-options-row { gap:10px; }
             .img-opt-btn { padding:4px 8px; font-size:10px; }
         }
-        /* ── YouTube Panel ── */
-        .yt-panel { display:none; flex-direction:column; gap:6px; margin-bottom:10px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
-        .yt-panel.open { display:flex; }
+        /* ── YouTube Modal ── */
+        .yt-modal { background:#0d0d1a; border:1px solid var(--border); border-radius:16px; width:94%; max-width:780px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
         .yt-input-row { display:flex; gap:6px; }
         .yt-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:11px; padding:5px 8px; font-family:'Inter',sans-serif; outline:none; }
         .yt-input:focus { border-color:var(--accent2); }
@@ -779,6 +778,8 @@
         .yt-load-btn:hover { opacity:0.85; }
         .yt-embed-wrap { position:relative; padding-top:56.25%; border-radius:8px; overflow:hidden; background:#000; }
         .yt-embed-wrap iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
+        .yt-analyze-btn { background:rgba(255,68,68,0.15); border:1px solid rgba(255,68,68,0.35); border-radius:6px; color:#ff8888; font-size:11px; padding:5px 10px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+        .yt-analyze-btn:hover { background:rgba(255,68,68,0.3); color:#ffaaaa; }
         /* YouTube in chat */
         .yt-chat-embed { margin:8px 0; border-radius:10px; overflow:hidden; background:#000; }
         .yt-chat-embed iframe { display:block; width:100%; height:220px; border:none; }

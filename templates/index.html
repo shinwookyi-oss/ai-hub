@@ -508,6 +508,33 @@
         </div>
     </div>
 
+    <!-- YouTube Modal -->
+    <div class="auto-overlay" id="ytOverlay" onclick="if(event.target===this)closeYtModal()" style="display:none;z-index:320;">
+        <div class="yt-modal">
+            <div class="auto-header">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:18px;">▶</span>
+                    <h2 style="font-size:15px;font-weight:700;color:var(--text);">YouTube Player</h2>
+                </div>
+                <button class="ws-close" onclick="closeYtModal()">×</button>
+            </div>
+            <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+                <div class="yt-input-row">
+                    <input class="yt-input" id="ytUrlInput" placeholder="YouTube URL 붙여넣기..." onkeydown="if(event.key==='Enter')ytLoad()">
+                    <button class="yt-load-btn" onclick="ytLoad()">▶ 재생</button>
+                </div>
+                <div id="ytEmbedArea"></div>
+                <div id="ytAnalyzeBar" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button class="yt-analyze-btn" onclick="ytAnalyze('요약')">📝 요약</button>
+                    <button class="yt-analyze-btn" onclick="ytAnalyze('핵심 포인트를 bullet point로 정리')">🎯 핵심 포인트</button>
+                    <button class="yt-analyze-btn" onclick="ytAnalyze('액션 아이템 정리')">✅ 액션 아이템</button>
+                    <button class="yt-analyze-btn" onclick="ytAnalyze('한국어로 번역 및 요약')">🌐 한국어 요약</button>
+                    <span id="ytAnalyzeStatus" style="font-size:11px;color:var(--text2);"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Workspace Modal -->
     <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
         <div class="ws-modal">
@@ -538,15 +565,7 @@
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
-            <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="toggleYtPanel()">▶ YouTube</button>
-            <!-- YouTube Panel (Option A) -->
-            <div class="yt-panel" id="ytPanel">
-                <div class="yt-input-row">
-                    <input class="yt-input" id="ytUrlInput" placeholder="YouTube URL 붙여넣기..." onkeydown="if(event.key==='Enter')ytLoad()">
-                    <button class="yt-load-btn" onclick="ytLoad()">▶ 재생</button>
-                </div>
-                <div id="ytEmbedArea"></div>
-            </div>
+            <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:12px;" onclick="openYtModal()">▶ YouTube</button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
@@ -1970,21 +1989,50 @@
         }
 
         // ── YouTube helpers ──
+        var ytCurrentUrl = '';
         function extractYtId(url) {
             var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
             return m ? m[1] : null;
         }
-        function toggleYtPanel() {
-            var p = document.getElementById('ytPanel');
-            p.classList.toggle('open');
-            if (p.classList.contains('open')) document.getElementById('ytUrlInput').focus();
+        function openYtModal() {
+            document.getElementById('ytOverlay').style.display = 'flex';
+            setTimeout(function(){ document.getElementById('ytUrlInput').focus(); }, 100);
+        }
+        function closeYtModal() {
+            document.getElementById('ytOverlay').style.display = 'none';
+            document.getElementById('ytEmbedArea').innerHTML = '';
+            document.getElementById('ytAnalyzeBar').style.display = 'none';
+            ytCurrentUrl = '';
         }
         function ytLoad() {
             var url = document.getElementById('ytUrlInput').value.trim();
             var vid = extractYtId(url);
             var area = document.getElementById('ytEmbedArea');
             if (!vid) { area.innerHTML = '<div style="color:var(--red);font-size:11px;">올바른 YouTube URL을 입력하세요.</div>'; return; }
+            ytCurrentUrl = url;
             area.innerHTML = '<div class="yt-embed-wrap"><iframe src="https://www.youtube.com/embed/'+vid+'?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+            document.getElementById('ytAnalyzeBar').style.display = 'flex';
+            document.getElementById('ytAnalyzeStatus').textContent = '';
+        }
+        async function ytAnalyze(command) {
+            if (!ytCurrentUrl) return;
+            var status = document.getElementById('ytAnalyzeStatus');
+            status.textContent = '자막 불러오는 중...';
+            try {
+                var r = await fetch('/api/youtube/transcript', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({url: ytCurrentUrl})
+                });
+                var data = await r.json();
+                if (!data.success) { status.textContent = '❌ ' + (data.error || '자막 없음'); return; }
+                status.textContent = 'AI 분석 중...';
+                closeYtModal();
+                var prompt = '다음은 YouTube 영상의 자막입니다. ' + command + '해주세요.\n\n[자막]\n' + data.transcript;
+                document.getElementById('userInput').value = prompt;
+                await send();
+            } catch(e) {
+                status.textContent = '❌ 오류: ' + e.message;
+            }
         }
 
         async function send() {

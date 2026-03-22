@@ -3106,6 +3106,39 @@ def handle_500(e):
     return str(e), 500
 
 
+@app.route("/api/youtube/transcript", methods=["POST"])
+@login_required
+def api_youtube_transcript():
+    data = request.json or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "URL이 필요합니다."}), 400
+    # Extract video ID
+    import re
+    m = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})", url)
+    if not m:
+        return jsonify({"error": "올바른 YouTube URL이 아닙니다."}), 400
+    vid = m.group(1)
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+        # Try Korean first, then English, then auto-generated
+        try:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(vid)
+            try:
+                transcript = transcript_list.find_transcript(["ko", "en", "en-US"]).fetch()
+            except Exception:
+                transcript = transcript_list.find_generated_transcript(["ko", "en", "en-US"]).fetch()
+        except Exception:
+            transcript = YouTubeTranscriptApi.get_transcript(vid)
+        text = " ".join([t["text"] for t in transcript])
+        # Limit to 12000 chars to avoid token overflow
+        if len(text) > 12000:
+            text = text[:12000] + "...(이하 생략)"
+        return jsonify({"transcript": text, "video_id": vid, "success": True})
+    except Exception as e:
+        return jsonify({"error": f"자막을 가져올 수 없습니다: {str(e)}"}), 400
+
+
 if __name__ == "__main__":
     _seed_admin_user()
     port = int(os.getenv("PORT", 5000))
