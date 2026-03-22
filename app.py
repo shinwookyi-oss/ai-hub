@@ -2839,11 +2839,19 @@ def api_group_members_add(gid):
     if not user_id:
         return jsonify({"error": "user_id 필요"}), 400
     try:
-        supabase_client.table("group_members").upsert({
-            "group_id": gid,
-            "user_id": user_id,
-            "role": data.get("role", "member"),
-        }, on_conflict="group_id,user_id").execute()
+        # Check if member already exists, then update or insert
+        existing = supabase_client.table("group_members").select("id").eq(
+            "group_id", gid).eq("user_id", user_id).execute()
+        if existing.data:
+            supabase_client.table("group_members").update(
+                {"role": data.get("role", "member")}
+            ).eq("id", existing.data[0]["id"]).execute()
+        else:
+            supabase_client.table("group_members").insert({
+                "group_id": gid,
+                "user_id": user_id,
+                "role": data.get("role", "member"),
+            }).execute()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2869,7 +2877,7 @@ def api_group_members_remove(gid, uid):
 @login_required
 def api_integrations_list():
     """List integrations visible to current user:
-    personal (own) + group (member of) + global.
+    personal/null (own) + group (member of) + global.
     """
     if not supabase_client:
         return jsonify({"integrations": []})
@@ -2877,36 +2885,43 @@ def api_integrations_list():
     try:
         results = []
         seen_ids = set()
-        # 1. Personal
+        # 1. Personal — includes rows where scope IS NULL (legacy rows)
         r = supabase_client.table("integrations").select(
             "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
-        ).eq("user_id", username).eq("scope", "personal").execute()
+        ).eq("user_id", username).execute()
         for row in (r.data or []):
-            row["_label"] = "개인"
-            results.append(row); seen_ids.add(row["id"])
+            scope = row.get("scope") or "personal"
+            if scope == "personal":
+                row["_label"] = "개인"
+                results.append(row); seen_ids.add(row["id"])
         # 2. Group integrations
         gids = _user_group_ids(username)
         if gids:
-            gr = supabase_client.table("integrations").select(
-                "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
-            ).eq("scope", "group").in_("group_id", gids).execute()
-            for row in (gr.data or []):
-                if row["id"] not in seen_ids:
-                    # Attach group name
-                    try:
-                        gn = supabase_client.table("groups").select("name").eq("id", row["group_id"]).execute()
-                        row["_label"] = gn.data[0]["name"] if gn.data else "그룹"
-                    except Exception:
-                        row["_label"] = "그룹"
-                    results.append(row); seen_ids.add(row["id"])
+            try:
+                gr = supabase_client.table("integrations").select(
+                    "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
+                ).eq("scope", "group").in_("group_id", gids).execute()
+                for row in (gr.data or []):
+                    if row["id"] not in seen_ids:
+                        try:
+                            gn = supabase_client.table("groups").select("name").eq("id", row["group_id"]).execute()
+                            row["_label"] = gn.data[0]["name"] if gn.data else "그룹"
+                        except Exception:
+                            row["_label"] = "그룹"
+                        results.append(row); seen_ids.add(row["id"])
+            except Exception:
+                pass
         # 3. Global
-        glob = supabase_client.table("integrations").select(
-            "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
-        ).eq("scope", "global").execute()
-        for row in (glob.data or []):
-            if row["id"] not in seen_ids:
-                row["_label"] = "전체공유"
-                results.append(row); seen_ids.add(row["id"])
+        try:
+            glob_r = supabase_client.table("integrations").select(
+                "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
+            ).eq("scope", "global").execute()
+            for row in (glob_r.data or []):
+                if row["id"] not in seen_ids:
+                    row["_label"] = "전체공유"
+                    results.append(row); seen_ids.add(row["id"])
+        except Exception:
+            pass
         return jsonify({"integrations": results})
     except Exception as e:
         return jsonify({"integrations": [], "error": str(e)})
