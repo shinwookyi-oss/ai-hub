@@ -134,6 +134,75 @@
         </div>
     </div>
     <div class="container">
+    <!-- Prompt Library Modal -->
+    <div class="ws-overlay" id="promptLibOverlay" onclick="if(event.target===this)closePromptLib()">
+        <div class="ws-modal" style="max-width:720px;width:95vw;">
+            <div class="ws-header">
+                <h2>📋 Prompt Library</h2>
+                <button class="ws-close" onclick="closePromptLib()">×</button>
+            </div>
+            <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;gap:0;">
+                <!-- Toolbar -->
+                <div class="pl-toolbar">
+                    <input type="text" id="plSearch" class="pl-search" placeholder="🔍 프롬프트 검색..." oninput="plFilter()">
+                    <select id="plCatFilter" class="pl-select" onchange="plFilter()">
+                        <option value="">📂 전체</option>
+                    </select>
+                    <button class="pl-fav-toggle" id="plFavToggle" onclick="plToggleFav()" title="즐겨찾기만 보기">⭐</button>
+                    <select id="plSort" class="pl-select" onchange="plFilter()">
+                        <option value="newest">최신순</option>
+                        <option value="alpha">이름순</option>
+                        <option value="used">사용 빈도순</option>
+                    </select>
+                    <button class="ws-btn ws-btn-green" onclick="openSavePromptModal()" style="white-space:nowrap;padding:5px 12px;font-size:11px;">+ 저장</button>
+                </div>
+                <!-- Category pills -->
+                <div class="pl-cat-pills" id="plCatPills"></div>
+                <!-- Prompt grid -->
+                <div class="pl-grid" id="plGrid">
+                    <div class="pl-empty">📋 저장된 프롬프트가 없습니다.<br><span style="font-size:11px;">입력창에서 📋 Save Prompt 버튼으로 저장하세요</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Save Prompt Modal (inline) -->
+    <div class="ws-overlay" id="savePromptOverlay" onclick="if(event.target===this)closeSavePromptModal()" style="z-index:1001;">
+        <div class="ws-modal" style="max-width:440px;width:92vw;min-height:0;max-height:80vh;">
+            <div class="ws-header">
+                <h2>📋 프롬프트 저장</h2>
+                <button class="ws-close" onclick="closeSavePromptModal()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div>
+                    <label class="pl-label">이름</label>
+                    <input type="text" id="spName" class="pl-input" placeholder="프롬프트 이름...">
+                </div>
+                <div>
+                    <label class="pl-label">카테고리</label>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="spCategory" class="pl-input" placeholder="예: 업무, 분석, 마케팅..." list="spCatList" style="flex:1;">
+                        <datalist id="spCatList"></datalist>
+                    </div>
+                    <div class="pl-cat-quick" id="spQuickCats">
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">업무</span>
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">분석</span>
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">마케팅</span>
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">개발</span>
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">전략</span>
+                        <span onclick="document.getElementById('spCategory').value=this.textContent">글쓰기</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="pl-label">프롬프트 내용</label>
+                    <textarea id="spContent" class="pl-input" rows="4" style="resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeSavePromptModal()">취소</button>
+                    <button class="ws-btn ws-btn-green" onclick="confirmSavePrompt()">💾 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Workspace Modal -->
     <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
         <div class="ws-modal">
@@ -1964,29 +2033,168 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         }
         document.getElementById('userInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
 
-        // ── Convenience: Prompt Library ──
-        async function savePrompt() {
-            const input=document.getElementById('userInput').value.trim();
-            if(!input){addMessage('System','Type a prompt first to save it.','system-msg');return;}
-            const name=prompt('Save prompt as:',input.slice(0,50));
-            if(!name)return;
-            await fetch('/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({name:name,prompt:input,mode:currentMode,personas:currentPersona?[currentPersona]:[]})});
-            addMessage('System','✅ Prompt saved: '+name,'system-msg');
+        // ── Prompt Library ──
+        let plAllPrompts = [], plShowFavOnly = false, plActiveCat = '';
+
+        function plGetMeta(id) {
+            try { return JSON.parse(localStorage.getItem('pl_meta_' + id) || '{}'); } catch(e) { return {}; }
         }
-        async function loadPrompts() {
-            const r=await fetch('/api/prompts').then(r=>r.json());
-            const list=r.prompts||[];
-            if(!list.length){addMessage('System','No saved prompts yet.','system-msg');return;}
-            let html='<div class="doc-sec-title">📋 Prompt Library</div>';
-            list.forEach(function(p){
-                html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin:4px 0;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;">
-                    <div style="cursor:pointer;flex:1;" onclick="document.getElementById('userInput').value='${escapeHtml(p.prompt).replace(/'/g,"\\'")}';"><div style="font-weight:600;font-size:12px;">${escapeHtml(p.name)}</div><div style="font-size:10px;color:var(--text2);">${escapeHtml((p.prompt||'').slice(0,80))}</div></div>
-                    <span style="cursor:pointer;color:#666;font-size:12px;" onclick="deletePrompt('${p.id}')">&times;</span></div>`;
+        function plSetMeta(id, data) {
+            localStorage.setItem('pl_meta_' + id, JSON.stringify(data));
+        }
+
+        async function openPromptLib() {
+            document.getElementById('promptLibOverlay').style.display = 'flex';
+            await plLoad();
+        }
+        function closePromptLib() {
+            document.getElementById('promptLibOverlay').style.display = 'none';
+        }
+
+        async function plLoad() {
+            const r = await fetch('/api/prompts').then(r => r.json()).catch(() => ({prompts:[]}));
+            plAllPrompts = r.prompts || [];
+            plBuildCategoryPills();
+            plFilter();
+        }
+
+        function plBuildCategoryPills() {
+            const cats = [...new Set(plAllPrompts.map(p => p.category).filter(Boolean))].sort();
+            const pills = document.getElementById('plCatPills');
+            const catSelect = document.getElementById('plCatFilter');
+            pills.innerHTML = '';
+            catSelect.innerHTML = '<option value="">📂 전체</option>';
+            cats.forEach(c => {
+                const pill = document.createElement('span');
+                pill.className = 'pl-cat-pill' + (plActiveCat === c ? ' active' : '');
+                pill.textContent = c;
+                pill.onclick = () => { plActiveCat = (plActiveCat === c ? '' : c); plBuildCategoryPills(); plFilter(); };
+                pills.appendChild(pill);
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                if (plActiveCat === c) opt.selected = true;
+                catSelect.appendChild(opt);
             });
-            showDoc(html,'Prompt Library','📋 Prompts');
         }
-        async function deletePrompt(id){await fetch('/api/prompts/'+id,{method:'DELETE'});loadPrompts();}
+
+        function plToggleFav() {
+            plShowFavOnly = !plShowFavOnly;
+            document.getElementById('plFavToggle').classList.toggle('active', plShowFavOnly);
+            plFilter();
+        }
+
+        function plFilter() {
+            const q = document.getElementById('plSearch').value.toLowerCase();
+            const cat = plActiveCat || document.getElementById('plCatFilter').value;
+            const sort = document.getElementById('plSort').value;
+            let list = plAllPrompts.filter(p => {
+                const meta = plGetMeta(p.id);
+                if (plShowFavOnly && !meta.fav) return false;
+                if (cat && p.category !== cat) return false;
+                if (q && !p.name.toLowerCase().includes(q) && !(p.prompt||'').toLowerCase().includes(q)) return false;
+                return true;
+            });
+            if (sort === 'alpha') list.sort((a,b) => a.name.localeCompare(b.name));
+            else if (sort === 'used') list.sort((a,b) => (plGetMeta(b.id).uses||0) - (plGetMeta(a.id).uses||0));
+            plRenderGrid(list);
+        }
+
+        function plRenderGrid(list) {
+            const grid = document.getElementById('plGrid');
+            if (!list.length) {
+                grid.innerHTML = '<div class="pl-empty">📋 프롬프트가 없습니다.<br><span style="font-size:11px;">+ 저장 버튼으로 추가하세요</span></div>';
+                return;
+            }
+            grid.innerHTML = '';
+            list.forEach(p => {
+                const meta = plGetMeta(p.id);
+                const isFav = !!meta.fav;
+                const uses = meta.uses || 0;
+                const card = document.createElement('div');
+                card.className = 'pl-card';
+                card.innerHTML = `
+                    <div class="pl-card-top">
+                        <div class="pl-card-name">${escapeHtml(p.name)}</div>
+                        <button class="pl-card-fav ${isFav?'active':''}" onclick="plToggleCardFav('${p.id}',event)" title="즐겨찾기">${isFav?'⭐':'☆'}</button>
+                    </div>
+                    <div class="pl-card-preview">${escapeHtml(p.prompt||'')}</div>
+                    <div class="pl-card-meta">
+                        ${p.category ? `<span class="pl-card-cat">${escapeHtml(p.category)}</span>` : ''}
+                        <span class="pl-card-mode">${p.mode||'chat'}</span>
+                        ${uses > 0 ? `<span class="pl-card-uses">▶ ${uses}회</span>` : ''}
+                    </div>
+                    <div class="pl-card-actions">
+                        <button class="pl-card-btn primary" onclick="plUsePrompt('${p.id}')">▶ 사용</button>
+                        <button class="pl-card-btn del" onclick="plDelete('${p.id}',event)">🗑</button>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function plToggleCardFav(id, e) {
+            e.stopPropagation();
+            const meta = plGetMeta(id);
+            meta.fav = !meta.fav;
+            plSetMeta(id, meta);
+            plFilter();
+        }
+
+        function plUsePrompt(id) {
+            const p = plAllPrompts.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('userInput').value = p.prompt || '';
+            document.getElementById('userInput').focus();
+            const meta = plGetMeta(id);
+            meta.uses = (meta.uses || 0) + 1;
+            plSetMeta(id, meta);
+            fetch('/api/prompts/' + id, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({use_count: meta.uses})}).catch(()=>{});
+            closePromptLib();
+        }
+
+        async function plDelete(id, e) {
+            e.stopPropagation();
+            if (!confirm('이 프롬프트를 삭제할까요?')) return;
+            await fetch('/api/prompts/' + id, {method:'DELETE'});
+            localStorage.removeItem('pl_meta_' + id);
+            plAllPrompts = plAllPrompts.filter(p => p.id !== id);
+            plBuildCategoryPills();
+            plFilter();
+        }
+
+        // Save prompt modal
+        function openSavePromptModal() {
+            const cur = document.getElementById('userInput')?.value || '';
+            document.getElementById('spContent').value = cur;
+            document.getElementById('spName').value = cur.slice(0, 50);
+            document.getElementById('spCategory').value = '';
+            // Populate datalist with existing categories
+            const dl = document.getElementById('spCatList');
+            dl.innerHTML = '';
+            [...new Set(plAllPrompts.map(p=>p.category).filter(Boolean))].forEach(c => {
+                const opt = document.createElement('option'); opt.value = c; dl.appendChild(opt);
+            });
+            document.getElementById('savePromptOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('spName').focus(), 50);
+        }
+        function closeSavePromptModal() {
+            document.getElementById('savePromptOverlay').style.display = 'none';
+        }
+        async function confirmSavePrompt() {
+            const name = document.getElementById('spName').value.trim();
+            const content = document.getElementById('spContent').value.trim();
+            const category = document.getElementById('spCategory').value.trim();
+            if (!name || !content) { alert('이름과 내용을 입력하세요.'); return; }
+            await fetch('/api/prompts', {method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({name, prompt:content, mode:currentMode, personas:currentPersona?[currentPersona]:[], category})});
+            closeSavePromptModal();
+            addMessage('System', '✅ 프롬프트 저장: ' + name, 'system-msg');
+            await plLoad();
+        }
+
+        // Keep old savePrompt wired to new modal, loadPrompts opens library
+        function savePrompt() { openSavePromptModal(); }
+        function loadPrompts() { openPromptLib(); }
+        async function deletePrompt(id) { await fetch('/api/prompts/'+id,{method:'DELETE'}); }
 
         // ── Convenience: PDF Export ──
         function exportPDF() {

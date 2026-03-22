@@ -940,12 +940,34 @@ def api_prompts_list():
     if not supabase_client:
         return jsonify({"prompts": []})
     try:
-        result = supabase_client.table("saved_prompts").select("*").eq(
-            "user_id", session.get("username", "admin")
-        ).order("created_at", desc=True).execute()
-        return jsonify({"prompts": result.data or []})
+        q = request.args.get("q", "").strip()
+        category = request.args.get("category", "").strip()
+        uid = session.get("username", "admin")
+        query = supabase_client.table("saved_prompts").select("*").eq("user_id", uid)
+        if category:
+            query = query.eq("category", category)
+        result = query.order("created_at", desc=True).execute()
+        prompts = result.data or []
+        if q:
+            ql = q.lower()
+            prompts = [p for p in prompts if ql in p.get("name","").lower() or ql in p.get("prompt","").lower()]
+        return jsonify({"prompts": prompts})
     except Exception:
         return jsonify({"prompts": []})
+
+
+@app.route("/api/prompts/categories", methods=["GET"])
+@login_required
+def api_prompts_categories():
+    if not supabase_client:
+        return jsonify({"categories": []})
+    try:
+        uid = session.get("username", "admin")
+        result = supabase_client.table("saved_prompts").select("category").eq("user_id", uid).execute()
+        cats = list({r.get("category") for r in (result.data or []) if r.get("category")})
+        return jsonify({"categories": sorted(cats)})
+    except Exception:
+        return jsonify({"categories": []})
 
 
 @app.route("/api/prompts", methods=["POST"])
@@ -954,14 +976,39 @@ def api_prompts_save():
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
     data = request.json
-    result = supabase_client.table("saved_prompts").insert({
+    row = {
         "user_id": session.get("username", "admin"),
         "name": data.get("name", "Untitled"),
         "prompt": data.get("prompt", ""),
         "mode": data.get("mode", "chat"),
-        "personas": data.get("personas", [])
-    }).execute()
+        "personas": data.get("personas", []),
+    }
+    if data.get("category"):
+        row["category"] = data["category"]
+    try:
+        result = supabase_client.table("saved_prompts").insert(row).execute()
+    except Exception:
+        row.pop("category", None)
+        result = supabase_client.table("saved_prompts").insert(row).execute()
     return jsonify({"prompt": result.data[0] if result.data else {}, "success": True})
+
+
+@app.route("/api/prompts/<prompt_id>", methods=["PATCH"])
+@login_required
+def api_prompts_update(prompt_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json
+    allowed = {k: v for k, v in data.items() if k in ("name", "category", "use_count")}
+    if not allowed:
+        return jsonify({"error": "Nothing to update"}), 400
+    try:
+        supabase_client.table("saved_prompts").update(allowed).eq("id", prompt_id).execute()
+    except Exception:
+        allowed.pop("category", None)
+        if allowed:
+            supabase_client.table("saved_prompts").update(allowed).eq("id", prompt_id).execute()
+    return jsonify({"updated": True})
 
 
 @app.route("/api/prompts/<prompt_id>", methods=["DELETE"])
