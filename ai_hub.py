@@ -613,7 +613,12 @@ class AIHub:
         "FILE ANALYSIS: "
         "You are capable of reading and analyzing any text content, "
         "including the contents of files (PDF, DOCX, Excel, etc.) provided in the message. "
-        "When file content is provided, analyze it thoroughly with structured sections and data-driven insights."
+        "When file content is provided, analyze it thoroughly with structured sections and data-driven insights. "
+        "MAP EMBED: "
+        "When the user asks about a location, address, or place, ALWAYS include [MAP:full address or place name] in your response. "
+        "This will automatically embed an interactive map. Also provide relevant information about the location: "
+        "nearby landmarks, restaurants, transport options, reviews, tips, weather, or other useful details. "
+        "Example: 'Here is the location:\n\n[MAP:서울특별시 강남구 테헤란로 152]\n\n### Nearby...'"
     )
 
     def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "", model: str = None) -> AIResponse:

@@ -1564,7 +1564,25 @@
         function renderMarkdown(text) {
             if(typeof marked === 'undefined') return `<pre>${escapeHtml(text)}</pre>`;
             marked.setOptions({breaks:true, gfm:true});
-            return `<div class="md-body">${marked.parse(text)}</div>`;
+            var html = `<div class="md-body">${marked.parse(text)}</div>`;
+            return embedMaps(html);
+        }
+
+        // ── Map Embed: detect addresses/map links and embed Google Maps ──
+        function embedMaps(html) {
+            // 1. [MAP:address] explicit syntax
+            html = html.replace(/\[MAP:(.*?)\]/gi, function(match, addr) {
+                return _mapIframe(addr.trim());
+            });
+            // 2. Google Maps links → embed
+            html = html.replace(/<a[^>]*href="(https?:\/\/(www\.)?google\.[a-z.]+\/maps[^"]*)"[^>]*>([^<]*)<\/a>/gi, function(match, url, _, text) {
+                return match + _mapIframe(text || url);
+            });
+            return html;
+        }
+        function _mapIframe(query) {
+            var encoded = encodeURIComponent(query);
+            return `<div class="map-embed"><iframe src="https://maps.google.com/maps?q=${encoded}&output=embed&z=15" width="100%" height="300" frameborder="0" style="border:0;border-radius:12px;" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><div class="map-label">📍 ${escapeHtml(query)} <a href="https://maps.google.com/maps?q=${encoded}" target="_blank" style="color:var(--accent2);font-size:11px;margin-left:8px;">Google Maps에서 열기 ↗</a></div></div>`;
         }
         // ── Code block copy + preview buttons ──
         function addCodeButtons(container) {

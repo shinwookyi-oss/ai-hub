@@ -176,6 +176,9 @@
         .doc-answer hr{border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(108,92,231,0.25),transparent);margin:8px 0;}
         .doc-answer a{color:#a29bfe;text-decoration:none;border-bottom:1px dotted rgba(162,155,254,0.3);}
         .doc-answer img{max-width:100%;border-radius:8px;margin:4px 0;}
+        .map-embed { margin: 12px 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(108,92,231,0.15); background: #0d0d1a; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .map-embed iframe { display: block; width: 100%; border: none; }
+        .map-label { padding: 8px 14px; font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 6px; background: var(--surface2); }
         .doc-divider { border: none; height:1px; background:linear-gradient(90deg,transparent,rgba(167,139,250,0.15),transparent); margin: 16px 0; }
         
         /* Round containers (Debate, Discussion, Chain) */
