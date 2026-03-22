@@ -2572,6 +2572,60 @@ class AIHub:
             "winner": winner,
         }
 
+    def find_best_stream(self, question: str):
+        """SSE generator: yields answers and evaluations as they complete."""
+        available = self.available_providers()
+        names = {"chatgpt": "ChatGPT", "gemini": "Gemini", "azure": "Azure OpenAI",
+                 "claude": "Claude", "grok": "Grok"}
+
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+
+        yield {"type": "start", "provider_count": len(available)}
+
+        # Step 1: All AIs answer (ask_all is already parallel internally)
+        answers = self.ask_all(question)
+        answer_list = []
+        for resp in answers:
+            entry = {"provider": resp.provider, "model": resp.model, "content": resp.content,
+                     "success": resp.success, "error": resp.error, "elapsed_seconds": resp.elapsed_seconds}
+            answer_list.append(entry)
+            yield {"type": "answer", **entry}
+
+        # Step 2: Each AI evaluates
+        answer_text = ""
+        for resp in answers:
+            if resp.success:
+                answer_text += f"\n[{resp.provider}]:\n{resp.content}\n"
+
+        evaluations = []
+        for provider in available:
+            ai_name = names.get(provider, provider)
+            eval_prompt = (
+                f"Question: '{question}'\n\n"
+                f"Here are answers from different AIs:\n{answer_text}\n\n"
+                f"Evaluate each answer for: accuracy, completeness, clarity, and helpfulness. "
+                f"Score each from 1-10 and pick the BEST answer. "
+                f"You cannot pick yourself ({ai_name}). "
+                f"Format: 'BEST: [AI Name]' followed by brief reasoning."
+            )
+            eval_resp = self.ask(eval_prompt, provider=provider,
+                                 system_prompt="You are a fair and objective evaluator.")
+            evaluations.append({"evaluator": ai_name, "provider": provider, "evaluation": eval_resp.content})
+            yield {"type": "evaluation", "evaluator": ai_name, "evaluation": eval_resp.content}
+
+        # Step 3: Count votes
+        votes = {}
+        for ev in evaluations:
+            text = ev["evaluation"].upper()
+            for resp in answers:
+                if resp.success and resp.provider.upper() in text.split("BEST:")[-1][:50]:
+                    votes[resp.provider] = votes.get(resp.provider, 0) + 1
+
+        winner = max(votes, key=votes.get) if votes else (answers[0].provider if answers else "Unknown")
+        yield {"type": "result", "votes": votes, "winner": winner, "answers": answer_list}
+
     # ──────────────────────────── Output Utilities ────────────────────────────
 
     @staticmethod

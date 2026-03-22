@@ -727,12 +727,15 @@ def api_discuss():
 def api_best():
     try:
         question = request.json.get("question", "")
-        result = hub.find_best(question=question)
-        return jsonify({"question": result["question"],
-            "answers": [{"provider": r.provider, "model": r.model, "content": r.content,
-                "success": r.success, "error": r.error, "elapsed_seconds": r.elapsed_seconds}
-                for r in result["answers"]],
-            "evaluations": result["evaluations"], "votes": result["votes"], "winner": result["winner"]})
+        def generate():
+            try:
+                for chunk in hub.find_best_stream(question=question):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -742,12 +745,17 @@ def api_best():
 def api_persona_debate():
     try:
         data = request.json
+        username = session.get("user", "")
+        pf = data.get("persona_for", "elon_musk")
+        pa = data.get("persona_against", "trump")
+        _ensure_user_persona_registered(pf, username)
+        _ensure_user_persona_registered(pa, username)
         def generate():
             try:
                 for chunk in hub.persona_debate_stream(
                     topic=data.get("topic", ""),
-                    persona_for=data.get("persona_for", "elon_musk"),
-                    persona_against=data.get("persona_against", "trump"),
+                    persona_for=pf,
+                    persona_against=pa,
                     rounds=2
                 ):
                     yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
@@ -768,6 +776,9 @@ def api_persona_discuss():
         personas = data.get("personas", [])
         if len(personas) < 2:
             return jsonify({"error": "Select at least 2 personas for discussion"}), 400
+        username = session.get("user", "")
+        for pk in personas:
+            _ensure_user_persona_registered(pk, username)
         topic = data.get("topic", "")
         def generate():
             try:

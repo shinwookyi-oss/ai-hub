@@ -1601,15 +1601,27 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     let disRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
                     showDoc(`<div class="doc-sec-title">🗣️ Discussion</div>${disRounds}<div class="doc-verdict"><div class="doc-verdict-label">📌 Conclusion</div><div class="doc-verdict-text">${escapeHtml(result.summary||result.error||'')}</div></div>`, text, `Participants: ${disParticipants.join(', ')}`);
                 } else if(currentMode==='best'){
-                    result=await safeFetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
+                    addMessage('System',`🏆 Finding Best Answer: ${text}\nEvaluating...`,'system-msg');
+                    const bestAnswers=[];const bestEvals=[];let bestWinner='',bestVotes={};
+                    const resp=await fetch('/api/best',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({question:text})});
+                    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                    while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                        buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                        for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                            if(ds==='[DONE]'){rdone=true;break;}
+                            try{const ck=JSON.parse(ds);
+                                if(ck.type==='answer'){bestAnswers.push(ck);addCompareCards([ck]);}
+                                else if(ck.type==='evaluation'){bestEvals.push(ck);addMessage(ck.evaluator,ck.evaluation,'','EVAL');}
+                                else if(ck.type==='result'){removeLoading(loadId);bestWinner=ck.winner;bestVotes=ck.votes;
+                                    addMessage('Winner',`${ck.winner}\nVotes: ${JSON.stringify(ck.votes)}`,'judge-msg','WINNER');
+                                    let bestCards=bestAnswers.map(r=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
+                                    showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(ck.winner)}</div></div>`,text,`Votes: ${JSON.stringify(ck.votes)}`);}
+                                else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                            }catch(e){}
+                        }
+                    }
                     removeLoading(loadId);
-                    addMessage('System',`Finding Best: ${text}`,'system-msg');
-                    addCompareCards(result.answers);
-                    for(const e of result.evaluations) addMessage(`${e.evaluator}`,e.evaluation,'','EVAL');
-                    addMessage('Winner',`${result.winner}\nVotes: ${JSON.stringify(result.votes)}`,'judge-msg','WINNER');
-                    let bestCards = result.answers.map(r=>`<div class="doc-provider"><div class="doc-provider-name"><span class="dot"></span>${escapeHtml(r.provider)} <span class="ti">${r.elapsed_seconds}s</span></div><div class="doc-answer">${escapeHtml(r.success?r.content:'Error: '+r.error)}</div></div><hr class="doc-divider">`).join('');
-                    showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(result.winner)}</div></div>`, text, `Votes: ${JSON.stringify(result.votes)}`);
                 } else if(currentMode==='persona_debate'){
                     const p1=document.getElementById('personaFor').value, p2=document.getElementById('personaAgainst').value;
                     const debateEntries=[];let debateForName='',debateAgainstName='';
