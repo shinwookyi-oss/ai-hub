@@ -37,6 +37,7 @@
             <button class="theme-picker-btn" onclick="toggleThemePicker()" title="Theme">🎨</button>
             <button class="theme-picker-btn" id="styleSettingsBtn" onclick="toggleStyleSettings()" title="Style Settings" style="display:none;">🔤</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
+            <button class="theme-picker-btn" onclick="openChangePw()" title="비밀번호 변경">🔑</button>
             <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
         </div>
     </div>
@@ -111,6 +112,55 @@
         <button onclick="showMobilePanel('output')">📄 Output</button>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <!-- Change Password Modal -->
+    <div class="auto-overlay" id="changePwOverlay" onclick="if(event.target===this)closeChangePw()" style="display:none;z-index:400;">
+        <div class="auto-form-modal" style="max-width:380px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);">🔑 비밀번호 변경</h3>
+                <button class="ws-close" onclick="closeChangePw()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div><label class="auto-label">현재 비밀번호</label>
+                    <input type="password" id="pwCurrent" class="auto-input" placeholder="현재 비밀번호 입력"></div>
+                <div><label class="auto-label">새 비밀번호</label>
+                    <input type="password" id="pwNew" class="auto-input" placeholder="새 비밀번호 (6자 이상)"></div>
+                <div><label class="auto-label">새 비밀번호 확인</label>
+                    <input type="password" id="pwConfirm" class="auto-input" placeholder="새 비밀번호 재입력"></div>
+                <div id="changePwMsg" style="font-size:12px;min-height:16px;"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeChangePw()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmChangePw()">변경</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Temp Password Modal (Owner) -->
+    <div class="auto-overlay" id="tempPwOverlay" onclick="if(event.target===this)closeTempPw()" style="display:none;z-index:400;">
+        <div class="auto-form-modal" style="max-width:360px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);">🔐 임시 비밀번호 발급</h3>
+                <button class="ws-close" onclick="closeTempPw()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="font-size:12px;color:var(--text2);">대상 유저: <strong id="tempPwUsername" style="color:var(--text);"></strong></div>
+                <div id="tempPwResult" style="display:none;">
+                    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">발급된 임시 비밀번호:</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <code id="tempPwValue" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:14px;color:var(--green);flex:1;word-break:break-all;"></code>
+                        <button class="auto-icon-btn" onclick="copyTempPw()" title="복사">📋</button>
+                    </div>
+                    <div style="font-size:11px;color:var(--orange);margin-top:8px;">⚠️ 유저에게 전달 후 즉시 변경하도록 안내하세요.</div>
+                </div>
+                <div id="tempPwMsg" style="font-size:12px;min-height:16px;"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeTempPw()">닫기</button>
+                    <button class="auto-save-btn" id="tempPwBtn" onclick="issueTempPw()">🔐 발급</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Admin Panel Modal -->
     <div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdmin()">
         <div class="admin-modal">
@@ -120,7 +170,7 @@
             </div>
             <div class="admin-body">
                 <table class="admin-table">
-                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>User</th><th>Display Name</th><th>Tier</th><th>Status</th><th>Last Login</th><th>Actions</th><th>PW</th></tr></thead>
                     <tbody id="adminUserList"><tr><td colspan="6" style="color:var(--text2);">Loading...</td></tr></tbody>
                 </table>
                 <div class="admin-add-form" id="adminAddForm">
@@ -2868,6 +2918,69 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             });
         })();
 
+        // ── Change Password (all users) ──
+        function openChangePw() {
+            document.getElementById('pwCurrent').value = '';
+            document.getElementById('pwNew').value = '';
+            document.getElementById('pwConfirm').value = '';
+            document.getElementById('changePwMsg').textContent = '';
+            document.getElementById('changePwOverlay').style.display = 'flex';
+            setTimeout(function(){ document.getElementById('pwCurrent').focus(); }, 100);
+        }
+        function closeChangePw() { document.getElementById('changePwOverlay').style.display = 'none'; }
+        async function confirmChangePw() {
+            var cur = document.getElementById('pwCurrent').value;
+            var nw = document.getElementById('pwNew').value;
+            var cfm = document.getElementById('pwConfirm').value;
+            var msg = document.getElementById('changePwMsg');
+            if (!cur || !nw || !cfm) { msg.style.color='var(--orange)'; msg.textContent='모든 필드를 입력하세요.'; return; }
+            if (nw.length < 6) { msg.style.color='var(--orange)'; msg.textContent='새 비밀번호는 6자 이상이어야 합니다.'; return; }
+            if (nw !== cfm) { msg.style.color='var(--red)'; msg.textContent='새 비밀번호가 일치하지 않습니다.'; return; }
+            msg.style.color='var(--text2)'; msg.textContent='변경 중...';
+            try {
+                var r = await fetch('/api/account/change-password', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({current_password: cur, new_password: nw})
+                });
+                var data = await r.json();
+                if (data.success) { msg.style.color='var(--green)'; msg.textContent='✅ 비밀번호가 변경되었습니다.'; setTimeout(closeChangePw, 1500); }
+                else { msg.style.color='var(--red)'; msg.textContent='❌ ' + (data.error || '변경 실패'); }
+            } catch(e) { msg.style.color='var(--red)'; msg.textContent='❌ 오류: ' + e.message; }
+        }
+
+        // ── Temp Password (owner only) ──
+        var tempPwUserId = '', tempPwUserName = '';
+        function openTempPw(id, name) {
+            tempPwUserId = id; tempPwUserName = name;
+            document.getElementById('tempPwUsername').textContent = name;
+            document.getElementById('tempPwResult').style.display = 'none';
+            document.getElementById('tempPwMsg').textContent = '';
+            document.getElementById('tempPwBtn').style.display = '';
+            document.getElementById('tempPwOverlay').style.display = 'flex';
+        }
+        function closeTempPw() { document.getElementById('tempPwOverlay').style.display = 'none'; }
+        async function issueTempPw() {
+            var msg = document.getElementById('tempPwMsg');
+            msg.style.color='var(--text2)'; msg.textContent='발급 중...';
+            try {
+                var r = await fetch('/api/admin/temp-password', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: tempPwUserId})
+                });
+                var data = await r.json();
+                if (data.success) {
+                    document.getElementById('tempPwValue').textContent = data.temp_password;
+                    document.getElementById('tempPwResult').style.display = 'block';
+                    document.getElementById('tempPwBtn').style.display = 'none';
+                    msg.textContent = '';
+                } else { msg.style.color='var(--red)'; msg.textContent='❌ ' + (data.error || '발급 실패'); }
+            } catch(e) { msg.style.color='var(--red)'; msg.textContent='❌ 오류: ' + e.message; }
+        }
+        function copyTempPw() {
+            var val = document.getElementById('tempPwValue').textContent;
+            navigator.clipboard.writeText(val).then(function(){ alert('클립보드에 복사되었습니다.'); });
+        }
+
         // ── Admin Panel ──
         function initAdmin() {
             if (USER_TIER === 'owner') {
@@ -3015,7 +3128,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                         </select></td>
                         <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
                         <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
-                        <td><button class="admin-btn-sm" onclick="adminResetPw('${u.id}','${u.username}')" title="비밀번호 변경">🔑</button> <button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
+                        <td><button class="admin-btn-sm" onclick="adminDeleteUser('${u.id}','${u.username}')" title="Delete">🗑️</button></td>
+                        <td><button class="admin-btn-sm" onclick="openTempPw('${u.id}','${u.username}')" title="임시 비밀번호 발급">🔐</button></td>
                     </tr>`;
                 }).join('');
             } catch(e) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);">Error: ${e.message}</td></tr>`; }

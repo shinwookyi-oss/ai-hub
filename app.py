@@ -3106,6 +3106,58 @@ def handle_500(e):
     return str(e), 500
 
 
+@app.route("/api/account/change-password", methods=["POST"])
+@login_required
+def api_change_password():
+    username = session.get("username", "")
+    data = request.json or {}
+    current_pw = data.get("current_password", "")
+    new_pw = data.get("new_password", "")
+    if not current_pw or not new_pw:
+        return jsonify({"error": "필드 누락"}), 400
+    if len(new_pw) < 6:
+        return jsonify({"error": "새 비밀번호는 6자 이상이어야 합니다."}), 400
+    # Verify current password
+    current_hash = _hash_password(current_pw)
+    if not supabase_client:
+        # Fallback: env-based user
+        if username == APP_USERNAME and current_hash == APP_PASSWORD_HASH:
+            return jsonify({"error": "환경변수 기반 계정은 Render 대시보드에서 변경하세요."}), 400
+        return jsonify({"error": "DB 연결 없음"}), 400
+    try:
+        r = supabase_client.table("users").select("id,password_hash").eq("username", username).execute()
+        if not r.data:
+            return jsonify({"error": "유저를 찾을 수 없습니다."}), 404
+        user = r.data[0]
+        if user["password_hash"] != current_hash:
+            return jsonify({"error": "현재 비밀번호가 올바르지 않습니다."}), 403
+        new_hash = _hash_password(new_pw)
+        supabase_client.table("users").update({"password_hash": new_hash}).eq("id", user["id"]).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/temp-password", methods=["POST"])
+@login_required
+def api_temp_password():
+    if not _is_owner(session.get("username", "")):
+        return jsonify({"error": "owner 전용 기능입니다."}), 403
+    if not supabase_client:
+        return jsonify({"error": "DB 연결 없음"}), 400
+    data = request.json or {}
+    user_id = data.get("user_id", "")
+    if not user_id:
+        return jsonify({"error": "user_id 필요"}), 400
+    try:
+        temp_pw = secrets.token_urlsafe(8)  # 11자 랜덤 문자열
+        new_hash = _hash_password(temp_pw)
+        supabase_client.table("users").update({"password_hash": new_hash}).eq("id", user_id).execute()
+        return jsonify({"success": True, "temp_password": temp_pw})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/youtube/transcript", methods=["POST"])
 @login_required
 def api_youtube_transcript():
