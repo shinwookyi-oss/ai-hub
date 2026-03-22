@@ -1482,6 +1482,43 @@ def api_files_create(folder_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/workspace/search", methods=["GET"])
+@login_required
+def api_workspace_search():
+    """Search files across all folders by name or tag"""
+    if not supabase_client:
+        return jsonify({"files": []})
+    try:
+        username = session.get("username", "admin")
+        q = request.args.get("q", "").strip().lower()
+        tag = request.args.get("tag", "").strip().lower()
+        result = supabase_client.table("workspace_files").select(
+            "id,name,type,folder_id,created_at,updated_at,metadata"
+        ).eq("user_id", username).execute()
+        files = result.data or []
+        if q:
+            files = [f for f in files if q in f.get("name", "").lower()]
+        if tag:
+            files = [f for f in files if tag in [
+                t.lower() for t in ((f.get("metadata") or {}).get("tags") or [])
+            ]]
+        # Attach folder info
+        folder_ids = list({f["folder_id"] for f in files if f.get("folder_id")})
+        folder_map = {}
+        if folder_ids:
+            fr = supabase_client.table("folders").select("id,name,icon").in_("id", folder_ids).execute()
+            for fol in (fr.data or []):
+                folder_map[fol["id"]] = fol
+        for f in files:
+            fol = folder_map.get(f.get("folder_id"), {})
+            f["folder_name"] = fol.get("name", "")
+            f["folder_icon"] = fol.get("icon", "📁")
+        files.sort(key=lambda f: f.get("updated_at") or "", reverse=True)
+        return jsonify({"files": files, "count": len(files)})
+    except Exception as e:
+        return jsonify({"files": [], "error": str(e)})
+
+
 @app.route("/api/files/<file_id>", methods=["GET"])
 @login_required
 def api_files_get(file_id):
@@ -1509,6 +1546,12 @@ def api_files_update(file_id):
         if "name" in data: update["name"] = data["name"]
         if "content" in data: update["content"] = data["content"]
         if "metadata" in data: update["metadata"] = data["metadata"]
+        if "tags" in data:
+            # Merge tags into existing metadata
+            existing = supabase_client.table("workspace_files").select("metadata").eq("id", file_id).execute()
+            meta = (existing.data[0].get("metadata") or {}) if existing.data else {}
+            meta["tags"] = [t.strip() for t in data["tags"] if t.strip()]
+            update["metadata"] = meta
         supabase_client.table("workspace_files").update(update).eq("id", file_id).execute()
         return jsonify({"success": True})
     except Exception as e:

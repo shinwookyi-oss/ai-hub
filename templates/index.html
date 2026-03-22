@@ -219,10 +219,12 @@
                     <div id="wsFolderList"></div>
                 </div>
                 <div class="ws-files">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                         <span style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Files</span>
                         <button class="ws-btn" id="wsAnalyzeBtn" onclick="analyzeSelectedFiles()" style="display:none;padding:4px 10px;font-size:11px;background:rgba(108,92,231,0.15);color:var(--accent2);border:1px solid var(--accent);border-radius:6px;cursor:pointer;">🔍 Analyze Selected</button>
                     </div>
+                    <input type="text" id="wsSearchInput" class="ws-search" placeholder="🔍 파일명 검색..." oninput="wsDoSearch()">
+                    <div id="wsTagPills" class="ws-tag-pills"></div>
                     <div id="wsFileList"><div style="color:var(--text2);font-size:13px;">Select a folder to view files</div></div>
                 </div>
             </div>
@@ -3105,6 +3107,9 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         };
         // ── Workspace ──
         var wsCurrentFolder = null;
+        var wsAllFileTags = [];   // all unique tags from current folder
+        var wsActiveTag = '';
+        var wsSearchTimer = null;
         function openWorkspace() {
             document.getElementById('wsOverlay').classList.add('open');
             loadFolders();
@@ -3225,28 +3230,115 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         async function loadFiles(folderId) {
             try {
                 var r = await fetch('/api/folders/'+folderId+'/files').then(r=>r.json());
-                var el = document.getElementById('wsFileList');
-                if (!r.files || !r.files.length) {
-                    el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">No files here.</div>';
-                    return;
-                }
-                var html = '';
-                r.files.forEach(function(f) {
-                    var size = (f.size_bytes / 1024).toFixed(1) + ' KB';
-                    var time = new Date(f.created_at).toLocaleString();
-                    html += `<div class="ws-file-item" style="display:flex;align-items:center;gap:8px;">
-                        <input type="checkbox" class="ws-file-check" data-file-id="${f.id}" onclick="event.stopPropagation();updateAnalyzeBtn();" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0;">
-                        <div style="flex:1;overflow:hidden;cursor:pointer;" onclick="viewFile('${f.id}')">
-                            <div style="font-weight:600;color:#e0e0ff;font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">📄 ${f.name}</div>
-                            <div style="color:var(--text2);font-size:11px;margin-top:4px;">${size} • ${time}</div>
-                        </div>
-                        <div class="folder-actions" style="opacity:1;">
-                            <button class="ws-close" onclick="event.stopPropagation();deleteFile('${f.id}','${folderId}')" title="Delete">×</button>
-                        </div>
-                    </div>`;
-                });
-                el.innerHTML = html;
+                wsRenderFiles(r.files || [], folderId);
             } catch(e) { console.log('loadFiles err:', e); }
+        }
+
+        function wsRenderFiles(files, folderId) {
+            folderId = folderId || wsCurrentFolder;
+            var el = document.getElementById('wsFileList');
+            // Collect all tags
+            wsAllFileTags = [];
+            files.forEach(function(f) {
+                var tags = (f.metadata && f.metadata.tags) || [];
+                tags.forEach(function(t) { if (t && !wsAllFileTags.includes(t)) wsAllFileTags.push(t); });
+            });
+            wsRenderTagPills();
+            // Filter by active tag
+            var list = wsActiveTag ? files.filter(function(f) {
+                return ((f.metadata && f.metadata.tags) || []).map(function(t){return t.toLowerCase();}).includes(wsActiveTag.toLowerCase());
+            }) : files;
+            if (!list.length) {
+                el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">No files here.</div>';
+                return;
+            }
+            var html = '';
+            list.forEach(function(f) {
+                var size = f.size_bytes ? (f.size_bytes / 1024).toFixed(1) + ' KB' : '';
+                var time = new Date(f.updated_at || f.created_at).toLocaleDateString();
+                var tags = (f.metadata && f.metadata.tags) || [];
+                var tagHtml = tags.map(function(t) {
+                    return `<span class="ws-tag" onclick="event.stopPropagation();wsFilterByTag('${t}')">${t}</span>`;
+                }).join('');
+                html += `<div class="ws-file-item" style="display:flex;align-items:flex-start;gap:8px;">
+                    <input type="checkbox" class="ws-file-check" data-file-id="${f.id}" onclick="event.stopPropagation();updateAnalyzeBtn();" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:3px;">
+                    <div style="flex:1;overflow:hidden;cursor:pointer;" onclick="viewFile('${f.id}')">
+                        <div style="font-weight:600;color:#e0e0ff;font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">📄 ${f.name}</div>
+                        <div style="color:var(--text2);font-size:11px;margin-top:2px;">${[size, time].filter(Boolean).join(' • ')}</div>
+                        ${tags.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${tagHtml}</div>` : ''}
+                    </div>
+                    <div class="folder-actions" style="opacity:1;display:flex;gap:3px;flex-shrink:0;">
+                        <button class="ws-tag-add-btn" onclick="event.stopPropagation();wsEditTags('${f.id}')" title="태그 편집">🏷</button>
+                        <button class="ws-close" onclick="event.stopPropagation();deleteFile('${f.id}','${folderId}')" title="Delete">×</button>
+                    </div>
+                </div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        function wsRenderTagPills() {
+            var el = document.getElementById('wsTagPills');
+            if (!wsAllFileTags.length) { el.innerHTML = ''; return; }
+            var html = `<span class="ws-tag-pill${!wsActiveTag?' active':''}" onclick="wsFilterByTag('')">전체</span>`;
+            wsAllFileTags.forEach(function(t) {
+                html += `<span class="ws-tag-pill${wsActiveTag===t?' active':''}" onclick="wsFilterByTag('${t}')">${t}</span>`;
+            });
+            el.innerHTML = html;
+        }
+
+        function wsFilterByTag(tag) {
+            wsActiveTag = tag;
+            if (wsCurrentFolder) loadFiles(wsCurrentFolder);
+        }
+
+        function wsDoSearch() {
+            clearTimeout(wsSearchTimer);
+            wsSearchTimer = setTimeout(async function() {
+                var q = document.getElementById('wsSearchInput').value.trim();
+                if (!q && wsCurrentFolder) { loadFiles(wsCurrentFolder); return; }
+                if (!q) return;
+                try {
+                    var r = await fetch('/api/workspace/search?q=' + encodeURIComponent(q)).then(r=>r.json());
+                    wsRenderSearchResults(r.files || []);
+                } catch(e) { console.log('wsSearch err:', e); }
+            }, 300);
+        }
+
+        function wsRenderSearchResults(files) {
+            var el = document.getElementById('wsFileList');
+            document.getElementById('wsTagPills').innerHTML = '';
+            if (!files.length) {
+                el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">검색 결과 없음</div>';
+                return;
+            }
+            var html = '';
+            files.forEach(function(f) {
+                var time = new Date(f.updated_at || f.created_at).toLocaleDateString();
+                var tags = (f.metadata && f.metadata.tags) || [];
+                var tagHtml = tags.map(function(t) { return `<span class="ws-tag">${t}</span>`; }).join('');
+                var folderBadge = f.folder_name ? `<span style="color:var(--accent2);font-size:10px;">${f.folder_icon||'📁'} ${f.folder_name}</span>` : '';
+                html += `<div class="ws-file-item" style="cursor:pointer;" onclick="viewFile('${f.id}')">
+                    <div style="font-weight:600;color:#e0e0ff;font-size:13px;">📄 ${f.name}</div>
+                    <div style="color:var(--text2);font-size:11px;margin-top:2px;display:flex;gap:8px;align-items:center;">${folderBadge}<span>${time}</span></div>
+                    ${tags.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${tagHtml}</div>` : ''}
+                </div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        async function wsEditTags(fileId) {
+            var r = await fetch('/api/files/'+fileId).then(r=>r.json());
+            if (r.error) { alert(r.error); return; }
+            var current = ((r.file && r.file.metadata && r.file.metadata.tags) || []).join(', ');
+            var input = prompt('태그 입력 (쉼표로 구분):', current);
+            if (input === null) return;
+            var tags = input.split(',').map(function(t){return t.trim();}).filter(Boolean);
+            await fetch('/api/files/'+fileId, {
+                method: 'PUT',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({tags: tags})
+            });
+            if (wsCurrentFolder) loadFiles(wsCurrentFolder);
         }
 
         async function deleteFile(fileId, folderId) {

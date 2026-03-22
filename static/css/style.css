@@ -592,6 +592,17 @@
         .ws-btn-green { border-color:var(--green); color:var(--green); }
         .ws-editor { width:100%; min-height:200px; background:#12121f; border:1px solid var(--border); border-radius:8px; padding:12px; color:var(--text); font-family:'Inter',sans-serif; font-size:13px; resize:vertical; outline:none; }
         .ws-editor:focus { border-color:var(--accent); }
+        /* Workspace Search & Tags */
+        .ws-search { width:100%; background:#12121f; border:1px solid var(--border); border-radius:7px; padding:7px 11px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; outline:none; margin-bottom:7px; }
+        .ws-search:focus { border-color:var(--accent); }
+        .ws-tag-pills { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; min-height:0; }
+        .ws-tag-pill { padding:2px 8px; border-radius:20px; border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:10px; cursor:pointer; transition:all 0.15s; }
+        .ws-tag-pill:hover { border-color:var(--accent2); color:var(--accent2); }
+        .ws-tag-pill.active { border-color:var(--accent); background:rgba(108,92,231,0.18); color:var(--accent2); }
+        .ws-tag { display:inline-block; padding:1px 7px; border-radius:20px; background:rgba(108,92,231,0.12); border:1px solid rgba(108,92,231,0.3); color:var(--accent2); font-size:10px; cursor:pointer; transition:all 0.15s; }
+        .ws-tag:hover { background:rgba(108,92,231,0.25); }
+        .ws-tag-add-btn { border:none; background:none; font-size:13px; cursor:pointer; opacity:0.5; padding:2px 4px; transition:opacity 0.15s; }
+        .ws-tag-add-btn:hover { opacity:1; }
         /* ── Theme Picker ── */
         .theme-picker-btn { border:none; background:none; cursor:pointer; font-size:17px; padding:3px 7px; transition:transform 0.2s; }
         .theme-picker-btn:hover { transform:rotate(20deg); }
