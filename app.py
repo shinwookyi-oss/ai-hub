@@ -619,7 +619,14 @@ def api_user_models_list():
         return jsonify({"overrides": []})
     try:
         r = supabase_client.table("user_model_access").select("*").order("username").execute()
-        return jsonify({"overrides": r.data or [], "catalog": MODEL_CATALOG, "tiers": TIER_MODELS})
+        # Also fetch user list with tiers
+        users = []
+        try:
+            ur = supabase_client.table("users").select("username,tier").order("username").execute()
+            users = ur.data or []
+        except Exception:
+            pass
+        return jsonify({"overrides": r.data or [], "catalog": MODEL_CATALOG, "tiers": TIER_MODELS, "users": users})
     except Exception as e:
         return jsonify({"overrides": [], "error": str(e)})
 
