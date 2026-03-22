@@ -2733,23 +2733,29 @@ def _is_admin(username: str) -> bool:
         return False
 
 
+def _is_owner(username: str) -> bool:
+    """Check if user is owner tier only."""
+    if username == APP_USERNAME:
+        return True
+    try:
+        r = supabase_client.table("users").select("tier").eq("username", username).execute()
+        return bool(r.data and r.data[0].get("tier") == "owner")
+    except Exception:
+        return False
+
+
 @app.route("/api/groups", methods=["GET"])
 @login_required
 def api_groups_list():
-    """List all groups (admin sees all, members see their own)."""
+    """List all groups (owner only)."""
     if not supabase_client:
         return jsonify({"groups": []})
     username = session.get("username", "admin")
+    if not _is_owner(username):
+        return jsonify({"groups": [], "error": "owner 전용 기능입니다."}), 403
     try:
-        if _is_admin(username):
-            r = supabase_client.table("groups").select("*").order("created_at").execute()
-            groups = r.data or []
-        else:
-            gids = _user_group_ids(username)
-            if not gids:
-                return jsonify({"groups": []})
-            r = supabase_client.table("groups").select("*").in_("id", gids).execute()
-            groups = r.data or []
+        r = supabase_client.table("groups").select("*").order("created_at").execute()
+        groups = r.data or []
         # Attach member counts
         for g in groups:
             try:
@@ -2768,8 +2774,8 @@ def api_groups_create():
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
     username = session.get("username", "admin")
-    if not _is_admin(username):
-        return jsonify({"error": "관리자만 그룹을 생성할 수 있습니다."}), 403
+    if not _is_owner(username):
+        return jsonify({"error": "owner만 그룹을 생성할 수 있습니다."}), 403
     data = request.json or {}
     try:
         r = supabase_client.table("groups").insert({
@@ -2794,7 +2800,7 @@ def api_groups_update(gid):
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
     username = session.get("username", "admin")
-    if not _is_admin(username):
+    if not _is_owner(username):
         return jsonify({"error": "권한 없음"}), 403
     data = request.json or {}
     update = {k: data[k] for k in ["name", "description"] if k in data}
@@ -2810,7 +2816,7 @@ def api_groups_update(gid):
 def api_groups_delete(gid):
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
-    if not _is_admin(session.get("username", "admin")):
+    if not _is_owner(session.get("username", "admin")):
         return jsonify({"error": "권한 없음"}), 403
     try:
         supabase_client.table("group_members").delete().eq("group_id", gid).execute()
@@ -2837,7 +2843,7 @@ def api_group_members_list(gid):
 def api_group_members_add(gid):
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
-    if not _is_admin(session.get("username", "admin")):
+    if not _is_owner(session.get("username", "admin")):
         return jsonify({"error": "권한 없음"}), 403
     data = request.json or {}
     user_id = data.get("user_id", "").strip()
@@ -2867,7 +2873,7 @@ def api_group_members_add(gid):
 def api_group_members_remove(gid, uid):
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
-    if not _is_admin(session.get("username", "admin")):
+    if not _is_owner(session.get("username", "admin")):
         return jsonify({"error": "권한 없음"}), 403
     try:
         supabase_client.table("group_members").delete().eq("group_id", gid).eq("user_id", uid).execute()
