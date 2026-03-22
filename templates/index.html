@@ -18,7 +18,27 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(10000,99999) | random }}">
+    <style>
+    /* Inline backup: Mobile Driving Mode + Output Panel Fixes */
+    @media (max-width: 768px) {
+        .speaker-mode-btn { width: 50px !important; height: 50px !important; font-size: 24px !important; border-radius: 50% !important; }
+        body.speaker-mode #userInput { display: none !important; }
+        body.speaker-mode #sendBtn { display: none !important; }
+        body.speaker-mode .file-bar { display: none !important; }
+        body.speaker-mode .url-bar { display: none !important; }
+        body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; }
+        body.speaker-mode #micBtn {
+            width: 80px !important; height: 80px !important; font-size: 36px !important;
+            border-radius: 50% !important; border: 3px solid var(--accent) !important;
+            background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(108,92,231,0.05)) !important;
+            box-shadow: 0 4px 20px rgba(108,92,231,0.3) !important;
+        }
+        body.speaker-mode #micBtn.recording { border-color: var(--red) !important; box-shadow: 0 4px 30px rgba(255,107,107,0.4) !important; }
+        .output-panel.mobile-show .output-area { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; min-height: 0 !important; flex: 1 !important; }
+        .output-panel.mobile-show { width: 100% !important; max-width: 100% !important; }
+    }
+    </style>
 </head>
 <body>
     <div class="header">
