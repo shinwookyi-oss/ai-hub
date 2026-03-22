@@ -203,6 +203,187 @@
             </div>
         </div>
     </div>
+    <!-- Automation Modal -->
+    <div class="auto-overlay" id="autoOverlay" onclick="if(event.target===this)closeAutomation()">
+        <div class="auto-modal">
+            <div class="auto-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:18px;">⚡</span>
+                    <h2 style="font-size:16px;font-weight:700;color:var(--text);">Automations</h2>
+                </div>
+                <button class="ws-close" onclick="closeAutomation()">×</button>
+            </div>
+            <!-- Tabs -->
+            <div class="auto-tabs">
+                <button class="auto-tab active" id="autoTab-sched" onclick="autoSwitchTab('sched')">⏰ Schedules</button>
+                <button class="auto-tab" id="autoTab-wf" onclick="autoSwitchTab('wf')">🔗 Workflows</button>
+                <button class="auto-tab" id="autoTab-wh" onclick="autoSwitchTab('wh')">🔔 Webhooks</button>
+            </div>
+            <!-- Schedules Panel -->
+            <div class="auto-panel" id="autoPanel-sched">
+                <div class="auto-toolbar">
+                    <span style="font-size:12px;color:var(--text2);">정해진 시간에 AI 프롬프트를 자동 실행합니다.</span>
+                    <button class="auto-new-btn" onclick="openSchedCreate()">+ New</button>
+                </div>
+                <div id="schedList" class="auto-list"></div>
+            </div>
+            <!-- Workflows Panel -->
+            <div class="auto-panel" id="autoPanel-wf" style="display:none;">
+                <div class="auto-toolbar">
+                    <span style="font-size:12px;color:var(--text2);">여러 AI 단계를 순서대로 자동 실행합니다.</span>
+                    <button class="auto-new-btn" onclick="openWfCreate()">+ New</button>
+                </div>
+                <div id="wfList" class="auto-list"></div>
+            </div>
+            <!-- Webhooks Panel -->
+            <div class="auto-panel" id="autoPanel-wh" style="display:none;">
+                <div class="auto-toolbar">
+                    <span style="font-size:12px;color:var(--text2);">외부 서비스 이벤트가 AI 작업을 트리거합니다.</span>
+                    <button class="auto-new-btn" onclick="openWhCreate()">+ New</button>
+                </div>
+                <div id="whList" class="auto-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Create/Edit Modal -->
+    <div class="auto-overlay" id="schedCreateOverlay" onclick="if(event.target===this)closeSchedCreate()" style="z-index:310;">
+        <div class="auto-form-modal">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="schedCreateTitle">⏰ New Schedule</h3>
+                <button class="ws-close" onclick="closeSchedCreate()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <input type="hidden" id="schedEditId">
+                <div><label class="auto-label">이름</label><input type="text" id="schedName" class="auto-input" placeholder="예: 매일 뉴스 요약"></div>
+                <div>
+                    <label class="auto-label">실행 주기</label>
+                    <select id="schedExprType" class="auto-input" onchange="schedUpdateExpr()">
+                        <option value="daily">매일 (daily)</option>
+                        <option value="weekly">매주 (weekly)</option>
+                        <option value="hourly">매시간 (hourly)</option>
+                        <option value="interval">N분마다 (interval)</option>
+                    </select>
+                    <div style="margin-top:6px;display:flex;gap:8px;align-items:center;" id="schedTimeRow">
+                        <select id="schedDow" class="auto-input" style="width:90px;display:none;">
+                            <option value="mon">월요일</option><option value="tue">화요일</option>
+                            <option value="wed">수요일</option><option value="thu">목요일</option>
+                            <option value="fri">금요일</option><option value="sat">토요일</option>
+                            <option value="sun">일요일</option>
+                        </select>
+                        <input type="time" id="schedTime" class="auto-input" value="09:00" style="width:110px;">
+                        <input type="number" id="schedInterval" class="auto-input" placeholder="분" min="5" value="60" style="width:80px;display:none;">
+                        <span style="font-size:11px;color:var(--text2);" id="schedExprPreview">daily 09:00</span>
+                    </div>
+                </div>
+                <div><label class="auto-label">AI 프롬프트</label><textarea id="schedPrompt" class="auto-textarea" placeholder="예: 오늘의 기술 뉴스 주요 5가지를 한국어로 요약해주세요."></textarea></div>
+                <div style="display:flex;gap:8px;">
+                    <div style="flex:1;"><label class="auto-label">Provider</label>
+                        <select id="schedProvider" class="auto-input">
+                            <option value="chatgpt">ChatGPT</option><option value="gemini">Gemini</option>
+                            <option value="claude">Claude</option><option value="grok">Grok</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;"><label class="auto-label">결과 저장 폴더 (선택)</label>
+                        <select id="schedFolder" class="auto-input"><option value="">저장 안함</option></select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+                    <button class="ws-btn" onclick="closeSchedCreate()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmSchedSave()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Create/Edit Modal -->
+    <div class="auto-overlay" id="wfCreateOverlay" onclick="if(event.target===this)closeWfCreate()" style="z-index:310;">
+        <div class="auto-form-modal" style="max-width:580px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="wfCreateTitle">🔗 New Workflow</h3>
+                <button class="ws-close" onclick="closeWfCreate()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <input type="hidden" id="wfEditId">
+                <div><label class="auto-label">워크플로우 이름</label><input type="text" id="wfName" class="auto-input" placeholder="예: 계약서 분석 리포트"></div>
+                <div><label class="auto-label">설명 (선택)</label><input type="text" id="wfDesc" class="auto-input" placeholder="이 워크플로우가 하는 일"></div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label class="auto-label" style="margin:0;">단계 (Steps)</label>
+                        <button class="auto-new-btn" onclick="wfAddStep()">+ 단계 추가</button>
+                    </div>
+                    <div id="wfStepsContainer" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:8px;">
+                    💡 프롬프트에서 사용 가능한 변수: <code style="color:var(--accent2);">{{input}}</code> (사용자 입력), <code style="color:var(--accent2);">{{prev_output}}</code> (이전 단계 결과)
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeWfCreate()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmWfSave()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webhook Create Modal -->
+    <div class="auto-overlay" id="whCreateOverlay" onclick="if(event.target===this)closeWhCreate()" style="z-index:310;">
+        <div class="auto-form-modal">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);">🔔 New Webhook</h3>
+                <button class="ws-close" onclick="closeWhCreate()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div><label class="auto-label">이름</label><input type="text" id="whName" class="auto-input" placeholder="예: GitHub PR 알림"></div>
+                <div><label class="auto-label">프롬프트 템플릿</label>
+                    <textarea id="whPrompt" class="auto-textarea" placeholder="예: 다음 GitHub 이벤트를 분석해주세요: {{payload}}"></textarea>
+                    <div style="font-size:10px;color:var(--text2);margin-top:3px;">사용 가능: <code>{{payload}}</code> (전체 JSON), <code>{{payload.field}}</code> (특정 필드)</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div style="flex:1;"><label class="auto-label">Provider</label>
+                        <select id="whProvider" class="auto-input">
+                            <option value="chatgpt">ChatGPT</option><option value="gemini">Gemini</option>
+                            <option value="claude">Claude</option><option value="grok">Grok</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;"><label class="auto-label">결과 저장 폴더 (선택)</label>
+                        <select id="whFolder" class="auto-input"><option value="">저장 안함</option></select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeWhCreate()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmWhSave()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Run Modal -->
+    <div class="auto-overlay" id="wfRunOverlay" onclick="if(event.target===this)closeWfRun()" style="z-index:310;">
+        <div class="auto-form-modal" style="max-width:520px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="wfRunTitle">▶ Run Workflow</h3>
+                <button class="ws-close" onclick="closeWfRun()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <input type="hidden" id="wfRunId">
+                <div><label class="auto-label">입력값 (input)</label>
+                    <textarea id="wfRunInput" class="auto-textarea" style="min-height:80px;" placeholder="워크플로우의 {{input}} 변수로 전달됩니다."></textarea>
+                </div>
+                <div><label class="auto-label">결과 저장 폴더 (선택)</label>
+                    <select id="wfRunFolder" class="auto-input"><option value="">저장 안함</option></select>
+                </div>
+                <div id="wfRunProgress" style="display:none;">
+                    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">실행 중...</div>
+                    <div id="wfRunSteps" style="display:flex;flex-direction:column;gap:4px;"></div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeWfRun()">닫기</button>
+                    <button class="auto-save-btn" id="wfRunBtn" onclick="startWfRun()">▶ 실행</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Workspace Modal -->
     <div class="ws-overlay" id="wsOverlay" onclick="if(event.target===this)closeWorkspace()">
         <div class="ws-modal">
@@ -231,7 +412,8 @@
         </div>
     </div>
         <div class="sidebar" id="mainSidebar">
-            <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:12px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:12px;" onclick="openAutomation()">⚡ Automations</button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
@@ -3339,6 +3521,399 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 body: JSON.stringify({tags: tags})
             });
             if (wsCurrentFolder) loadFiles(wsCurrentFolder);
+        }
+
+        // ──────────────────── Automation Hub ────────────────────
+        var autoCurrentTab = 'sched';
+        var autoFolders = [];
+
+        function openAutomation() {
+            document.getElementById('autoOverlay').classList.add('open');
+            autoLoadFolders().then(function() {
+                autoSwitchTab(autoCurrentTab);
+            });
+        }
+        function closeAutomation() { document.getElementById('autoOverlay').classList.remove('open'); }
+
+        function autoSwitchTab(tab) {
+            autoCurrentTab = tab;
+            ['sched','wf','wh'].forEach(function(t) {
+                document.getElementById('autoTab-'+t).classList.toggle('active', t===tab);
+                document.getElementById('autoPanel-'+t).style.display = t===tab?'':'none';
+            });
+            if (tab==='sched') autoLoadSchedules();
+            if (tab==='wf') autoLoadWorkflows();
+            if (tab==='wh') autoLoadWebhooks();
+        }
+
+        async function autoLoadFolders() {
+            try {
+                var r = await fetch('/api/folders').then(r=>r.json());
+                autoFolders = r.folders || [];
+                ['schedFolder','wfRunFolder','whFolder'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    el.innerHTML = '<option value="">저장 안함</option>';
+                    autoFolders.forEach(function(f) {
+                        el.innerHTML += `<option value="${f.id}">${f.icon||'📁'} ${f.name}</option>`;
+                    });
+                });
+            } catch(e) {}
+        }
+
+        // ── Schedules ──
+        async function autoLoadSchedules() {
+            var el = document.getElementById('schedList');
+            el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">로딩 중...</div>';
+            try {
+                var r = await fetch('/api/schedules').then(r=>r.json());
+                var scheds = r.schedules || [];
+                if (!scheds.length) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">스케줄이 없습니다. + New로 추가하세요.</div>'; return; }
+                el.innerHTML = scheds.map(function(s) {
+                    var lastRun = s.last_run_at ? new Date(s.last_run_at).toLocaleString() : '미실행';
+                    var nextRun = s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—';
+                    return `<div class="auto-card">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;font-size:13px;color:var(--text);">${s.name}</div>
+                                <div style="font-size:11px;color:var(--accent2);margin-top:2px;">⏰ ${s.schedule_expr} · ${s.provider}</div>
+                                <div style="font-size:10px;color:var(--text2);margin-top:3px;">마지막: ${lastRun} · 다음: ${nextRun}</div>
+                                ${s.last_result ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;border-left:2px solid var(--border);padding-left:6px;white-space:pre-wrap;max-height:50px;overflow:hidden;">${s.last_result.slice(0,150)}...</div>` : ''}
+                            </div>
+                            <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
+                                <button class="auto-icon-btn ${s.is_active?'active':''}" onclick="schedToggle('${s.id}',${!s.is_active})" title="${s.is_active?'비활성화':'활성화'}">${s.is_active?'✅':'⏸'}</button>
+                                <button class="auto-icon-btn" onclick="schedRunNow('${s.id}')" title="지금 실행">▶</button>
+                                <button class="auto-icon-btn" onclick="schedEdit('${JSON.stringify(s).replace(/"/g,'&quot;')}')" title="편집">✏</button>
+                                <button class="auto-icon-btn danger" onclick="schedDelete('${s.id}')" title="삭제">×</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">오류: '+e.message+'</div>'; }
+        }
+
+        function openSchedCreate() {
+            document.getElementById('schedEditId').value = '';
+            document.getElementById('schedCreateTitle').textContent = '⏰ New Schedule';
+            document.getElementById('schedName').value = '';
+            document.getElementById('schedPrompt').value = '';
+            document.getElementById('schedExprType').value = 'daily';
+            document.getElementById('schedTime').value = '09:00';
+            document.getElementById('schedInterval').value = '60';
+            schedUpdateExpr();
+            document.getElementById('schedCreateOverlay').classList.add('open');
+        }
+        function closeSchedCreate() { document.getElementById('schedCreateOverlay').classList.remove('open'); }
+
+        function schedUpdateExpr() {
+            var type = document.getElementById('schedExprType').value;
+            var dow = document.getElementById('schedDow');
+            var timeEl = document.getElementById('schedTime');
+            var intEl = document.getElementById('schedInterval');
+            dow.style.display = type==='weekly' ? '' : 'none';
+            timeEl.style.display = type==='interval' ? 'none' : '';
+            intEl.style.display = type==='interval' ? '' : 'none';
+            var expr = '';
+            if (type==='daily') expr = 'daily ' + (timeEl.value||'09:00');
+            else if (type==='weekly') expr = 'weekly ' + dow.value + ' ' + (timeEl.value||'09:00');
+            else if (type==='hourly') expr = 'hourly :' + (timeEl.value||'09:00').split(':')[1];
+            else expr = 'interval ' + (intEl.value||'60');
+            document.getElementById('schedExprPreview').textContent = expr;
+        }
+
+        function schedGetExpr() {
+            var type = document.getElementById('schedExprType').value;
+            var time = document.getElementById('schedTime').value || '09:00';
+            var intv = document.getElementById('schedInterval').value || '60';
+            var dow = document.getElementById('schedDow').value;
+            if (type==='daily') return 'daily ' + time;
+            if (type==='weekly') return 'weekly ' + dow + ' ' + time;
+            if (type==='hourly') return 'hourly :' + time.split(':')[1];
+            return 'interval ' + intv;
+        }
+
+        async function confirmSchedSave() {
+            var name = document.getElementById('schedName').value.trim();
+            var prompt = document.getElementById('schedPrompt').value.trim();
+            if (!name || !prompt) { alert('이름과 프롬프트를 입력해주세요.'); return; }
+            var body = {
+                name: name,
+                schedule_expr: schedGetExpr(),
+                prompt: prompt,
+                provider: document.getElementById('schedProvider').value,
+                folder_id: document.getElementById('schedFolder').value || null,
+            };
+            var editId = document.getElementById('schedEditId').value;
+            var url = editId ? '/api/schedules/'+editId : '/api/schedules';
+            var method = editId ? 'PUT' : 'POST';
+            var r = await fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+            var data = await r.json();
+            if (!r.ok) { alert(data.error||'저장 실패'); return; }
+            closeSchedCreate();
+            autoLoadSchedules();
+        }
+
+        function schedEdit(sJson) {
+            var s = typeof sJson==='string' ? JSON.parse(sJson.replace(/&quot;/g,'"')) : sJson;
+            document.getElementById('schedEditId').value = s.id;
+            document.getElementById('schedCreateTitle').textContent = '✏ Edit Schedule';
+            document.getElementById('schedName').value = s.name;
+            document.getElementById('schedPrompt').value = s.prompt;
+            // Parse expr
+            var expr = s.schedule_expr || 'daily 09:00';
+            var parts = expr.split(' ');
+            var typeEl = document.getElementById('schedExprType');
+            if (parts[0]==='weekly') { typeEl.value='weekly'; document.getElementById('schedDow').value=parts[1]; document.getElementById('schedTime').value=parts[2]; }
+            else if (parts[0]==='daily') { typeEl.value='daily'; document.getElementById('schedTime').value=parts[1]; }
+            else if (parts[0]==='hourly') { typeEl.value='hourly'; document.getElementById('schedTime').value='00:'+parts[1].replace(':',''); }
+            else { typeEl.value='interval'; document.getElementById('schedInterval').value=parts[1]; }
+            document.getElementById('schedProvider').value = s.provider || 'chatgpt';
+            document.getElementById('schedFolder').value = s.folder_id || '';
+            schedUpdateExpr();
+            document.getElementById('schedCreateOverlay').classList.add('open');
+        }
+
+        async function schedToggle(id, active) {
+            await fetch('/api/schedules/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_active:active})});
+            autoLoadSchedules();
+        }
+
+        async function schedRunNow(id) {
+            var btn = event.currentTarget;
+            btn.textContent = '⏳'; btn.disabled = true;
+            var r = await fetch('/api/schedules/'+id+'/run', {method:'POST'});
+            var data = await r.json();
+            btn.textContent = '▶'; btn.disabled = false;
+            if (data.error) { alert('오류: '+data.error); return; }
+            autoLoadSchedules();
+            alert('✅ 실행 완료!\n\n' + (data.result||'').slice(0,300));
+        }
+
+        async function schedDelete(id) {
+            if (!confirm('이 스케줄을 삭제할까요?')) return;
+            await fetch('/api/schedules/'+id, {method:'DELETE'});
+            autoLoadSchedules();
+        }
+
+        // ── Workflows ──
+        async function autoLoadWorkflows() {
+            var el = document.getElementById('wfList');
+            el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">로딩 중...</div>';
+            try {
+                var r = await fetch('/api/workflows').then(r=>r.json());
+                var wfs = r.workflows || [];
+                if (!wfs.length) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">워크플로우가 없습니다. + New로 추가하세요.</div>'; return; }
+                el.innerHTML = wfs.map(function(w) {
+                    var steps = w.steps || [];
+                    return `<div class="auto-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;font-size:13px;color:var(--text);">${w.name}</div>
+                                <div style="font-size:11px;color:var(--text2);margin-top:2px;">${w.description||''}</div>
+                                <div style="font-size:11px;color:var(--accent2);margin-top:3px;">🔗 ${steps.length}단계: ${steps.map(s=>s.name||'Step').join(' → ')}</div>
+                            </div>
+                            <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
+                                <button class="auto-icon-btn active" onclick="openWfRun('${w.id}','${w.name}')" title="실행">▶</button>
+                                <button class="auto-icon-btn" onclick="wfEdit(${JSON.stringify(JSON.stringify(w))})" title="편집">✏</button>
+                                <button class="auto-icon-btn danger" onclick="wfDelete('${w.id}')" title="삭제">×</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">오류: '+e.message+'</div>'; }
+        }
+
+        var wfSteps = [];
+        function openWfCreate() {
+            document.getElementById('wfEditId').value = '';
+            document.getElementById('wfCreateTitle').textContent = '🔗 New Workflow';
+            document.getElementById('wfName').value = '';
+            document.getElementById('wfDesc').value = '';
+            wfSteps = [];
+            wfRenderSteps();
+            document.getElementById('wfCreateOverlay').classList.add('open');
+        }
+        function closeWfCreate() { document.getElementById('wfCreateOverlay').classList.remove('open'); }
+
+        function wfEdit(wJson) {
+            var w = JSON.parse(JSON.parse(wJson));
+            document.getElementById('wfEditId').value = w.id;
+            document.getElementById('wfCreateTitle').textContent = '✏ Edit Workflow';
+            document.getElementById('wfName').value = w.name;
+            document.getElementById('wfDesc').value = w.description || '';
+            wfSteps = w.steps ? JSON.parse(JSON.stringify(w.steps)) : [];
+            wfRenderSteps();
+            document.getElementById('wfCreateOverlay').classList.add('open');
+        }
+
+        function wfAddStep() {
+            wfSteps.push({name:'Step '+(wfSteps.length+1), prompt:'{{prev_output}}\n\n', provider:'chatgpt'});
+            wfRenderSteps();
+        }
+
+        function wfRenderSteps() {
+            var el = document.getElementById('wfStepsContainer');
+            if (!wfSteps.length) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:10px;">단계가 없습니다. "+ 단계 추가"를 클릭하세요.</div>'; return; }
+            el.innerHTML = wfSteps.map(function(s,i) {
+                return `<div class="auto-step-card">
+                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:11px;color:var(--accent2);font-weight:600;flex-shrink:0;">Step ${i+1}</span>
+                        <input type="text" class="auto-input" style="flex:1;" value="${(s.name||'').replace(/"/g,'&quot;')}" placeholder="단계 이름" oninput="wfSteps[${i}].name=this.value">
+                        <select class="auto-input" style="width:90px;" onchange="wfSteps[${i}].provider=this.value">
+                            <option value="chatgpt"${s.provider==='chatgpt'?' selected':''}>ChatGPT</option>
+                            <option value="gemini"${s.provider==='gemini'?' selected':''}>Gemini</option>
+                            <option value="claude"${s.provider==='claude'?' selected':''}>Claude</option>
+                            <option value="grok"${s.provider==='grok'?' selected':''}>Grok</option>
+                        </select>
+                        <button class="auto-icon-btn danger" onclick="wfRemoveStep(${i})" title="삭제">×</button>
+                    </div>
+                    <textarea class="auto-textarea" style="min-height:60px;" placeholder="프롬프트 ({{input}}, {{prev_output}} 사용 가능)" oninput="wfSteps[${i}].prompt=this.value">${(s.prompt||'').replace(/</g,'&lt;')}</textarea>
+                </div>`;
+            }).join('');
+        }
+
+        function wfRemoveStep(i) { wfSteps.splice(i,1); wfRenderSteps(); }
+
+        async function confirmWfSave() {
+            var name = document.getElementById('wfName').value.trim();
+            if (!name) { alert('워크플로우 이름을 입력해주세요.'); return; }
+            if (!wfSteps.length) { alert('최소 1개 단계가 필요합니다.'); return; }
+            var body = {name: name, description: document.getElementById('wfDesc').value, steps: wfSteps};
+            var editId = document.getElementById('wfEditId').value;
+            var url = editId ? '/api/workflows/'+editId : '/api/workflows';
+            var method = editId ? 'PUT' : 'POST';
+            var r = await fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+            var data = await r.json();
+            if (!r.ok) { alert(data.error||'저장 실패'); return; }
+            closeWfCreate();
+            autoLoadWorkflows();
+        }
+
+        async function wfDelete(id) {
+            if (!confirm('이 워크플로우를 삭제할까요?')) return;
+            await fetch('/api/workflows/'+id, {method:'DELETE'});
+            autoLoadWorkflows();
+        }
+
+        function openWfRun(id, name) {
+            document.getElementById('wfRunId').value = id;
+            document.getElementById('wfRunTitle').textContent = '▶ ' + name;
+            document.getElementById('wfRunInput').value = '';
+            document.getElementById('wfRunProgress').style.display = 'none';
+            document.getElementById('wfRunSteps').innerHTML = '';
+            document.getElementById('wfRunBtn').disabled = false;
+            document.getElementById('wfRunBtn').textContent = '▶ 실행';
+            document.getElementById('wfRunOverlay').classList.add('open');
+        }
+        function closeWfRun() { document.getElementById('wfRunOverlay').classList.remove('open'); }
+
+        async function startWfRun() {
+            var id = document.getElementById('wfRunId').value;
+            var input = document.getElementById('wfRunInput').value;
+            var folderId = document.getElementById('wfRunFolder').value;
+            document.getElementById('wfRunBtn').disabled = true;
+            document.getElementById('wfRunBtn').textContent = '⏳ 실행 중...';
+            document.getElementById('wfRunProgress').style.display = '';
+            var stepsEl = document.getElementById('wfRunSteps');
+            stepsEl.innerHTML = '';
+            try {
+                var resp = await fetch('/api/workflows/'+id+'/run', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({input: input, folder_id: folderId || null})
+                });
+                var reader = resp.body.getReader();
+                var decoder = new TextDecoder();
+                var buf = '';
+                while (true) {
+                    var res = await reader.read();
+                    if (res.done) break;
+                    buf += decoder.decode(res.value, {stream:true});
+                    var lines = buf.split('\n\n');
+                    buf = lines.pop();
+                    lines.forEach(function(line) {
+                        if (!line.startsWith('data:')) return;
+                        try {
+                            var ev = JSON.parse(line.slice(5));
+                            if (ev.type==='step_start') {
+                                stepsEl.innerHTML += `<div id="wfStep${ev.step}" class="auto-step-progress">⏳ Step ${ev.step}/${ev.total}: ${ev.name}</div>`;
+                            } else if (ev.type==='step_done') {
+                                var stepEl = document.getElementById('wfStep'+ev.step);
+                                if (stepEl) stepEl.innerHTML = `✅ Step ${ev.step}: ${ev.name}<div style="font-size:11px;color:var(--text2);margin-top:3px;max-height:60px;overflow:hidden;">${(ev.output||'').slice(0,200)}</div>`;
+                            } else if (ev.type==='done') {
+                                stepsEl.innerHTML += `<div style="color:var(--green);font-size:12px;margin-top:8px;font-weight:600;">✅ 완료! ${ev.steps}단계 실행됨${folderId?' · Workspace 저장됨':''}</div>`;
+                                document.getElementById('wfRunBtn').textContent = '▶ 다시 실행';
+                                document.getElementById('wfRunBtn').disabled = false;
+                            }
+                        } catch(e) {}
+                    });
+                }
+            } catch(e) {
+                stepsEl.innerHTML += `<div style="color:var(--red);font-size:12px;">오류: ${e.message}</div>`;
+                document.getElementById('wfRunBtn').textContent = '▶ 실행';
+                document.getElementById('wfRunBtn').disabled = false;
+            }
+        }
+
+        // ── Webhooks ──
+        async function autoLoadWebhooks() {
+            var el = document.getElementById('whList');
+            el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">로딩 중...</div>';
+            try {
+                var r = await fetch('/api/webhooks').then(r=>r.json());
+                var whs = r.webhooks || [];
+                if (!whs.length) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">Webhook이 없습니다. + New로 추가하세요.</div>'; return; }
+                var baseUrl = window.location.origin;
+                el.innerHTML = whs.map(function(w) {
+                    var url = baseUrl + '/api/webhook/' + w.token;
+                    var lastTrig = w.last_triggered_at ? new Date(w.last_triggered_at).toLocaleString() : '미트리거';
+                    return `<div class="auto-card">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-weight:600;font-size:13px;color:var(--text);">${w.name}</span>
+                                    <span style="font-size:10px;padding:1px 6px;border-radius:10px;background:${w.is_active?'rgba(0,210,160,0.15)':'rgba(255,107,107,0.15)'};color:${w.is_active?'var(--green)':'var(--red)'};">${w.is_active?'활성':'비활성'}</span>
+                                </div>
+                                <div style="font-size:11px;color:var(--text2);margin-top:3px;">마지막 트리거: ${lastTrig}</div>
+                                <div style="margin-top:5px;display:flex;align-items:center;gap:5px;">
+                                    <code style="font-size:10px;color:var(--accent2);background:var(--surface2);padding:2px 6px;border-radius:4px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${url}</code>
+                                    <button class="auto-icon-btn" onclick="navigator.clipboard.writeText('${url}');this.textContent='✅'" title="URL 복사">📋</button>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
+                                <button class="auto-icon-btn ${w.is_active?'active':''}" onclick="whToggle('${w.id}',${!w.is_active})">${w.is_active?'✅':'⏸'}</button>
+                                <button class="auto-icon-btn danger" onclick="whDelete('${w.id}')">×</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">오류: '+e.message+'</div>'; }
+        }
+
+        function openWhCreate() { document.getElementById('whCreateOverlay').classList.add('open'); }
+        function closeWhCreate() { document.getElementById('whCreateOverlay').classList.remove('open'); }
+
+        async function confirmWhSave() {
+            var name = document.getElementById('whName').value.trim();
+            var prompt = document.getElementById('whPrompt').value.trim();
+            if (!name || !prompt) { alert('이름과 프롬프트 템플릿을 입력해주세요.'); return; }
+            var body = {name: name, prompt_template: prompt, provider: document.getElementById('whProvider').value, folder_id: document.getElementById('whFolder').value||null};
+            var r = await fetch('/api/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+            var data = await r.json();
+            if (!r.ok) { alert(data.error||'저장 실패'); return; }
+            closeWhCreate();
+            autoLoadWebhooks();
+        }
+
+        async function whToggle(id, active) {
+            await fetch('/api/webhooks/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_active:active})});
+            autoLoadWebhooks();
+        }
+
+        async function whDelete(id) {
+            if (!confirm('이 Webhook을 삭제할까요?')) return;
+            await fetch('/api/webhooks/'+id, {method:'DELETE'});
+            autoLoadWebhooks();
         }
 
         async function deleteFile(fileId, folderId) {

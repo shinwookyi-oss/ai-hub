@@ -2084,6 +2084,499 @@ def session_info():
     return jsonify(info)
 
 
+# ──────────────────────────── Phase 2: Automation ────────────────────────────
+import threading as _threading
+import re as _re_auto
+
+SCHEDULER_SECRET = os.getenv("SCHEDULER_SECRET", "")  # set in Render env vars
+
+
+def _compute_next_run(expr: str, after: datetime = None) -> datetime:
+    """Compute next run datetime from a simple schedule expression.
+    Formats:
+      daily HH:MM          — every day at HH:MM UTC
+      weekly DOW HH:MM     — e.g. 'weekly mon 09:00'
+      hourly :MM           — every hour at minute MM
+      interval N           — every N minutes from now
+    """
+    if after is None:
+        after = datetime.utcnow()
+    expr = expr.strip().lower()
+    try:
+        if expr.startswith("interval "):
+            mins = int(expr.split()[1])
+            return after + timedelta(minutes=mins)
+        if expr.startswith("hourly "):
+            minute = int(expr.split(":")[1])
+            t = after.replace(second=0, microsecond=0, minute=minute)
+            if t <= after:
+                t += timedelta(hours=1)
+            return t
+        if expr.startswith("daily "):
+            hm = expr.split()[1]
+            h, m = int(hm.split(":")[0]), int(hm.split(":")[1])
+            t = after.replace(second=0, microsecond=0, hour=h, minute=m)
+            if t <= after:
+                t += timedelta(days=1)
+            return t
+        if expr.startswith("weekly "):
+            parts = expr.split()
+            day_map = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
+            target_dow = day_map.get(parts[1], 0)
+            hm = parts[2]
+            h, m = int(hm.split(":")[0]), int(hm.split(":")[1])
+            t = after.replace(second=0, microsecond=0, hour=h, minute=m)
+            days_ahead = (target_dow - t.weekday()) % 7
+            if days_ahead == 0 and t <= after:
+                days_ahead = 7
+            return t + timedelta(days=days_ahead)
+    except Exception:
+        pass
+    return after + timedelta(hours=1)  # fallback
+
+
+_sched_lock = _threading.Lock()
+
+
+def _run_schedule(schedule: dict) -> str:
+    """Execute a schedule's prompt via AI and return the result text."""
+    try:
+        provider = schedule.get("provider", "chatgpt")
+        prompt = schedule.get("prompt", "")
+        resp = hub.ask(prompt, provider=provider)
+        return resp.content if resp.success else f"[Error] {resp.error}"
+    except Exception as e:
+        return f"[Error] {e}"
+
+
+def _process_due_schedules(username: str = None):
+    """Find and run any schedules whose next_run_at has passed."""
+    if not supabase_client:
+        return []
+    fired = []
+    try:
+        now_iso = datetime.utcnow().isoformat()
+        q = supabase_client.table("schedules").select("*").eq("is_active", True).lte("next_run_at", now_iso)
+        if username:
+            q = q.eq("user_id", username)
+        result = q.execute()
+        for sched in (result.data or []):
+            if _sched_lock.locked():
+                continue
+            with _sched_lock:
+                # Re-check to avoid double-fire across workers
+                fresh = supabase_client.table("schedules").select("next_run_at,is_running").eq("id", sched["id"]).execute()
+                if not fresh.data or fresh.data[0].get("is_running"):
+                    continue
+                supabase_client.table("schedules").update({"is_running": True}).eq("id", sched["id"]).execute()
+            try:
+                result_text = _run_schedule(sched)
+                next_run = _compute_next_run(sched["schedule_expr"])
+                update = {
+                    "last_run_at": datetime.utcnow().isoformat(),
+                    "next_run_at": next_run.isoformat(),
+                    "last_result": result_text[:2000],
+                    "is_running": False,
+                }
+                # Save to workspace if folder_id set
+                if sched.get("folder_id") and supabase_client:
+                    try:
+                        fname = f"{sched['name']}_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.txt"
+                        supabase_client.table("workspace_files").insert({
+                            "folder_id": sched["folder_id"],
+                            "user_id": sched["user_id"],
+                            "name": fname,
+                            "type": "note",
+                            "content": result_text,
+                            "metadata": {"source": "scheduler", "schedule_id": sched["id"]},
+                        }).execute()
+                    except Exception:
+                        pass
+                supabase_client.table("schedules").update(update).eq("id", sched["id"]).execute()
+                fired.append({"id": sched["id"], "name": sched["name"]})
+            except Exception as e:
+                supabase_client.table("schedules").update({"is_running": False}).eq("id", sched["id"]).execute()
+    except Exception:
+        pass
+    return fired
+
+
+# Start APScheduler (fires _process_due_schedules every 60s)
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    _bg_scheduler = BackgroundScheduler(daemon=True)
+    _bg_scheduler.add_job(_process_due_schedules, "interval", seconds=60, max_instances=1, coalesce=True)
+    _bg_scheduler.start()
+    print("  ✅ APScheduler started (60s interval)")
+except Exception as _e:
+    print(f"  ⚠️ APScheduler not available: {_e}")
+    _bg_scheduler = None
+
+
+# ── Schedule APIs ──────────────────────────────────────────────────────────
+
+@app.route("/api/schedules", methods=["GET"])
+@login_required
+def api_schedules_list():
+    if not supabase_client:
+        return jsonify({"schedules": []})
+    try:
+        r = supabase_client.table("schedules").select("*").eq(
+            "user_id", session.get("username", "admin")
+        ).order("created_at", desc=False).execute()
+        return jsonify({"schedules": r.data or []})
+    except Exception as e:
+        return jsonify({"schedules": [], "error": str(e)})
+
+
+@app.route("/api/schedules", methods=["POST"])
+@login_required
+def api_schedules_create():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    expr = data.get("schedule_expr", "daily 09:00")
+    next_run = _compute_next_run(expr)
+    try:
+        r = supabase_client.table("schedules").insert({
+            "user_id": session.get("username", "admin"),
+            "name": data.get("name", "New Schedule"),
+            "schedule_expr": expr,
+            "prompt": data.get("prompt", ""),
+            "provider": data.get("provider", "chatgpt"),
+            "folder_id": data.get("folder_id") or None,
+            "is_active": True,
+            "is_running": False,
+            "next_run_at": next_run.isoformat(),
+        }).execute()
+        return jsonify({"schedule": r.data[0] if r.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/schedules/<sched_id>", methods=["PUT"])
+@login_required
+def api_schedules_update(sched_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    update = {}
+    for f in ["name", "prompt", "provider", "folder_id", "is_active"]:
+        if f in data:
+            update[f] = data[f]
+    if "schedule_expr" in data:
+        update["schedule_expr"] = data["schedule_expr"]
+        update["next_run_at"] = _compute_next_run(data["schedule_expr"]).isoformat()
+    if not update:
+        return jsonify({"success": True})
+    try:
+        supabase_client.table("schedules").update(update).eq("id", sched_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/schedules/<sched_id>", methods=["DELETE"])
+@login_required
+def api_schedules_delete(sched_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("schedules").delete().eq("id", sched_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/schedules/<sched_id>/run", methods=["POST"])
+@login_required
+def api_schedules_run(sched_id):
+    """Manually trigger a schedule immediately."""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        r = supabase_client.table("schedules").select("*").eq("id", sched_id).execute()
+        if not r.data:
+            return jsonify({"error": "Not found"}), 404
+        sched = r.data[0]
+        result_text = _run_schedule(sched)
+        next_run = _compute_next_run(sched["schedule_expr"])
+        supabase_client.table("schedules").update({
+            "last_run_at": datetime.utcnow().isoformat(),
+            "next_run_at": next_run.isoformat(),
+            "last_result": result_text[:2000],
+            "is_running": False,
+        }).eq("id", sched_id).execute()
+        if sched.get("folder_id"):
+            try:
+                fname = f"{sched['name']}_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.txt"
+                supabase_client.table("workspace_files").insert({
+                    "folder_id": sched["folder_id"],
+                    "user_id": sched["user_id"],
+                    "name": fname, "type": "note",
+                    "content": result_text,
+                    "metadata": {"source": "scheduler", "schedule_id": sched_id},
+                }).execute()
+            except Exception:
+                pass
+        return jsonify({"success": True, "result": result_text[:500]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/schedules/check")
+def api_schedules_check():
+    """External pinger endpoint (UptimeRobot/GitHub Actions).
+    Protected by SCHEDULER_SECRET env var if set.
+    """
+    if SCHEDULER_SECRET:
+        token = request.args.get("secret") or request.headers.get("X-Scheduler-Secret", "")
+        if token != SCHEDULER_SECRET:
+            return jsonify({"error": "Unauthorized"}), 401
+    fired = _process_due_schedules()
+    return jsonify({"fired": fired, "count": len(fired), "ts": datetime.utcnow().isoformat()})
+
+
+# ── Workflow APIs ────────────────────────────────────────────────────────────
+
+@app.route("/api/workflows", methods=["GET"])
+@login_required
+def api_workflows_list():
+    if not supabase_client:
+        return jsonify({"workflows": []})
+    try:
+        r = supabase_client.table("workflows").select("id,name,description,steps,created_at").eq(
+            "user_id", session.get("username", "admin")
+        ).order("created_at", desc=False).execute()
+        return jsonify({"workflows": r.data or []})
+    except Exception as e:
+        return jsonify({"workflows": [], "error": str(e)})
+
+
+@app.route("/api/workflows", methods=["POST"])
+@login_required
+def api_workflows_create():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    try:
+        r = supabase_client.table("workflows").insert({
+            "user_id": session.get("username", "admin"),
+            "name": data.get("name", "New Workflow"),
+            "description": data.get("description", ""),
+            "steps": data.get("steps", []),
+        }).execute()
+        return jsonify({"workflow": r.data[0] if r.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/workflows/<wf_id>", methods=["PUT"])
+@login_required
+def api_workflows_update(wf_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    update = {k: data[k] for k in ["name", "description", "steps"] if k in data}
+    try:
+        supabase_client.table("workflows").update(update).eq("id", wf_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/workflows/<wf_id>", methods=["DELETE"])
+@login_required
+def api_workflows_delete(wf_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("workflows").delete().eq("id", wf_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/workflows/<wf_id>/run", methods=["POST"])
+@login_required
+def api_workflows_run(wf_id):
+    """Execute workflow steps sequentially. Returns SSE stream of progress."""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+
+    data = request.json or {}
+    user_input = data.get("input", "")
+    folder_id = data.get("folder_id")
+
+    try:
+        r = supabase_client.table("workflows").select("*").eq("id", wf_id).execute()
+        if not r.data:
+            return jsonify({"error": "Not found"}), 404
+        wf = r.data[0]
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    steps = wf.get("steps") or []
+    if not steps:
+        return jsonify({"error": "워크플로우에 단계가 없습니다."}), 400
+
+    def generate():
+        prev_output = user_input
+        all_outputs = []
+        for i, step in enumerate(steps):
+            step_name = step.get("name", f"Step {i+1}")
+            provider = step.get("provider", "chatgpt")
+            prompt_tmpl = step.get("prompt", "")
+            # Template substitution
+            prompt = prompt_tmpl.replace("{{input}}", user_input).replace("{{prev_output}}", prev_output)
+            yield f"data: {json.dumps({'type':'step_start','step':i+1,'total':len(steps),'name':step_name})}\n\n"
+            try:
+                resp = hub.ask(prompt, provider=provider)
+                output = resp.content if resp.success else f"[Error] {resp.error}"
+            except Exception as ex:
+                output = f"[Error] {ex}"
+            prev_output = output
+            all_outputs.append({"step": i+1, "name": step_name, "provider": provider, "output": output})
+            yield f"data: {json.dumps({'type':'step_done','step':i+1,'name':step_name,'output':output[:1000]})}\n\n"
+        # Save final result to workspace
+        if folder_id:
+            try:
+                full_report = "\n\n".join([
+                    f"## Step {o['step']}: {o['name']} ({o['provider']})\n{o['output']}"
+                    for o in all_outputs
+                ])
+                fname = f"{wf['name']}_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.txt"
+                supabase_client.table("workspace_files").insert({
+                    "folder_id": folder_id,
+                    "user_id": session.get("username", "admin"),
+                    "name": fname, "type": "note",
+                    "content": full_report,
+                    "metadata": {"source": "workflow", "workflow_id": wf_id},
+                }).execute()
+            except Exception:
+                pass
+        yield f"data: {json.dumps({'type':'done','steps':len(steps),'final':prev_output[:2000]})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── Webhook APIs ──────────────────────────────────────────────────────────────
+
+@app.route("/api/webhooks", methods=["GET"])
+@login_required
+def api_webhooks_list():
+    if not supabase_client:
+        return jsonify({"webhooks": []})
+    try:
+        r = supabase_client.table("webhooks").select("id,name,token,prompt_template,provider,is_active,last_triggered_at,created_at").eq(
+            "user_id", session.get("username", "admin")
+        ).order("created_at", desc=False).execute()
+        return jsonify({"webhooks": r.data or []})
+    except Exception as e:
+        return jsonify({"webhooks": [], "error": str(e)})
+
+
+@app.route("/api/webhooks", methods=["POST"])
+@login_required
+def api_webhooks_create():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    token = secrets.token_hex(20)
+    try:
+        r = supabase_client.table("webhooks").insert({
+            "user_id": session.get("username", "admin"),
+            "name": data.get("name", "New Webhook"),
+            "token": token,
+            "prompt_template": data.get("prompt_template", "Summarize this payload: {{payload}}"),
+            "provider": data.get("provider", "chatgpt"),
+            "folder_id": data.get("folder_id") or None,
+            "is_active": True,
+        }).execute()
+        return jsonify({"webhook": r.data[0] if r.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/webhooks/<wh_id>", methods=["PUT"])
+@login_required
+def api_webhooks_update(wh_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    update = {k: data[k] for k in ["name", "prompt_template", "provider", "is_active", "folder_id"] if k in data}
+    try:
+        supabase_client.table("webhooks").update(update).eq("id", wh_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/webhooks/<wh_id>", methods=["DELETE"])
+@login_required
+def api_webhooks_delete(wh_id):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("webhooks").delete().eq("id", wh_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/webhook/<token>", methods=["POST"])
+def api_webhook_receive(token):
+    """Public webhook endpoint — no login required, token-protected."""
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 503
+    try:
+        r = supabase_client.table("webhooks").select("*").eq("token", token).eq("is_active", True).execute()
+        if not r.data:
+            return jsonify({"error": "Webhook not found or inactive"}), 404
+        wh = r.data[0]
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    payload = request.json or request.form.to_dict() or {}
+    payload_str = json.dumps(payload, ensure_ascii=False)
+
+    # Template substitution: {{payload}} → full JSON, {{payload.key}} → field
+    def _sub(m):
+        key = m.group(1).strip()
+        if key == "payload":
+            return payload_str
+        if key.startswith("payload."):
+            field = key[8:]
+            return str(payload.get(field, ""))
+        return m.group(0)
+
+    prompt = _re_auto.sub(r"\{\{([^}]+)\}\}", _sub, wh.get("prompt_template", ""))
+
+    try:
+        resp = hub.ask(prompt, provider=wh.get("provider", "chatgpt"))
+        result_text = resp.content if resp.success else f"[Error] {resp.error}"
+        # Save to workspace
+        if wh.get("folder_id"):
+            try:
+                supabase_client.table("workspace_files").insert({
+                    "folder_id": wh["folder_id"],
+                    "user_id": wh["user_id"],
+                    "name": f"webhook_{wh['name']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.txt",
+                    "type": "note",
+                    "content": result_text,
+                    "metadata": {"source": "webhook", "webhook_id": wh["id"], "payload": payload},
+                }).execute()
+            except Exception:
+                pass
+        supabase_client.table("webhooks").update({
+            "last_triggered_at": datetime.utcnow().isoformat()
+        }).eq("id", wh["id"]).execute()
+        return jsonify({"success": True, "result": result_text[:1000]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Favicon & common browser requests ──
 @app.route("/favicon.ico")
 def favicon():
