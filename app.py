@@ -1268,15 +1268,14 @@ def api_folders_list():
         result = supabase_client.table("folders").select("*").eq(
             "user_id", username
         ).order("created_at", desc=False).execute()
-        # Calculate usage
+        # Calculate usage (lightweight — id only)
         folders = result.data or []
-        file_result = supabase_client.table("workspace_files").select("id,content").eq("user_id", username).execute()
+        file_result = supabase_client.table("workspace_files").select("id").eq("user_id", username).execute()
         files = file_result.data or []
-        total_bytes = sum(len((f.get("content") or "").encode("utf-8")) for f in files)
         usage = {
             "folders": len(folders),
             "files": len(files),
-            "storage_mb": round(total_bytes / (1024 * 1024), 2)
+            "storage_mb": 0  # calculated on-demand during file creation
         }
         return jsonify({"folders": folders, "workspace": True, "limits": tier_limits, "usage": usage})
     except:
@@ -1379,13 +1378,14 @@ def api_files_create(folder_id):
         content_size_mb = len(content.encode("utf-8")) / (1024 * 1024)
         if content_size_mb > tier_limits["file_size_mb"]:
             return jsonify({"error": f"파일 크기 제한 초과 ({tier_limits['file_size_mb']}MB 이하만 허용)"}), 400
-        # Check total file count
-        all_files = supabase_client.table("workspace_files").select("id,content").eq("user_id", username).execute()
+        # Check total file count (lightweight — id only)
+        all_files = supabase_client.table("workspace_files").select("id").eq("user_id", username).execute()
         current_file_count = len(all_files.data) if all_files.data else 0
         if current_file_count >= tier_limits["files"]:
             return jsonify({"error": f"파일 최대 {tier_limits['files']}개까지 저장 가능합니다. ({current_file_count}/{tier_limits['files']})"}), 400
-        # Check total storage
-        total_bytes = sum(len((f.get("content") or "").encode("utf-8")) for f in (all_files.data or []))
+        # Check total storage (only when creating, fetch content for size calc)
+        storage_result = supabase_client.table("workspace_files").select("content").eq("user_id", username).execute()
+        total_bytes = sum(len((f.get("content") or "").encode("utf-8")) for f in (storage_result.data or []))
         total_mb = total_bytes / (1024 * 1024)
         if total_mb + content_size_mb > tier_limits["storage_mb"]:
             return jsonify({"error": f"저장 공간 한도 초과 ({total_mb:.1f}/{tier_limits['storage_mb']}MB 사용 중)"}), 400
