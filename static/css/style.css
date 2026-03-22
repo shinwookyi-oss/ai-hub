@@ -156,7 +156,7 @@
         @keyframes dotPulse{0%,100%{box-shadow:0 0 10px rgba(16,185,129,0.5)}50%{box-shadow:0 0 16px rgba(16,185,129,0.8),0 0 30px rgba(16,185,129,0.3)}}
         .doc-provider-name .ti { font-size: 11px; color: #6b7280; font-weight: 400; margin-left: 4px; padding:2px 8px; background:rgba(255,255,255,0.04); border-radius:10px; }
         .doc-answer { font-size: 14px; line-height: 0.9; color: #d1d5db; white-space: pre-wrap; word-break: break-word; letter-spacing: -0.01em; }
-        .doc-answer h1,.doc-answer h2,.doc-answer h3{margin:1px 0 0;font-weight:700;color:#f0f0ff;line-height:1.0;letter-spacing:-0.02em;}
+        .doc-answer h1,.doc-answer h2,.doc-answer h3{margin:0 0 1px;font-weight:700;color:#f0f0ff;line-height:1.0;letter-spacing:-0.02em;}
         .doc-answer h1{font-size:17px;border-bottom:1px solid rgba(108,92,231,0.12);padding-bottom:4px;}
         .doc-answer h2{font-size:15px;color:#a29bfe;}
         .doc-answer h3{font-size:13.5px;color:#818cf8;}
@@ -215,7 +215,7 @@
             letter-spacing: -0.01em;
         }
         /* ── Notion/Gemini-style Markdown Typography ── */
-        .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4{margin:1px 0 0;line-height:1.0;font-weight:700;color:#f0f0ff;letter-spacing:-0.02em;}
+        .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4{margin:0 0 1px;line-height:1.0;font-weight:700;color:#f0f0ff;letter-spacing:-0.02em;}
         .msg-body h1{font-size:18px;padding-bottom:4px;border-bottom:1px solid rgba(108,92,231,0.15);}
         .msg-body h2{font-size:15px;color:var(--accent2);}
         .msg-body h3{font-size:14px;color:#a29bfe;}
