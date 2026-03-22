@@ -919,7 +919,7 @@
                 <div class="input-row" id="inputRow">
                     <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
-                    <button class="mic-btn" id="langBtn" onclick="toggleSttLang()" title="음성 언어 변경" style="font-size:14px;padding:8px 10px;">🌐</button>
+                    <button class="mic-btn" id="langBtn" onclick="toggleSttLang()" title="음성 언어 변경" style="font-size:14px;padding:8px 10px;">🇰🇷</button>
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
@@ -3947,11 +3947,11 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             recognition = new SR();
             recognition.continuous = false;
             recognition.interimResults = true;
-            // Multi-language: auto-detect or user-selected
-            window._sttLangs = ['', 'ko-KR', 'en-US', 'ja-JP', 'zh-CN', 'es-ES', 'fr-FR', 'de-DE'];
-            window._sttLangLabels = ['🌐 Auto', '🇰🇷 한국어', '🇺🇸 English', '🇯🇵 日本語', '🇨🇳 中文', '🇪🇸 Español', '🇫🇷 Français', '🇩🇪 Deutsch'];
+            // Multi-language: Korean default, toggle with 🌐 button
+            window._sttLangs = ['ko-KR', 'en-US', 'ja-JP', 'zh-CN', 'es-ES', 'fr-FR', 'de-DE'];
+            window._sttLangLabels = ['🇰🇷 한국어', '🇺🇸 English', '🇯🇵 日本語', '🇨🇳 中文', '🇪🇸 Español', '🇫🇷 Français', '🇩🇪 Deutsch'];
             window._sttLangIdx = 0;
-            recognition.lang = ''; // empty = auto-detect by browser
+            recognition.lang = 'ko-KR'; // default Korean
             recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039); };
             recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
             recognition.onresult = function(e) {
