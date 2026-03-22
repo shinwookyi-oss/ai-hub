@@ -1813,6 +1813,76 @@ class AIHub:
             "synthesis": synth_resp.content,
         }
 
+    def persona_discuss_stream(self, topic: str, persona_keys: list,
+                               rounds: int = 2):
+        """SSE generator: yields JSON chunks as each persona speaks."""
+        available = self.available_providers()
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+
+        participants = []
+        for key in persona_keys:
+            name = self.get_persona_name(key)
+            if name:
+                participants.append({"key": key, "name": name})
+
+        if len(participants) < 2:
+            yield {"type": "error", "error": "Need at least 2 personas for discussion"}
+            return
+
+        participant_names = [p["name"] for p in participants]
+        yield {"type": "start", "participants": participant_names, "rounds": rounds}
+
+        discussion_log = []
+        for r in range(1, rounds + 1):
+            for i, p in enumerate(participants):
+                provider = available[i % len(available)]
+                persona_prompt = self.get_persona_prompt(p["key"])
+                other_names = [pp["name"] for pp in participants if pp["key"] != p["key"]]
+
+                sys_prompt = (
+                    f"{persona_prompt}\n\n"
+                    f"You are in a group discussion about: '{topic}'. "
+                    f"Other participants: {', '.join(other_names)}. "
+                    f"Stay fully in character. Share your unique perspective. "
+                    f"Respond to others' points when relevant. Under 120 words."
+                )
+
+                if r == 1 and i == 0:
+                    prompt = f"Start the group discussion on: '{topic}'. Share your opening thoughts."
+                else:
+                    recent = discussion_log[-min(len(discussion_log), len(participants)):]
+                    context = "\n".join([f"{e['speaker']}: {e['content']}" for e in recent])
+                    prompt = (
+                        f"The discussion so far (Round {r}):\n\n{context}\n\n"
+                        f"Share your thoughts. Respond to others, agree, disagree, or add new insights."
+                    )
+
+                resp = self.ask(prompt, provider=provider, system_prompt=sys_prompt)
+                entry = {
+                    "round": r, "speaker": p["name"], "persona_key": p["key"],
+                    "provider": provider, "content": resp.content,
+                }
+                discussion_log.append(entry)
+                yield {"type": "entry", "round": r, "speaker": p["name"], "content": resp.content, "provider": provider}
+
+        # Synthesis
+        full_discussion = "\n".join([
+            f"[R{e['round']}] {e['speaker']}: {e['content']}" for e in discussion_log
+        ])
+        synthesis_prompt = (
+            f"You just witnessed a group discussion about '{topic}' between: "
+            f"{', '.join(participant_names)}.\n\n"
+            f"{full_discussion}\n\n"
+            f"Synthesize the key insights from each participant. "
+            f"What were the main agreements, disagreements, and unique perspectives? "
+            f"What is the most actionable conclusion? Under 250 words."
+        )
+        synth_resp = self.ask(synthesis_prompt, provider=available[0],
+                              system_prompt="You are a neutral moderator summarizing a discussion.")
+        yield {"type": "synthesis", "synthesis": synth_resp.content, "participants": participant_names}
+
     def persona_debate(self, topic: str, persona_for: str, persona_against: str,
                        ai_for: str = "chatgpt", ai_against: str = "gemini",
                        judge: str = "azure", rounds: int = 3, callback=None) -> dict:
@@ -1889,6 +1959,81 @@ class AIHub:
             "judgment": judge_resp.content,
             "judge_response": judge_resp,
         }
+
+    def persona_debate_stream(self, topic: str, persona_for: str, persona_against: str,
+                              rounds: int = 2):
+        """SSE generator: yields JSON chunks as each debate turn completes."""
+        available = self.available_providers()
+        if not available:
+            yield {"type": "error", "error": "No AI providers available"}
+            return
+
+        for_name = self.get_persona_name(persona_for)
+        against_name = self.get_persona_name(persona_against)
+        for_base = self.get_persona_prompt(persona_for)
+        against_base = self.get_persona_prompt(persona_against)
+
+        if not for_base or not against_base:
+            yield {"type": "error", "error": "Invalid persona selection"}
+            return
+
+        ai_for = available[0]
+        ai_against = available[1] if len(available) > 1 else available[0]
+        judge_provider = available[2] if len(available) >= 3 else available[0]
+
+        sys_for = (
+            f"{for_base}\n\n"
+            f"You are debating: '{topic}'. Argue FOR this position from your worldview. "
+            f"Your opponent is {against_name}. Be persuasive. Under 150 words."
+        )
+        sys_against = (
+            f"{against_base}\n\n"
+            f"You are debating: '{topic}'. Argue AGAINST this position from your worldview. "
+            f"Your opponent is {for_name}. Be persuasive. Under 150 words."
+        )
+
+        yield {"type": "start", "for_name": for_name, "against_name": against_name, "rounds": rounds}
+
+        debate_log = []
+        for r in range(1, rounds + 1):
+            if r == 1:
+                for_prompt = f"Present your opening argument FOR: '{topic}'"
+            else:
+                last = debate_log[-1]["content"]
+                for_prompt = f"{against_name} said:\n\n\"{last}\"\n\nRespond and counter."
+
+            for_resp = self.ask(for_prompt, provider=ai_for, system_prompt=sys_for)
+            debate_log.append({"round": r, "speaker": for_name, "side": "FOR",
+                               "content": for_resp.content, "provider": ai_for})
+            yield {"type": "entry", "round": r, "speaker": for_name, "side": "FOR",
+                   "content": for_resp.content, "provider": ai_for}
+
+            if r == 1:
+                ag_prompt = f"{for_name} argued:\n\n\"{for_resp.content}\"\n\nPresent your argument AGAINST and counter."
+            else:
+                ag_prompt = f"{for_name} said:\n\n\"{for_resp.content}\"\n\nCounter their argument."
+
+            ag_resp = self.ask(ag_prompt, provider=ai_against, system_prompt=sys_against)
+            debate_log.append({"round": r, "speaker": against_name, "side": "AGAINST",
+                               "content": ag_resp.content, "provider": ai_against})
+            yield {"type": "entry", "round": r, "speaker": against_name, "side": "AGAINST",
+                   "content": ag_resp.content, "provider": ai_against}
+
+        # Judge
+        debate_text = ""
+        for e in debate_log:
+            debate_text += f"\n[Round {e['round']}] {e['speaker']} ({e['side']}):\n{e['content']}\n"
+
+        judge_prompt = (
+            f"Judge this debate on '{topic}':\n\n"
+            f"{for_name} (FOR) vs {against_name} (AGAINST)\n\n"
+            f"{debate_text}\n\n"
+            f"Consider argument strength, evidence, and persuasiveness. "
+            f"Declare WINNER and explain why. Under 200 words."
+        )
+        judge_resp = self.ask(judge_prompt, provider=judge_provider,
+                              system_prompt="You are an impartial debate judge.")
+        yield {"type": "judgment", "judgment": judge_resp.content, "for_name": for_name, "against_name": against_name}
 
     # ──────────────────────────── Multi-Persona Report ────────────────────────────
 

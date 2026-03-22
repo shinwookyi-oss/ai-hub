@@ -742,15 +742,20 @@ def api_best():
 def api_persona_debate():
     try:
         data = request.json
-        av = hub.available_providers()
-        result = hub.persona_debate(topic=data.get("topic", ""),
-            persona_for=data.get("persona_for", "elon_musk"),
-            persona_against=data.get("persona_against", "trump"),
-            ai_for=av[0], ai_against=av[1] if len(av) > 1 else av[0],
-            judge=av[2] if len(av) >= 3 else av[0], rounds=2)
-        return jsonify({"topic": result["topic"], "for_name": result["for"],
-            "against_name": result["against"], "judge": result["judge"],
-            "debate_log": result["debate_log"], "judgment": result["judgment"]})
+        def generate():
+            try:
+                for chunk in hub.persona_debate_stream(
+                    topic=data.get("topic", ""),
+                    persona_for=data.get("persona_for", "elon_musk"),
+                    persona_against=data.get("persona_against", "trump"),
+                    rounds=2
+                ):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -760,12 +765,19 @@ def api_persona_debate():
 def api_persona_discuss():
     try:
         data = request.json
-        result = hub.persona_discuss(topic=data.get("topic", ""),
-            persona_keys=data.get("personas", []), rounds=2)
-        if "error" in result:
-            return jsonify({"error": result["error"]}), 400
-        return jsonify({"topic": result["topic"], "participants": result["participants"],
-            "discussion_log": result["discussion_log"], "synthesis": result["synthesis"]})
+        personas = data.get("personas", [])
+        if len(personas) < 2:
+            return jsonify({"error": "Select at least 2 personas for discussion"}), 400
+        topic = data.get("topic", "")
+        def generate():
+            try:
+                for chunk in hub.persona_discuss_stream(topic=topic, persona_keys=personas, rounds=2):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type':'error','error':str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(stream_with_context(generate()), content_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

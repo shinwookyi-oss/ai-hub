@@ -1612,27 +1612,50 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     showDoc(`<div class="doc-sec-title">🏆 Best Answer</div>${bestCards}<div class="doc-winner"><div class="doc-winner-label">🏆 Winner</div><div class="doc-winner-text">${escapeHtml(result.winner)}</div></div>`, text, `Votes: ${JSON.stringify(result.votes)}`);
                 } else if(currentMode==='persona_debate'){
                     const p1=document.getElementById('personaFor').value, p2=document.getElementById('personaAgainst').value;
-                    result=await safeFetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
+                    const debateEntries=[];let debateForName='',debateAgainstName='';
+                    addMessage('System',`🎭 Persona Debate: ${text}\nLoading...`,'system-msg');
+                    const resp=await fetch('/api/persona_debate',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({topic:text,persona_for:p1,persona_against:p2})});
+                    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                    while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                        buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                        for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                            if(ds==='[DONE]'){rdone=true;break;}
+                            try{const ck=JSON.parse(ds);
+                                if(ck.type==='start'){debateForName=ck.for_name;debateAgainstName=ck.against_name;}
+                                else if(ck.type==='entry'){addMessage(`${ck.speaker} (${ck.side})`,ck.content,'',`Round ${ck.round}`);debateEntries.push(ck);}
+                                else if(ck.type==='judgment'){removeLoading(loadId);addMessage('Judge',ck.judgment,'judge-msg','VERDICT');
+                                    let pdRounds=debateEntries.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                                    showDoc(`<div class="doc-sec-title">🎭 Persona Debate</div>${pdRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict</div><div class="doc-verdict-text">${escapeHtml(ck.judgment)}</div></div>`,text,`${debateForName} vs ${debateAgainstName}`);}
+                                else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                            }catch(e){}
+                        }
+                    }
                     removeLoading(loadId);
-                    addMessage('System',`${result.for_name} vs ${result.against_name}: ${text}`,'system-msg');
-                    for(const e of result.debate_log) addMessage(`${e.speaker} (${e.side})`,e.content,'',`Round ${e.round}`);
-                    addMessage(`Judge (${result.judge})`,result.judgment,'judge-msg','VERDICT');
-                    let pdRounds = result.debate_log.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round} · ${e.side}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                    showDoc(`<div class="doc-sec-title">🎭 Persona Debate</div>${pdRounds}<div class="doc-verdict"><div class="doc-verdict-label">⚖️ Verdict</div><div class="doc-verdict-text">${escapeHtml(result.judgment)}</div></div>`, text, `${result.for_name} vs ${result.against_name}`);
                 } else if(currentMode==='persona_discuss'){
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
                     if(sel.length<2){removeLoading(loadId);addMessage('Error','Select at least 2 personas.','error-msg');}
                     else{
-                        result=await safeFetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
+                        const discussEntries=[];let discussParticipants=[];
+                        addMessage('System',`🧠 Group Discussion: ${text}\nLoading...`,'system-msg');
+                        const resp=await fetch('/api/persona_discuss',{method:'POST',headers:{'Content-Type':'application/json'},
                             body:JSON.stringify({topic:prompt,personas:sel})});
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';let rdone=false;
+                        while(!rdone){const{value,done:d}=await reader.read();if(d){rdone=true;break;}
+                            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+                            for(const line of lines){if(!line.startsWith('data: '))continue;const ds=line.slice(6).trim();
+                                if(ds==='[DONE]'){rdone=true;break;}
+                                try{const ck=JSON.parse(ds);
+                                    if(ck.type==='start'){discussParticipants=ck.participants||[];addMessage('System',`Participants: ${discussParticipants.join(', ')}`,'system-msg');}
+                                    else if(ck.type==='entry'){addMessage(ck.speaker,ck.content,'',`Round ${ck.round}`);discussEntries.push(ck);}
+                                    else if(ck.type==='synthesis'){removeLoading(loadId);addMessage('Synthesis',ck.synthesis,'judge-msg','CONCLUSION');
+                                        let pdsRounds=discussEntries.map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
+                                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(ck.synthesis)}</div></div>`,text,`Participants: ${discussParticipants.join(', ')}`);}
+                                    else if(ck.type==='error'){removeLoading(loadId);addMessage('Error',ck.error,'error-msg');}
+                                }catch(e){}
+                            }
+                        }
                         removeLoading(loadId);
-                        const pdsParticipants = result.participants || [];
-                        addMessage('System',`GROUP DISCUSSION: ${text}\nParticipants: ${pdsParticipants.join(', ')}`,'system-msg');
-                        for(const e of (result.discussion_log||[])) addMessage(e.speaker,e.content,'',`Round ${e.round}`);
-                        addMessage('Synthesis',result.synthesis||result.error,'judge-msg','CONCLUSION');
-                        let pdsRounds = (result.discussion_log||[]).map(e=>`<div class="doc-round"><div class="doc-round-meta">Round ${e.round}</div><div class="doc-round-speaker">${escapeHtml(e.speaker)}</div><div class="doc-round-text">${escapeHtml(e.content)}</div></div>`).join('');
-                        showDoc(`<div class="doc-sec-title">🧠 Persona Group Discussion</div>${pdsRounds}<div class="doc-verdict"><div class="doc-verdict-label">💡 Synthesis</div><div class="doc-verdict-text">${escapeHtml(result.synthesis||result.error||'')}</div></div>`, text, `Participants: ${pdsParticipants.join(', ')}`);
                     }
                 } else if(currentMode==='persona_report'){
                     const sel=Array.from(document.querySelectorAll('.persona-cb:checked')).map(c=>c.value);
