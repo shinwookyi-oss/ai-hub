@@ -813,7 +813,10 @@
             const m=document.createElement('div');m.className='message';
             let bH=badge?`<span class="badge">${badge}</span>`:'';
             let tH=time?`<span class="time">${time}</span>`:'';
-            m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${escapeHtml(b)}</div>`;
+            const isSystem = cls.includes('system-msg') || cls.includes('error-msg') || h === 'You';
+            const bodyContent = isSystem ? escapeHtml(b) : renderMarkdown(b);
+            m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${bodyContent}</div>`;
+            if (!isSystem) addCodeButtons(m.querySelector('.msg-body'));
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
         }
         function addStreamingMessage(id, h, badge='', time='') {
