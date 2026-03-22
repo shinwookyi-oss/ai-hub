@@ -202,6 +202,17 @@ if SUPABASE_URL and SUPABASE_KEY:
             print("  ⚠️ No SUPABASE_SERVICE_KEY, admin ops use anon key")
     except Exception as e:
         print(f"  ⚠️ Supabase init failed: {e}")
+    # Initialize storage bucket
+    try:
+        sb = supabase_admin or supabase_client
+        sb.storage.get_bucket("user-files")
+        print("  ✅ Supabase Storage bucket 'user-files' ready")
+    except Exception:
+        try:
+            sb.storage.create_bucket("user-files", options={"public": False})
+            print("  ✅ Supabase Storage bucket 'user-files' created")
+        except Exception as be:
+            print(f"  ⚠️ Storage bucket init: {be}")
 else:
     print("  ⚠️ Supabase not configured (no SUPABASE_URL/KEY)")
 
@@ -1712,13 +1723,170 @@ def api_upload():
                 print(f"Warning: Failed to index document for RAG: {e}")
 
         if len(content) > 100000: content = content[:100000] + "\n\n[... truncated ...]"
+        # Save to Supabase Storage
+        storage_path = ""
+        try:
+            sb = supabase_admin or supabase_client
+            if sb:
+                import time as _time
+                username = session.get("username", "anonymous")
+                ts = int(_time.time())
+                storage_path = f"{username}/{ts}_{file.filename}"
+                with open(filepath, "rb") as sf:
+                    sb.storage.from_("user-files").upload(storage_path, sf.read(),
+                        file_options={"content-type": file.content_type or "application/octet-stream"})
+        except Exception as se:
+            print(f"Storage save warning: {se}")
         return jsonify({
             "success": True, 
             "filename": file.filename,
             "size": os.path.getsize(filepath), 
             "char_count": len(content), 
             "content": content,
-            "chunks_indexed": chunks_indexed
+            "chunks_indexed": chunks_indexed,
+            "storage_path": storage_path
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# ── Supabase Storage: File Management APIs ──
+
+@app.route("/api/files", methods=["GET"])
+@login_required
+def api_files_list():
+    """List user's files in Supabase Storage."""
+    try:
+        sb = supabase_admin or supabase_client
+        if not sb:
+            return jsonify({"success": False, "error": "Storage not configured"})
+        username = session.get("username", "anonymous")
+        files = sb.storage.from_("user-files").list(username, {"sortBy": {"column": "created_at", "order": "desc"}})
+        result = []
+        for f in files:
+            if f.get("name"):
+                result.append({
+                    "name": f["name"],
+                    "path": f"{username}/{f['name']}",
+                    "size": f.get("metadata", {}).get("size", 0),
+                    "created": f.get("created_at", ""),
+                    "type": f.get("metadata", {}).get("mimetype", "")
+                })
+        return jsonify({"success": True, "files": result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/files/download", methods=["POST"])
+@login_required
+def api_files_download():
+    """Download a file from Supabase Storage."""
+    try:
+        sb = supabase_admin or supabase_client
+        if not sb:
+            return jsonify({"success": False, "error": "Storage not configured"})
+        data = request.json or {}
+        path = data.get("path", "")
+        username = session.get("username", "anonymous")
+        if not path.startswith(f"{username}/"):
+            return jsonify({"success": False, "error": "Access denied"})
+        file_data = sb.storage.from_("user-files").download(path)
+        filename = path.split("/")[-1]
+        # Remove timestamp prefix
+        if "_" in filename:
+            filename = "_".join(filename.split("_")[1:])
+        from flask import Response
+        return Response(file_data, headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Type": "application/octet-stream"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/files/delete", methods=["POST"])
+@login_required
+def api_files_delete():
+    """Delete a file from Supabase Storage."""
+    try:
+        sb = supabase_admin or supabase_client
+        if not sb:
+            return jsonify({"success": False, "error": "Storage not configured"})
+        data = request.json or {}
+        path = data.get("path", "")
+        username = session.get("username", "anonymous")
+        if not path.startswith(f"{username}/"):
+            return jsonify({"success": False, "error": "Access denied"})
+        sb.storage.from_("user-files").remove([path])
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/files/load", methods=["POST"])
+@login_required
+def api_files_load():
+    """Load a file from Storage back into the chat (re-extract text)."""
+    try:
+        sb = supabase_admin or supabase_client
+        if not sb:
+            return jsonify({"success": False, "error": "Storage not configured"})
+        data = request.json or {}
+        path = data.get("path", "")
+        username = session.get("username", "anonymous")
+        if not path.startswith(f"{username}/"):
+            return jsonify({"success": False, "error": "Access denied"})
+        file_data = sb.storage.from_("user-files").download(path)
+        filename = path.split("/")[-1]
+        if "_" in filename:
+            filename = "_".join(filename.split("_")[1:])
+        # Save temp and extract text
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(file_data)
+        ext = os.path.splitext(filename)[1].lower()
+        content = ""
+        if ext in (".txt",".md",".csv",".json",".py",".js",".html",".css",".xml",".log",
+                    ".yaml",".yml",".toml",".ini",".cfg",".bat",".sh",".sql"):
+            content = file_data.decode("utf-8", errors="replace")
+        elif ext == ".pdf":
+            try:
+                import pypdf, io
+                reader = pypdf.PdfReader(io.BytesIO(file_data))
+                for page in reader.pages:
+                    content += page.extract_text() or ""
+            except Exception:
+                content = "[PDF extraction failed]"
+        elif ext == ".docx":
+            try:
+                import docx, io
+                doc = docx.Document(io.BytesIO(file_data))
+                content = "\n".join(p.text for p in doc.paragraphs)
+            except Exception:
+                content = "[DOCX extraction failed]"
+        elif ext == ".xlsx":
+            try:
+                import openpyxl, io
+                wb = openpyxl.load_workbook(io.BytesIO(file_data), read_only=True)
+                for s in wb.sheetnames:
+                    ws = wb[s]; content += f"\n--- {s} ---\n"
+                    for row in ws.iter_rows(values_only=True):
+                        content += "\t".join(str(c) if c else "" for c in row) + "\n"
+            except Exception:
+                content = "[XLSX extraction failed]"
+        else:
+            try:
+                content = file_data.decode("utf-8", errors="replace")
+            except Exception:
+                content = "[Cannot read file]"
+        if len(content) > 100000:
+            content = content[:100000] + "\n\n[... truncated ...]"
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "size": len(file_data),
+            "char_count": len(content),
+            "content": content
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})

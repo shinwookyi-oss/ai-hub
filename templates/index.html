@@ -713,6 +713,7 @@
             <button class="mode-btn" id="qnBtn" style="background:#1a1a0a;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:6px;" onclick="openQuickNotes()">📝 Quick Notes <span id="qnBadge" style="font-size:9px;background:#fdcb6e;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             {% if usertier != 'guest' %}
             <button class="mode-btn" id="memoryBtn" style="background:#0a1a2a;border-color:#74b9ff;color:#74b9ff;margin-bottom:4px;" onclick="openMemoryPanel()">🧠 Memory <span id="memBadge" style="font-size:9px;background:#74b9ff;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            <button class="mode-btn" style="background:#0a2010;border-color:#55efc4;color:#55efc4;margin-bottom:4px;" onclick="openMyFiles()">📁 My Files</button>
             <button class="mode-btn" style="background:#0a1a20;border-color:#00d2a0;color:#00d2a0;margin-bottom:4px;" onclick="openProjectDashboard()">📋 Projects <span id="projBadge" style="font-size:9px;background:#00d2a0;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             <button class="mode-btn" style="background:#1a1a10;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:12px;" onclick="openRemindersPanel()">🔔 Reminders <span id="remBadge" style="font-size:9px;background:#ff7675;color:#fff;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             {% endif %}
@@ -5057,6 +5058,82 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             setTimeout(function() { memLoad(); }, 50);
         }
         function closeMemoryPanel() { var el = document.getElementById('memOverlay'); if (el) el.remove(); }
+
+        // ── My Files (Supabase Storage) ──
+        async function openMyFiles() {
+            var html = '<div class="ws-overlay open" id="myFilesOverlay" onclick="if(event.target===this)closeMyFiles()" style="z-index:1100;">';
+            html += '<div class="ws-modal" style="max-width:550px;height:80vh;display:flex;flex-direction:column;">';
+            html += '<div class="ws-header"><h2>📁 My Files</h2><button class="ws-close" onclick="closeMyFiles()">×</button></div>';
+            html += '<div style="padding:6px 20px;font-size:10px;color:var(--text2);">업로드한 파일이 자동으로 저장됩니다. AI에 다시 로드하거나 다운로드할 수 있습니다.</div>';
+            html += '<div id="myFilesList" style="flex:1;overflow-y:auto;padding:10px 20px;"><div style="color:var(--text2);text-align:center;padding:30px;">로딩...</div></div>';
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            setTimeout(function() { loadMyFiles(); }, 50);
+        }
+        function closeMyFiles() { var el = document.getElementById('myFilesOverlay'); if (el) el.remove(); }
+
+        async function loadMyFiles() {
+            try {
+                var r = await fetch('/api/files').then(function(r){return r.json();});
+                var el = document.getElementById('myFilesList');
+                if (!el) return;
+                if (!r.success || !r.files || r.files.length === 0) {
+                    el.innerHTML = '<div style="color:var(--text2);text-align:center;padding:40px;"><div style="font-size:32px;margin-bottom:8px;">📂</div>저장된 파일이 없습니다.<br><span style="font-size:10px;margin-top:4px;display:inline-block;">파일을 업로드하면 자동으로 여기에 저장됩니다.</span></div>';
+                    return;
+                }
+                el.innerHTML = r.files.map(function(f) {
+                    var name = f.name;
+                    if (name.indexOf('_') > 0) name = name.substring(name.indexOf('_') + 1);
+                    var kb = f.size ? (f.size / 1024).toFixed(1) + ' KB' : '';
+                    var date = f.created ? new Date(f.created).toLocaleDateString() : '';
+                    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">' +
+                        '<span style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + name + '">📄 ' + name + '</span>' +
+                        '<span style="font-size:9px;color:var(--text2);white-space:nowrap;">' + kb + '</span>' +
+                        '<span style="font-size:9px;color:var(--text2);white-space:nowrap;">' + date + '</span>' +
+                        '<button onclick="myFileLoad(\'' + f.path.replace(/'/g, "\\'") + '\')" style="padding:3px 6px;font-size:9px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;" title="AI에 로드">📤 Load</button>' +
+                        '<button onclick="myFileDownload(\'' + f.path.replace(/'/g, "\\'") + '\')" style="padding:3px 6px;font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;" title="다운로드">⬇</button>' +
+                        '<button onclick="myFileDelete(\'' + f.path.replace(/'/g, "\\'") + '\')" style="padding:3px 6px;font-size:9px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.3);color:#ff7675;border-radius:4px;cursor:pointer;" title="삭제">🗑</button>' +
+                        '</div>';
+                }).join('');
+            } catch(e) {
+                var el = document.getElementById('myFilesList');
+                if (el) el.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;">파일 목록 로드 실패: ' + e.message + '</div>';
+            }
+        }
+        async function myFileLoad(path) {
+            addMessage('System', '📤 파일 로딩 중...', 'system-msg');
+            try {
+                var r = await fetch('/api/files/load', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:path})}).then(function(r){return r.json();});
+                if (r.success) {
+                    uploadedFiles.push({name:r.filename, content:r.content, size:r.size, chars:r.char_count});
+                    uploadedFileContent = uploadedFiles.map(function(f){return '=== '+f.name+' ===\n'+f.content;}).join('\n\n');
+                    uploadedFileName = uploadedFiles.map(function(f){return f.name;}).join(', ');
+                    _updateFileListUI();
+                    addMessage('System', '✅ 파일 로드: ' + r.filename + ' (' + r.char_count.toLocaleString() + '자)', 'system-msg');
+                    closeMyFiles();
+                } else { addMessage('System', '❌ ' + (r.error || 'Load failed'), 'system-msg'); }
+            } catch(e) { addMessage('System', '❌ 오류: ' + e.message, 'system-msg'); }
+        }
+        async function myFileDownload(path) {
+            try {
+                var resp = await fetch('/api/files/download', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:path})});
+                var blob = await resp.blob();
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                var cd = resp.headers.get('content-disposition') || '';
+                var fn = cd.match(/filename=(.+)/);
+                a.href = url; a.download = fn ? fn[1] : 'download'; a.click();
+                URL.revokeObjectURL(url);
+            } catch(e) { addMessage('System', '❌ 다운로드 오류: ' + e.message, 'system-msg'); }
+        }
+        async function myFileDelete(path) {
+            if (!confirm('이 파일을 삭제할까요?')) return;
+            try {
+                var r = await fetch('/api/files/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:path})}).then(function(r){return r.json();});
+                if (r.success) { loadMyFiles(); addMessage('System', '🗑 파일 삭제됨', 'system-msg'); }
+                else { addMessage('System', '❌ ' + (r.error || 'Delete failed'), 'system-msg'); }
+            } catch(e) { addMessage('System', '❌ 오류: ' + e.message, 'system-msg'); }
+        }
 
         async function memLoad() {
             try {
