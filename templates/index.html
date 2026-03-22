@@ -66,20 +66,20 @@
                 <option value="'Consolas','Courier New',monospace">Monospace</option>
             </select>
             <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
-            <div style="font-size:10px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Margins (px)</div>
+            <div style="font-size:10px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">간격 조정 (줄 단위) — 양쪽 패널</div>
             <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px;align-items:center;font-size:11px;color:var(--text2);">
-                <span>Heading ↑</span><input type="number" id="mHdTop" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
-                <span>Heading ↓</span><input type="number" id="mHdBot" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
-                <span>Paragraph ↑</span><input type="number" id="mPTop" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
-                <span>Paragraph ↓</span><input type="number" id="mPBot" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
-                <span>List Item ↑</span><input type="number" id="mLiTop" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
-                <span>List Item ↓</span><input type="number" id="mLiBot" min="-10" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
-                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>제목 ↑</span><input type="number" id="mHdTop" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
+                <span>제목 ↓</span><input type="number" id="mHdBot" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
+                <span>본문 ↑</span><input type="number" id="mPTop" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
+                <span>본문 ↓</span><input type="number" id="mPBot" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
+                <span>리스트 ↑</span><input type="number" id="mLiTop" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
+                <span>리스트 ↓</span><input type="number" id="mLiBot" min="-3" max="5" value="0" step="0.5" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">줄</span>
             </div>
             <div style="display:flex;gap:6px;margin-top:4px;">
                 <button onclick="resetStyleSettings()" style="flex:1;padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.06);color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer;">Reset</button>
@@ -2197,10 +2197,15 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             })();
             sheet.textContent = `
                 .msg-body { line-height: ${s.lh} !important; font-size: ${s.fs}px !important; letter-spacing: ${s.ls}em !important; font-family: ${s.ff} !important; }
-                .msg-body p { line-height: ${s.lh} !important; margin-top: ${s.mPTop}px !important; margin-bottom: ${s.mPBot}px !important; }
-                .msg-body li { line-height: ${s.lh} !important; margin-top: ${s.mLiTop}px !important; margin-bottom: ${s.mLiBot}px !important; }
-                .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin-top: ${s.mHdTop}px !important; margin-bottom: ${s.mHdBot}px !important; padding-top: 0 !important; }
+                .msg-body p { line-height: ${s.lh} !important; margin-top: ${s.mPTop}em !important; margin-bottom: ${s.mPBot}em !important; }
+                .msg-body li { line-height: ${s.lh} !important; margin-top: ${s.mLiTop}em !important; margin-bottom: ${s.mLiBot}em !important; }
+                .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin-top: ${s.mHdTop}em !important; margin-bottom: ${s.mHdBot}em !important; padding-top: 0 !important; }
                 .msg-body ul,.msg-body ol { margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; }
+                .doc-answer { line-height: ${s.lh} !important; font-size: ${s.fs}px !important; letter-spacing: ${s.ls}em !important; font-family: ${s.ff} !important; }
+                .doc-answer p { margin-top: ${s.mPTop}em !important; margin-bottom: ${s.mPBot}em !important; }
+                .doc-answer li { line-height: ${s.lh} !important; margin-top: ${s.mLiTop}em !important; margin-bottom: ${s.mLiBot}em !important; }
+                .doc-answer h1,.doc-answer h2,.doc-answer h3 { margin-top: ${s.mHdTop}em !important; margin-bottom: ${s.mHdBot}em !important; padding-top: 0 !important; }
+                .doc-answer ul,.doc-answer ol { margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; }
             `;
         }
         function loadStyleSettings() {
