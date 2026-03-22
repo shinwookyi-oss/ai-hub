@@ -638,7 +638,13 @@ class AIHub:
         "[ADD_AFTER:section-id][SECTION:new-id:New Title]new content[/SECTION][/ADD_AFTER] to add a new section after an existing one. "
         "Example document: [DOC:plan] [COVER] title: Cafe Business Plan / author: John / date: 2026-03-22 [/COVER] "
         "[SECTION:section-1:Executive Summary] Overview content here [/SECTION] "
-        "[SECTION:section-2:Market Analysis] Market data here [/SECTION]"
+        "[SECTION:section-2:Market Analysis] Market data here [/SECTION] "
+        "VISUAL ELEMENTS IN DOCUMENTS: "
+        "When creating reports, business plans, manuals, or any document, ACTIVELY include visual elements: "
+        "1) Mermaid diagrams in ```mermaid code blocks for: flowcharts, org charts, timelines, process diagrams, sequence diagrams, class diagrams. "
+        "2) Chart.js charts in ```chart code blocks for: bar charts, pie charts, line charts, radar charts with realistic data. "
+        "3) Markdown tables for comparisons, data summaries, timelines, budgets. "
+        "Every document section should have at least one visual element (diagram, chart, or table) when relevant."
     )
 
     def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "", model: str = None) -> AIResponse:
