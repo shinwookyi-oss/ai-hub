@@ -38,7 +38,7 @@
             <button class="theme-picker-btn" id="styleSettingsBtn" onclick="toggleStyleSettings()" title="Style Settings" style="display:none;">🔤</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <button class="theme-picker-btn" onclick="openChangePw()" title="비밀번호 변경">🔑</button>
-            <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
+            <a href="/logout" class="logout-btn" data-i18n="logout" onclick="localStorage.clear();">Logout</a>
         </div>
     </div>
     <!-- Style Settings Popup (Owner Only) -->
@@ -629,7 +629,9 @@
             </div>
             <div style="padding:0 20px 10px;display:flex;gap:6px;">
                 <button onclick="qnNewNote()" style="flex:1;padding:6px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">+ 새 메모</button>
+                {% if usertier != 'guest' %}
                 <button onclick="qnSyncToWorkspace()" style="flex:1;padding:6px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;" title="선택된 메모를 Workspace에 저장">📂 Workspace 동기화</button>
+                {% endif %}
             </div>
             <div id="qnList" style="flex:1;overflow-y:auto;padding:0 20px 10px;">
                 <div style="color:var(--text2);font-size:12px;text-align:center;padding:40px 0;">메모가 없습니다. '새 메모'를 클릭하세요.</div>
