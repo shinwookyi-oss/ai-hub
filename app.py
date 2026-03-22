@@ -2704,18 +2704,210 @@ def _get_calendar_events(ical_url: str, max_events: int = 10) -> str:
         return f"[Calendar error: {e}]"
 
 
+# ── Group APIs ───────────────────────────────────────────────────────────────
+
+def _user_group_ids(username: str) -> list:
+    """Return list of group IDs the user belongs to."""
+    if not supabase_client:
+        return []
+    try:
+        r = supabase_client.table("group_members").select("group_id").eq("user_id", username).execute()
+        return [row["group_id"] for row in (r.data or [])]
+    except Exception:
+        return []
+
+
+def _is_admin(username: str) -> bool:
+    """Check if user is system admin (env admin or tier=admin in DB)."""
+    if username == APP_USERNAME:
+        return True
+    try:
+        r = supabase_client.table("users").select("tier").eq("username", username).execute()
+        return bool(r.data and r.data[0].get("tier") == "admin")
+    except Exception:
+        return False
+
+
+@app.route("/api/groups", methods=["GET"])
+@login_required
+def api_groups_list():
+    """List all groups (admin sees all, members see their own)."""
+    if not supabase_client:
+        return jsonify({"groups": []})
+    username = session.get("username", "admin")
+    try:
+        if _is_admin(username):
+            r = supabase_client.table("groups").select("*").order("created_at").execute()
+            groups = r.data or []
+        else:
+            gids = _user_group_ids(username)
+            if not gids:
+                return jsonify({"groups": []})
+            r = supabase_client.table("groups").select("*").in_("id", gids).execute()
+            groups = r.data or []
+        # Attach member counts
+        for g in groups:
+            try:
+                mc = supabase_client.table("group_members").select("id").eq("group_id", g["id"]).execute()
+                g["member_count"] = len(mc.data or [])
+            except Exception:
+                g["member_count"] = 0
+        return jsonify({"groups": groups})
+    except Exception as e:
+        return jsonify({"groups": [], "error": str(e)})
+
+
+@app.route("/api/groups", methods=["POST"])
+@login_required
+def api_groups_create():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    username = session.get("username", "admin")
+    if not _is_admin(username):
+        return jsonify({"error": "관리자만 그룹을 생성할 수 있습니다."}), 403
+    data = request.json or {}
+    try:
+        r = supabase_client.table("groups").insert({
+            "name": data.get("name", "New Group"),
+            "description": data.get("description", ""),
+            "created_by": username,
+        }).execute()
+        group = r.data[0] if r.data else {}
+        # Auto-add creator as admin member
+        if group.get("id"):
+            supabase_client.table("group_members").insert({
+                "group_id": group["id"], "user_id": username, "role": "admin"
+            }).execute()
+        return jsonify({"group": group, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/groups/<gid>", methods=["PUT"])
+@login_required
+def api_groups_update(gid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    username = session.get("username", "admin")
+    if not _is_admin(username):
+        return jsonify({"error": "권한 없음"}), 403
+    data = request.json or {}
+    update = {k: data[k] for k in ["name", "description"] if k in data}
+    try:
+        supabase_client.table("groups").update(update).eq("id", gid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/groups/<gid>", methods=["DELETE"])
+@login_required
+def api_groups_delete(gid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    if not _is_admin(session.get("username", "admin")):
+        return jsonify({"error": "권한 없음"}), 403
+    try:
+        supabase_client.table("group_members").delete().eq("group_id", gid).execute()
+        supabase_client.table("groups").delete().eq("id", gid).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/groups/<gid>/members", methods=["GET"])
+@login_required
+def api_group_members_list(gid):
+    if not supabase_client:
+        return jsonify({"members": []})
+    try:
+        r = supabase_client.table("group_members").select("*").eq("group_id", gid).order("created_at").execute()
+        return jsonify({"members": r.data or []})
+    except Exception as e:
+        return jsonify({"members": [], "error": str(e)})
+
+
+@app.route("/api/groups/<gid>/members", methods=["POST"])
+@login_required
+def api_group_members_add(gid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    if not _is_admin(session.get("username", "admin")):
+        return jsonify({"error": "권한 없음"}), 403
+    data = request.json or {}
+    user_id = data.get("user_id", "").strip()
+    if not user_id:
+        return jsonify({"error": "user_id 필요"}), 400
+    try:
+        supabase_client.table("group_members").upsert({
+            "group_id": gid,
+            "user_id": user_id,
+            "role": data.get("role", "member"),
+        }, on_conflict="group_id,user_id").execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/groups/<gid>/members/<uid>", methods=["DELETE"])
+@login_required
+def api_group_members_remove(gid, uid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    if not _is_admin(session.get("username", "admin")):
+        return jsonify({"error": "권한 없음"}), 403
+    try:
+        supabase_client.table("group_members").delete().eq("group_id", gid).eq("user_id", uid).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Integration CRUD ──────────────────────────────────────────────────────────
 
 @app.route("/api/integrations", methods=["GET"])
 @login_required
 def api_integrations_list():
+    """List integrations visible to current user:
+    personal (own) + group (member of) + global.
+    """
     if not supabase_client:
         return jsonify({"integrations": []})
+    username = session.get("username", "admin")
     try:
+        results = []
+        seen_ids = set()
+        # 1. Personal
         r = supabase_client.table("integrations").select(
-            "id,type,name,is_active,last_used_at,created_at"
-        ).eq("user_id", session.get("username", "admin")).order("created_at").execute()
-        return jsonify({"integrations": r.data or []})
+            "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
+        ).eq("user_id", username).eq("scope", "personal").execute()
+        for row in (r.data or []):
+            row["_label"] = "개인"
+            results.append(row); seen_ids.add(row["id"])
+        # 2. Group integrations
+        gids = _user_group_ids(username)
+        if gids:
+            gr = supabase_client.table("integrations").select(
+                "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
+            ).eq("scope", "group").in_("group_id", gids).execute()
+            for row in (gr.data or []):
+                if row["id"] not in seen_ids:
+                    # Attach group name
+                    try:
+                        gn = supabase_client.table("groups").select("name").eq("id", row["group_id"]).execute()
+                        row["_label"] = gn.data[0]["name"] if gn.data else "그룹"
+                    except Exception:
+                        row["_label"] = "그룹"
+                    results.append(row); seen_ids.add(row["id"])
+        # 3. Global
+        glob = supabase_client.table("integrations").select(
+            "id,type,name,scope,group_id,is_active,last_used_at,created_at,user_id"
+        ).eq("scope", "global").execute()
+        for row in (glob.data or []):
+            if row["id"] not in seen_ids:
+                row["_label"] = "전체공유"
+                results.append(row); seen_ids.add(row["id"])
+        return jsonify({"integrations": results})
     except Exception as e:
         return jsonify({"integrations": [], "error": str(e)})
 
@@ -2731,11 +2923,18 @@ def api_integrations_create():
         existing = supabase_client.table("integrations").select("id").eq(
             "user_id", session.get("username", "admin")
         ).eq("type", data.get("type", "")).eq("name", data.get("name", "")).execute()
+        scope = data.get("scope", "personal")
+        group_id = data.get("group_id") or None
+        # Only admin can set global scope
+        if scope == "global" and not _is_admin(session.get("username", "admin")):
+            scope = "group"
         payload = {
             "user_id": session.get("username", "admin"),
             "type": data.get("type"),
             "name": data.get("name", data.get("type", "Integration")),
             "config": data.get("config", {}),
+            "scope": scope,
+            "group_id": group_id,
             "is_active": True,
         }
         if existing.data:

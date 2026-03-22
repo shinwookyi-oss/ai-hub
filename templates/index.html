@@ -219,6 +219,7 @@
                 <button class="auto-tab" id="autoTab-wf" onclick="autoSwitchTab('wf')">🔗 Workflows</button>
                 <button class="auto-tab" id="autoTab-wh" onclick="autoSwitchTab('wh')">🔔 Webhooks</button>
                 <button class="auto-tab" id="autoTab-int" onclick="autoSwitchTab('int')">🔌 Integrations</button>
+                <button class="auto-tab" id="autoTab-grp" onclick="autoSwitchTab('grp')" style="display:none;">👥 Groups</button>
             </div>
             <!-- Schedules Panel -->
             <div class="auto-panel" id="autoPanel-sched">
@@ -291,6 +292,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <!-- Groups Panel -->
+            <div class="auto-panel" id="autoPanel-grp" style="display:none;">
+                <div class="auto-toolbar">
+                    <span style="font-size:12px;color:var(--text2);">유저 그룹을 만들고 멤버를 관리합니다.</span>
+                    <button class="auto-new-btn" onclick="openGrpCreate()">+ New Group</button>
+                </div>
+                <div id="grpList" class="auto-list"></div>
             </div>
             <!-- Webhooks Panel -->
             <div class="auto-panel" id="autoPanel-wh" style="display:none;">
@@ -409,6 +418,53 @@
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
                     <button class="ws-btn" onclick="closeWhCreate()">취소</button>
                     <button class="auto-save-btn" onclick="confirmWhSave()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Create Modal -->
+    <div class="auto-overlay" id="grpCreateOverlay" onclick="if(event.target===this)closeGrpCreate()" style="z-index:310;">
+        <div class="auto-form-modal" style="max-width:440px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="grpCreateTitle">👥 New Group</h3>
+                <button class="ws-close" onclick="closeGrpCreate()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <input type="hidden" id="grpEditId">
+                <div><label class="auto-label">그룹 이름</label><input type="text" id="grpName" class="auto-input" placeholder="예: 전략팀"></div>
+                <div><label class="auto-label">설명 (선택)</label><input type="text" id="grpDesc" class="auto-input" placeholder="이 그룹에 대한 간단한 설명"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeGrpCreate()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmGrpSave()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Members Modal -->
+    <div class="auto-overlay" id="grpMembersOverlay" onclick="if(event.target===this)closeGrpMembers()" style="z-index:310;">
+        <div class="auto-form-modal" style="max-width:480px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="grpMembersTitle">👥 멤버 관리</h3>
+                <button class="ws-close" onclick="closeGrpMembers()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <input type="hidden" id="grpMembersId">
+                <div style="display:flex;gap:6px;">
+                    <input type="text" id="grpMemberInput" class="auto-input" placeholder="유저명 입력 (username)" style="flex:1;">
+                    <select id="grpMemberRole" class="auto-input" style="width:90px;">
+                        <option value="member">멤버</option>
+                        <option value="admin">관리자</option>
+                    </select>
+                    <button class="auto-new-btn" onclick="grpAddMember()">추가</button>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">현재 멤버</div>
+                    <div id="grpMembersList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;"></div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeGrpMembers()">닫기</button>
                 </div>
             </div>
         </div>
@@ -3602,19 +3658,28 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             autoLoadFolders().then(function() {
                 autoSwitchTab(autoCurrentTab);
             });
+            // Show Groups tab for admin
+            fetch('/api/groups').then(function(r){ return r.json(); }).then(function(data) {
+                // If no error = admin or member, show tab
+                var grpTab = document.getElementById('autoTab-grp');
+                if (grpTab) grpTab.style.display = '';
+            }).catch(function(){});
         }
         function closeAutomation() { document.getElementById('autoOverlay').classList.remove('open'); }
 
         function autoSwitchTab(tab) {
             autoCurrentTab = tab;
-            ['sched','wf','wh','int'].forEach(function(t) {
-                document.getElementById('autoTab-'+t).classList.toggle('active', t===tab);
-                document.getElementById('autoPanel-'+t).style.display = t===tab?'':'none';
+            ['sched','wf','wh','int','grp'].forEach(function(t) {
+                var tabEl = document.getElementById('autoTab-'+t);
+                var panelEl = document.getElementById('autoPanel-'+t);
+                if (tabEl) tabEl.classList.toggle('active', t===tab);
+                if (panelEl) panelEl.style.display = t===tab?'':'none';
             });
             if (tab==='sched') autoLoadSchedules();
             if (tab==='wf') autoLoadWorkflows();
             if (tab==='wh') autoLoadWebhooks();
             if (tab==='int') autoLoadIntegrations();
+            if (tab==='grp') autoLoadGroups();
         }
 
         async function autoLoadFolders() {
@@ -3990,20 +4055,38 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         // ── Integrations ──
         var intConfigs = {};  // type -> {id, config}
         var intLastText = ''; // last AI output for quick-send
+        var intAllGroups = []; // cached groups for scope selector
 
         // Track last AI output for quick-send
         var _origAddMessage = typeof addMessage === 'function' ? addMessage : null;
 
+        function intScopeChange() {
+            var scope = document.getElementById('intF-scope').value;
+            var grpEl = document.getElementById('intF-group_id');
+            if (grpEl) grpEl.style.display = scope==='group' ? '' : 'none';
+        }
+
         async function autoLoadIntegrations() {
+            // Pre-load groups for scope selector
+            try {
+                var gr = await fetch('/api/groups').then(r=>r.json());
+                intAllGroups = gr.groups || [];
+            } catch(e) { intAllGroups = []; }
             try {
                 var r = await fetch('/api/integrations').then(r=>r.json());
                 intConfigs = {};
-                (r.integrations||[]).forEach(function(i) { intConfigs[i.type] = i; });
+                // Group by type — prefer group/global over personal if multiple
+                var byType = {};
+                (r.integrations||[]).forEach(function(i) {
+                    if (!byType[i.type] || i.scope==='global' || i.scope==='group') byType[i.type] = i;
+                });
+                intConfigs = byType;
                 ['slack','notion','email','calendar'].forEach(function(t) {
                     var statusEl = document.getElementById('intStatus-'+t);
                     var sendBtn = document.getElementById('intSendBtn-'+t) || document.getElementById('intCalBtn-'+t);
                     if (intConfigs[t] && intConfigs[t].is_active) {
-                        if (statusEl) statusEl.innerHTML = '<span class="int-badge active">● 연결됨</span>';
+                        var lbl = intConfigs[t]._label || '개인';
+                        if (statusEl) statusEl.innerHTML = `<span class="int-badge active">● 연결됨</span> <span class="int-badge" style="margin-left:3px;">${lbl}</span>`;
                         if (sendBtn) sendBtn.style.display = '';
                     } else {
                         if (statusEl) statusEl.innerHTML = '<span class="int-badge">○ 미설정</span>';
@@ -4049,6 +4132,22 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     <input type="text" id="intF-ical_url" class="auto-input" value="${cfg.ical_url||''}" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"></div>
                     <div style="font-size:11px;color:var(--text2);">Google Calendar → 설정 → 캘린더 공개 → iCal 주소 복사</div>`;
             }
+            // Scope selector
+            var grpOptions = '<option value="">없음</option>';
+            if (typeof intAllGroups !== 'undefined') {
+                intAllGroups.forEach(function(g) { grpOptions += `<option value="${g.id}">${g.name}</option>`; });
+            }
+            body += `<div>
+                <label class="auto-label">공유 범위</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <select id="intF-scope" class="auto-input" style="flex:1;" onchange="intScopeChange()">
+                        <option value="personal">🔒 개인</option>
+                        <option value="group">👥 그룹</option>
+                        <option value="global">🌐 전체공유 (admin 전용)</option>
+                    </select>
+                    <select id="intF-group_id" class="auto-input" style="flex:1;display:none;">${grpOptions}</select>
+                </div>
+            </div>`;
             body += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
                 <button class="ws-btn" onclick="closeIntModal()">취소</button>
                 <button class="auto-save-btn" onclick="confirmIntSave()">저장</button>
@@ -4075,10 +4174,12 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             var required = {slack:['webhook_url'], notion:['token','database_id'], email:['host','user','password','to'], calendar:['ical_url']};
             var missing = (required[type]||[]).filter(function(f){ return !cfg[f]; });
             if (missing.length) { alert('필수 항목을 모두 입력해주세요: '+missing.join(', ')); return; }
+            var scope = document.getElementById('intF-scope') ? document.getElementById('intF-scope').value : 'personal';
+            var groupId = document.getElementById('intF-group_id') ? document.getElementById('intF-group_id').value : '';
             var r = await fetch('/api/integrations', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({type: type, name: type, config: cfg})
+                body: JSON.stringify({type: type, name: type, config: cfg, scope: scope, group_id: groupId||null})
             });
             var data = await r.json();
             if (!r.ok) { alert(data.error||'저장 실패'); return; }
@@ -4114,6 +4215,126 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             var data = await r.json();
             btn.textContent = orig; btn.disabled = false;
             alert(data.success ? '✅ 전송 완료!' : '❌ 전송 실패: '+(data.error||JSON.stringify(data.results)));
+        }
+
+        // ── Groups ──
+        var grpIsAdmin = false;
+
+        async function autoLoadGroups() {
+            var el = document.getElementById('grpList');
+            el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">로딩 중...</div>';
+            try {
+                var r = await fetch('/api/groups').then(r=>r.json());
+                var groups = r.groups || [];
+                if (!groups.length) {
+                    el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">그룹이 없습니다.</div>';
+                    return;
+                }
+                el.innerHTML = groups.map(function(g) {
+                    return `<div class="auto-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:600;font-size:13px;color:var(--text);">👥 ${g.name}</div>
+                                <div style="font-size:11px;color:var(--text2);margin-top:2px;">${g.description||''}</div>
+                                <div style="font-size:11px;color:var(--accent2);margin-top:3px;">멤버 ${g.member_count||0}명</div>
+                            </div>
+                            <div style="display:flex;gap:5px;">
+                                <button class="auto-icon-btn" onclick="openGrpMembers('${g.id}','${g.name.replace(/'/g,"\\'")}')" title="멤버 관리">👤</button>
+                                <button class="auto-icon-btn" onclick="grpEdit('${g.id}','${g.name.replace(/'/g,"\\'")}','${(g.description||'').replace(/'/g,"\\'")}')" title="편집">✏</button>
+                                <button class="auto-icon-btn danger" onclick="grpDelete('${g.id}')" title="삭제">×</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">오류: '+e.message+'</div>'; }
+        }
+
+        function openGrpCreate() {
+            document.getElementById('grpEditId').value = '';
+            document.getElementById('grpCreateTitle').textContent = '👥 New Group';
+            document.getElementById('grpName').value = '';
+            document.getElementById('grpDesc').value = '';
+            document.getElementById('grpCreateOverlay').classList.add('open');
+        }
+        function closeGrpCreate() { document.getElementById('grpCreateOverlay').classList.remove('open'); }
+
+        function grpEdit(id, name, desc) {
+            document.getElementById('grpEditId').value = id;
+            document.getElementById('grpCreateTitle').textContent = '✏ Edit Group';
+            document.getElementById('grpName').value = name;
+            document.getElementById('grpDesc').value = desc;
+            document.getElementById('grpCreateOverlay').classList.add('open');
+        }
+
+        async function confirmGrpSave() {
+            var name = document.getElementById('grpName').value.trim();
+            if (!name) { alert('그룹 이름을 입력해주세요.'); return; }
+            var editId = document.getElementById('grpEditId').value;
+            var url = editId ? '/api/groups/'+editId : '/api/groups';
+            var method = editId ? 'PUT' : 'POST';
+            var r = await fetch(url, {method:method, headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:name, description:document.getElementById('grpDesc').value})});
+            var data = await r.json();
+            if (!r.ok) { alert(data.error||'저장 실패'); return; }
+            closeGrpCreate();
+            autoLoadGroups();
+        }
+
+        async function grpDelete(id) {
+            if (!confirm('이 그룹을 삭제할까요? 멤버 정보도 함께 삭제됩니다.')) return;
+            await fetch('/api/groups/'+id, {method:'DELETE'});
+            autoLoadGroups();
+        }
+
+        var grpMembersCurrent = [];
+        async function openGrpMembers(id, name) {
+            document.getElementById('grpMembersId').value = id;
+            document.getElementById('grpMembersTitle').textContent = '👥 ' + name + ' 멤버 관리';
+            document.getElementById('grpMemberInput').value = '';
+            document.getElementById('grpMembersOverlay').classList.add('open');
+            await loadGrpMembers(id);
+        }
+        function closeGrpMembers() { document.getElementById('grpMembersOverlay').classList.remove('open'); }
+
+        async function loadGrpMembers(id) {
+            id = id || document.getElementById('grpMembersId').value;
+            var el = document.getElementById('grpMembersList');
+            try {
+                var r = await fetch('/api/groups/'+id+'/members').then(r=>r.json());
+                grpMembersCurrent = r.members || [];
+                if (!grpMembersCurrent.length) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;">멤버 없음</div>'; return; }
+                el.innerHTML = grpMembersCurrent.map(function(m) {
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">
+                        <span style="font-size:12px;color:var(--text);">👤 ${m.user_id}</span>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${m.role==='admin'?'rgba(108,92,231,0.15)':'var(--surface)'};color:${m.role==='admin'?'var(--accent2)':'var(--text2)'};">${m.role==='admin'?'관리자':'멤버'}</span>
+                            <button class="auto-icon-btn danger" onclick="grpRemoveMember('${m.user_id}')" style="width:22px;height:22px;font-size:11px;">×</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) {}
+        }
+
+        async function grpAddMember() {
+            var gid = document.getElementById('grpMembersId').value;
+            var uid = document.getElementById('grpMemberInput').value.trim();
+            var role = document.getElementById('grpMemberRole').value;
+            if (!uid) { alert('유저명을 입력해주세요.'); return; }
+            var r = await fetch('/api/groups/'+gid+'/members', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({user_id:uid, role:role})
+            });
+            var data = await r.json();
+            if (!r.ok) { alert(data.error||'추가 실패'); return; }
+            document.getElementById('grpMemberInput').value = '';
+            await loadGrpMembers(gid);
+        }
+
+        async function grpRemoveMember(uid) {
+            var gid = document.getElementById('grpMembersId').value;
+            if (!confirm(uid + '을(를) 그룹에서 제거할까요?')) return;
+            await fetch('/api/groups/'+gid+'/members/'+uid, {method:'DELETE'});
+            await loadGrpMembers(gid);
         }
 
         async function intInjectCalendar() {
