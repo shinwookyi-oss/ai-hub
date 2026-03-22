@@ -3169,7 +3169,7 @@ def api_youtube_transcript():
         return jsonify({"error": "URL이 필요합니다."}), 400
     # Extract video ID
     import re
-    m = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})", url)
+    m = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/live/|youtube\.com/shorts/)([a-zA-Z0-9_-]{11})", url)
     if not m:
         return jsonify({"error": "올바른 YouTube URL이 아닙니다."}), 400
     vid = m.group(1)

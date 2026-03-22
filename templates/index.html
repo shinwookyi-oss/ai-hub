@@ -2051,7 +2051,7 @@
         // ── YouTube helpers ──
         var ytCurrentUrl = '';
         function extractYtId(url) {
-            var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+            var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
             return m ? m[1] : null;
         }
         function openYtModal() {
