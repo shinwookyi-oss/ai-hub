@@ -139,6 +139,7 @@
         </div>
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
+            <button class="theme-picker-btn" id="resultToggleBtn" onclick="toggleOutputPanel();_updateResultToggle();" title="Result 패널 열기/닫기" style="font-size:13px;display:none;">📄 ▶</button>
             <button class="theme-picker-btn" onclick="toggleThemePicker()" title="Theme">🎨</button>
             <button class="theme-picker-btn" id="styleSettingsBtn" onclick="toggleStyleSettings()" title="Style Settings" style="display:none;">🔤</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
@@ -3400,7 +3401,17 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 var d = document.getElementById('panelDivider');
                 if (d) d.classList.add('hidden');
             }
+            _updateResultToggle();
         })();
+        function _updateResultToggle() {
+            var btn = document.getElementById('resultToggleBtn');
+            if (!btn) return;
+            if (window.innerWidth <= 768) { btn.style.display = 'none'; return; }
+            btn.style.display = '';
+            var collapsed = document.getElementById('outputPanel').classList.contains('collapsed');
+            btn.innerHTML = collapsed ? '📄 ◀' : '📄 ▶';
+            btn.title = collapsed ? 'Result 패널 열기' : 'Result 패널 닫기';
+        }
 
         // ── Panel Divider Drag Resize ──
         (function initPanelDivider() {
