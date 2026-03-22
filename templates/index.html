@@ -1608,6 +1608,165 @@
                 window.open('https://www.google.com/maps/dir/?api=1&destination=' + encodedDest + '&travelmode=driving', '_blank');
             }
         }
+
+        // ── Document Template System ──
+        window._docSections = {};
+        window._docType = null;
+
+        function renderDocument(text) {
+            // Check for document markers
+            var docMatch = text.match(/\[DOC:([\w]+)\]/i);
+            if (!docMatch) return null; // not a document
+            var docType = docMatch[1].toLowerCase();
+            window._docType = docType;
+            var content = text.replace(/\[DOC:[\w]+\]/gi, '').trim();
+
+            if (docType === 'letter') return _renderLetter(content);
+            return _renderReport(content, docType);
+        }
+
+        function _renderLetter(content) {
+            var sections = content.split(/\[LETTER\](.*?)\[\/LETTER\]/is);
+            var letterContent = sections.length > 1 ? sections[1] : content;
+            // Parse letter parts
+            var lines = letterContent.trim().split('\n');
+            var date = '', to = '', body = '', closing = '', signature = '';
+            var part = 'body';
+            lines.forEach(function(line) {
+                var l = line.trim();
+                if (l.match(/^\d{4}[.\-\/]/)) { date = l; return; }
+                if (l.match(/^(Dear|To|수신|받는\s*사람|귀하)/i)) { to = l; return; }
+                if (l.match(/^(Sincerely|Best|Regards|감사|드림|올림|경의)/i)) { closing = l; return; }
+                if (l.match(/^(From|보내는\s*사람|작성자|이름)/i)) { signature = l.replace(/^(From:|보내는\s*사람:|작성자:|이름:)\s*/i,''); return; }
+                body += line + '\n';
+            });
+            return `<div class="doc-letter-wrap">` +
+                (date ? `<div class="doc-letter-date">${escapeHtml(date)}</div>` : `<div class="doc-letter-date">${new Date().toLocaleDateString()}</div>`) +
+                (to ? `<div class="doc-letter-to">${escapeHtml(to)}</div>` : '') +
+                `<div class="doc-letter-body">${renderMarkdown(body)}</div>` +
+                (closing ? `<div class="doc-letter-closing">${escapeHtml(closing)}</div>` : '') +
+                (signature ? `<div class="doc-letter-signature">${escapeHtml(signature)}</div>` : '') +
+                `</div>`;
+        }
+
+        function _renderReport(content, docType) {
+            window._docSections = {};
+            // Parse cover
+            var coverHtml = '';
+            var coverMatch = content.match(/\[COVER\]([\s\S]*?)\[\/COVER\]/i);
+            if (coverMatch) {
+                var coverText = coverMatch[1].trim();
+                content = content.replace(/\[COVER\][\s\S]*?\[\/COVER\]/i, '');
+                var titleMatch = coverText.match(/title:\s*(.+)/i);
+                var subtitleMatch = coverText.match(/subtitle:\s*(.+)/i);
+                var authorMatch = coverText.match(/author:\s*(.+)/i);
+                var dateMatch = coverText.match(/date:\s*(.+)/i);
+                var orgMatch = coverText.match(/org:\s*(.+)/i);
+                var typeLabel = {report:'📊 Report', plan:'📋 Business Plan', manual:'📖 Manual', book:'📚 Book'}[docType] || '📄 Document';
+                coverHtml = `<div class="doc-cover">` +
+                    `<div style="font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;position:relative;margin-bottom:20px;">${typeLabel}</div>` +
+                    `<div class="doc-cover-title">${escapeHtml((titleMatch||['','Untitled'])[1])}</div>` +
+                    (subtitleMatch ? `<div class="doc-cover-subtitle">${escapeHtml(subtitleMatch[1])}</div>` : '') +
+                    `<div class="doc-cover-line"></div>` +
+                    `<div class="doc-cover-meta">` +
+                    (authorMatch ? `<span>✍️ ${escapeHtml(authorMatch[1])}</span>` : '') +
+                    (orgMatch ? `<span>🏢 ${escapeHtml(orgMatch[1])}</span>` : '') +
+                    `<span>📅 ${escapeHtml((dateMatch||['',new Date().toLocaleDateString()])[1])}</span>` +
+                    `</div></div>`;
+            }
+            // Parse sections
+            var sectionRegex = /\[SECTION:([\w-]+):([^\]]+)\]([\s\S]*?)(?=\[SECTION:|$)/gi;
+            var sections = [];
+            var m;
+            while ((m = sectionRegex.exec(content)) !== null) {
+                sections.push({id: m[1], title: m[2].trim(), body: m[3].replace(/\[\/SECTION\]/gi,'').trim()});
+            }
+            // Fallback: if no SECTION markers, split by ## headings
+            if (sections.length === 0) {
+                var headingSplit = content.split(/^##\s+(.+)$/gm);
+                for (var i = 1; i < headingSplit.length; i += 2) {
+                    var secTitle = headingSplit[i];
+                    var secBody = (headingSplit[i+1] || '').trim();
+                    var secId = 'section-' + Math.ceil(i/2);
+                    sections.push({id: secId, title: secTitle, body: secBody});
+                }
+            }
+            // Store sections
+            sections.forEach(function(s) { window._docSections[s.id] = s; });
+            // Build TOC
+            var tocHtml = '';
+            if (sections.length > 1) {
+                var tocItems = sections.map(function(s, idx) {
+                    return `<div class="doc-toc-item" onclick="document.getElementById('${s.id}').scrollIntoView({behavior:'smooth'})">` +
+                        `<span class="doc-toc-num">${idx+1}.</span><span class="doc-toc-text">${escapeHtml(s.title)}</span><span class="doc-toc-dots"></span></div>`;
+                }).join('');
+                tocHtml = `<div class="doc-toc"><div class="doc-toc-title">📑 목차 · Table of Contents</div>${tocItems}</div>`;
+            }
+            // Build sections
+            var sectionsHtml = sections.map(function(s, idx) {
+                return `<div class="doc-section" id="${s.id}"><div class="doc-section-head">` +
+                    `<span class="doc-section-num">${idx+1}</span><span class="doc-section-title">${escapeHtml(s.title)}</span></div>` +
+                    `<div class="doc-section-body">${renderMarkdown(s.body)}</div></div>`;
+            }).join('');
+
+            return `<div class="doc-template">${coverHtml}${tocHtml}${sectionsHtml}</div>`;
+        }
+
+        // Live document editing: parse UPDATE/DELETE/ADD_AFTER markers
+        function applyDocumentUpdate(text) {
+            var updated = false;
+            // [UPDATE:section_id]...[/UPDATE]
+            text.replace(/\[UPDATE:([\w-]+)\]([\s\S]*?)\[\/UPDATE\]/gi, function(_, id, newContent) {
+                var el = document.getElementById(id);
+                if (el) {
+                    var body = el.querySelector('.doc-section-body');
+                    if (body) { body.innerHTML = renderMarkdown(newContent.trim()); el.classList.add('updated'); }
+                    window._docSections[id] = window._docSections[id] || {};
+                    window._docSections[id].body = newContent.trim();
+                    updated = true;
+                }
+            });
+            // [DELETE:section_id]
+            text.replace(/\[DELETE:([\w-]+)\]/gi, function(_, id) {
+                var el = document.getElementById(id);
+                if (el) { el.remove(); delete window._docSections[id]; updated = true; }
+            });
+            // [ADD_AFTER:section_id]...[/ADD_AFTER] with new section
+            text.replace(/\[ADD_AFTER:([\w-]+)\]\s*\[SECTION:([\w-]+):([^\]]+)\]([\s\S]*?)\[\/ADD_AFTER\]/gi, function(_, afterId, newId, title, body) {
+                var afterEl = document.getElementById(afterId);
+                if (afterEl) {
+                    var secCount = document.querySelectorAll('.doc-section').length + 1;
+                    var newHtml = `<div class="doc-section updated" id="${newId}"><div class="doc-section-head">` +
+                        `<span class="doc-section-num">${secCount}</span><span class="doc-section-title">${escapeHtml(title.trim())}</span></div>` +
+                        `<div class="doc-section-body">${renderMarkdown(body.replace(/\[\/SECTION\]/gi,'').trim())}</div></div>`;
+                    afterEl.insertAdjacentHTML('afterend', newHtml);
+                    window._docSections[newId] = {id: newId, title: title.trim(), body: body.trim()};
+                    updated = true;
+                }
+            });
+            // Re-number sections and update TOC if updated
+            if (updated) {
+                var allSec = document.querySelectorAll('.doc-section');
+                allSec.forEach(function(s, i) { var num = s.querySelector('.doc-section-num'); if(num) num.textContent = i+1; });
+                _rebuildTOC();
+            }
+            return updated;
+        }
+
+        function _rebuildTOC() {
+            var tocEl = document.querySelector('.doc-toc');
+            if (!tocEl) return;
+            var items = '';
+            document.querySelectorAll('.doc-section').forEach(function(s, i) {
+                var title = s.querySelector('.doc-section-title');
+                if (title) {
+                    items += `<div class="doc-toc-item" onclick="document.getElementById('${s.id}').scrollIntoView({behavior:'smooth'})">` +
+                        `<span class="doc-toc-num">${i+1}.</span><span class="doc-toc-text">${title.textContent}</span><span class="doc-toc-dots"></span></div>`;
+                }
+            });
+            tocEl.innerHTML = `<div class="doc-toc-title">📑 목차 · Table of Contents</div>${items}`;
+        }
+
         // ── Code block copy + preview buttons ──
         function addCodeButtons(container) {
             container.querySelectorAll('pre').forEach(pre => {
@@ -2500,7 +2659,16 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     }
                     // finalized update
                     updateStreamingMessage(streamId, fullText, true);
-                    if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                    // Check for document template or document update
+                    var docHtml = renderDocument(fullText);
+                    if (docHtml) {
+                        if (docEl) docEl.innerHTML = docHtml;
+                        outputArea.innerHTML = docHtml;
+                    } else if (window._docType && applyDocumentUpdate(fullText)) {
+                        if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                    } else {
+                        if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                    }
                     document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
                     // Auto-TTS in speaker mode
                     if (window._speakerMode) speakText(fullText);
