@@ -898,7 +898,7 @@
                 <div class="input-row" id="inputRow">
                     <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
-                    <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="Speaker Mode">🔊</button>
+                    <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
             </div>
@@ -3720,9 +3720,27 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 var t = '';
                 for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
                 document.getElementById('userInput').value = t;
-                if (e.results[e.results.length-1].isFinal) setTimeout(function(){ send(); }, 300);
+                if (e.results[e.results.length-1].isFinal) {
+                    // Driving mode: check for exit commands
+                    if (window._drivingMode) {
+                        var lower = t.trim().toLowerCase();
+                        if (lower.includes('운전모드 취소') || lower.includes('입력모드') || lower.includes('운전 모드 취소') || lower.includes('입력 모드')) {
+                            document.getElementById('userInput').value = '';
+                            toggleSpeakerMode();
+                            addMessage('System', '🚗 운전모드가 해제되었습니다.', 'system-msg');
+                            return;
+                        }
+                    }
+                    setTimeout(function(){ send(); }, 300);
+                }
             };
-            recognition.onerror = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
+            recognition.onerror = function(e) {
+                isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039);
+                // Driving mode: auto-restart mic on error (e.g. no-speech timeout)
+                if (window._drivingMode && e.error !== 'aborted') {
+                    setTimeout(function() { if (window._drivingMode && !isRecording) try { recognition.start(); } catch(ex){} }, 1000);
+                }
+            };
         } else {
             micBtn.style.display = 'none';
         }
@@ -3732,20 +3750,33 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             if (isRecording) recognition.stop(); else recognition.start();
         }
 
-        // ── Mobile Speaker Mode ──
-        window._speakerMode = false;
+        // ── Driving Mode (운전모드) ──
+        window._drivingMode = false;
+        window._speakerMode = false; // alias for auto-TTS check
         function toggleSpeakerMode() {
-            window._speakerMode = !window._speakerMode;
+            window._drivingMode = !window._drivingMode;
+            window._speakerMode = window._drivingMode;
             const btn = document.getElementById('speakerModeBtn');
             const body = document.body;
-            if (window._speakerMode) {
+            if (window._drivingMode) {
                 btn.classList.add('active');
                 body.classList.add('speaker-mode');
+                addMessage('System', '🚗 운전모드 ON — 마이크를 눌러 말하세요. AI 응답 후 자동으로 마이크가 다시 열립니다. "운전모드 취소" 또는 "입력모드"로 해제합니다.', 'system-msg');
+                // Auto-start mic
+                if (recognition && !isRecording) try { recognition.start(); } catch(ex){}
             } else {
                 btn.classList.remove('active');
                 body.classList.remove('speaker-mode');
                 if (currentAudio) { currentAudio.pause(); currentAudio = null; }
                 if (window.speechSynthesis) window.speechSynthesis.cancel();
+                if (isRecording) try { recognition.stop(); } catch(ex){}
+            }
+        }
+
+        // Auto-restart mic after TTS completes (driving mode)
+        function _drivingModeAutoMic() {
+            if (window._drivingMode && recognition && !isRecording) {
+                setTimeout(function() { if (window._drivingMode && !isRecording) try { recognition.start(); } catch(ex){} }, 800);
             }
         }
 
@@ -3765,6 +3796,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     if (ct.indexOf('audio') >= 0) {
                         var blob = await resp.blob();
                         currentAudio = new Audio(URL.createObjectURL(blob));
+                        currentAudio.onended = function() { _drivingModeAutoMic(); };
                         currentAudio.play();
                         return;
                     }
@@ -3773,7 +3805,10 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             if ('speechSynthesis' in window) {
                 var u = new SpeechSynthesisUtterance(cleaned);
                 u.lang = navigator.language || 'en-US';
+                u.onend = function() { _drivingModeAutoMic(); };
                 window.speechSynthesis.speak(u);
+            } else {
+                _drivingModeAutoMic();
             }
         }
 
