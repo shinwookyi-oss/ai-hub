@@ -35,8 +35,40 @@
         <div class="header-right">
             <div class="status-dots" id="statusDots"></div>
             <button class="theme-picker-btn" onclick="toggleThemePicker()" title="Theme">🎨</button>
+            <button class="theme-picker-btn" id="styleSettingsBtn" onclick="toggleStyleSettings()" title="Style Settings" style="display:none;">🔤</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <a href="/logout" class="logout-btn" data-i18n="logout">Logout</a>
+        </div>
+    </div>
+    <!-- Style Settings Popup (Owner Only) -->
+    <div class="theme-picker-popup" id="styleSettingsPopup" style="width:260px;right:60px;">
+        <div class="theme-picker-title">🔤 Style Settings</div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+            <label style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;">
+                Line Height <span id="lhVal" style="color:var(--accent2);font-weight:600;">0.9</span>
+            </label>
+            <input type="range" id="sliderLH" min="0.6" max="2.0" step="0.05" value="0.9" oninput="updateStyleSetting()" style="width:100%;accent-color:var(--accent);">
+            <label style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;">
+                Font Size <span id="fsVal" style="color:var(--accent2);font-weight:600;">13.5px</span>
+            </label>
+            <input type="range" id="sliderFS" min="10" max="20" step="0.5" value="13.5" oninput="updateStyleSetting()" style="width:100%;accent-color:var(--accent);">
+            <label style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;">
+                Letter Spacing <span id="lsVal" style="color:var(--accent2);font-weight:600;">-0.01em</span>
+            </label>
+            <input type="range" id="sliderLS" min="-0.05" max="0.1" step="0.005" value="-0.01" oninput="updateStyleSetting()" style="width:100%;accent-color:var(--accent);">
+            <label style="font-size:11px;color:var(--text2);">Font Family</label>
+            <select id="selectFont" onchange="updateStyleSetting()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;">
+                <option value="'Inter','Noto Sans KR',system-ui,sans-serif">Inter (Default)</option>
+                <option value="'Pretendard','Noto Sans KR',sans-serif">Pretendard</option>
+                <option value="'Noto Sans KR',sans-serif">Noto Sans KR</option>
+                <option value="system-ui,-apple-system,sans-serif">System UI</option>
+                <option value="'Roboto',sans-serif">Roboto</option>
+                <option value="'Consolas','Courier New',monospace">Monospace</option>
+            </select>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+                <button onclick="resetStyleSettings()" style="flex:1;padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.06);color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer;">Reset</button>
+                <button onclick="toggleStyleSettings()" style="flex:1;padding:4px 8px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">Done</button>
+            </div>
         </div>
     </div>
     <!-- Theme Picker Popup -->
@@ -2079,6 +2111,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         function initAdmin() {
             if (USER_TIER === 'owner') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
+                document.getElementById('styleSettingsBtn').style.display = 'inline-block';
+                loadStyleSettings();
             }
         }
         function openAdmin() {
@@ -2087,6 +2121,80 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         }
         function closeAdmin() {
             document.getElementById('adminOverlay').classList.remove('open');
+        }
+
+        // ── Style Settings (Owner Only) ──
+        function toggleStyleSettings() {
+            const popup = document.getElementById('styleSettingsPopup');
+            popup.classList.toggle('open');
+            // Close theme picker if open
+            document.getElementById('themePickerPopup').classList.remove('open');
+        }
+        function updateStyleSetting() {
+            const lh = document.getElementById('sliderLH').value;
+            const fs = document.getElementById('sliderFS').value;
+            const ls = document.getElementById('sliderLS').value;
+            const ff = document.getElementById('selectFont').value;
+            document.getElementById('lhVal').textContent = lh;
+            document.getElementById('fsVal').textContent = fs + 'px';
+            document.getElementById('lsVal').textContent = ls + 'em';
+            // Apply to chat area
+            const style = document.documentElement.style;
+            style.setProperty('--custom-lh', lh);
+            style.setProperty('--custom-fs', fs + 'px');
+            style.setProperty('--custom-ls', ls + 'em');
+            style.setProperty('--custom-ff', ff);
+            applyCustomStyles();
+            // Save
+            localStorage.setItem('aiHubStyleSettings', JSON.stringify({lh, fs, ls, ff}));
+        }
+        function applyCustomStyles() {
+            const r = document.documentElement;
+            const lh = getComputedStyle(r).getPropertyValue('--custom-lh').trim();
+            const fs = getComputedStyle(r).getPropertyValue('--custom-fs').trim();
+            const ls = getComputedStyle(r).getPropertyValue('--custom-ls').trim();
+            const ff = getComputedStyle(r).getPropertyValue('--custom-ff').trim();
+            if (!lh) return;
+            // Apply to msg-body and doc-answer
+            const sheet = document.getElementById('customStyleSheet') || (function(){
+                const s = document.createElement('style');
+                s.id = 'customStyleSheet';
+                document.head.appendChild(s);
+                return s;
+            })();
+            sheet.textContent = `
+                .msg-body { line-height: ${lh} !important; font-size: ${fs} !important; letter-spacing: ${ls} !important; font-family: ${ff} !important; }
+                .msg-body p, .msg-body li { line-height: ${lh} !important; }
+                .doc-answer { line-height: ${lh} !important; font-size: ${fs} !important; letter-spacing: ${ls} !important; font-family: ${ff} !important; }
+                .doc-answer li { line-height: ${lh} !important; }
+            `;
+        }
+        function loadStyleSettings() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('aiHubStyleSettings'));
+                if (saved) {
+                    document.getElementById('sliderLH').value = saved.lh || 0.9;
+                    document.getElementById('sliderFS').value = saved.fs || 13.5;
+                    document.getElementById('sliderLS').value = saved.ls || -0.01;
+                    if (saved.ff) {
+                        const sel = document.getElementById('selectFont');
+                        for (let i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === saved.ff) { sel.selectedIndex = i; break; }
+                        }
+                    }
+                    updateStyleSetting();
+                }
+            } catch(e) {}
+        }
+        function resetStyleSettings() {
+            document.getElementById('sliderLH').value = 0.9;
+            document.getElementById('sliderFS').value = 13.5;
+            document.getElementById('sliderLS').value = -0.01;
+            document.getElementById('selectFont').selectedIndex = 0;
+            updateStyleSetting();
+            localStorage.removeItem('aiHubStyleSettings');
+            const sheet = document.getElementById('customStyleSheet');
+            if (sheet) sheet.textContent = '';
         }
         async function adminLoadUsers() {
             const tbody = document.getElementById('adminUserList');
