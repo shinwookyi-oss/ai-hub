@@ -38,6 +38,11 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB upload limit
 
 hub = AIHub()
 
+# ──────────────────────────── Health Check (Render) ────────────────────────
+@app.route('/healthz')
+def healthz():
+    return 'ok', 200
+
 # ──────────────────────────── Model Catalog & Tier Access ────────────────────
 MODEL_CATALOG = [
     {"id": "chatgpt:gpt-4o-mini", "provider": "chatgpt", "model": "gpt-4o-mini", "label": "GPT-4o Mini", "cost": "low"},
