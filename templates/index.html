@@ -895,9 +895,10 @@
                     <button class="upload-btn" id="urlFetchBtn" onclick="fetchUrl()">Fetch</button>
                 </div>
                 </div>
-                <div class="input-row">
+                <div class="input-row" id="inputRow">
                     <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
+                    <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="Speaker Mode">🔊</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
             </div>
@@ -2459,6 +2460,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     updateStreamingMessage(streamId, fullText, true);
                     if (docEl) docEl.innerHTML = renderMarkdown(fullText);
                     document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
+                    // Auto-TTS in speaker mode
+                    if (window._speakerMode) speakText(fullText);
                     // Save AI response to conversation history
                     if (supabaseEnabled && currentConvId) {
                         saveMsg({role:'assistant', content: fullText, provider: currentProvider, speaker: currentPersona || currentProvider});
@@ -3727,6 +3730,23 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         function toggleMic() {
             if (!recognition) return;
             if (isRecording) recognition.stop(); else recognition.start();
+        }
+
+        // ── Mobile Speaker Mode ──
+        window._speakerMode = false;
+        function toggleSpeakerMode() {
+            window._speakerMode = !window._speakerMode;
+            const btn = document.getElementById('speakerModeBtn');
+            const body = document.body;
+            if (window._speakerMode) {
+                btn.classList.add('active');
+                body.classList.add('speaker-mode');
+            } else {
+                btn.classList.remove('active');
+                body.classList.remove('speaker-mode');
+                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+            }
         }
 
         // Text-to-Speech (OpenAI TTS with browser fallback)
