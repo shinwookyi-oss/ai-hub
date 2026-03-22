@@ -543,10 +543,12 @@
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
             <div id="modeBasic">
                 <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
+                {% if usertier == 'owner' %}
                 <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
                 <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
                 <button class="mode-btn" data-mode="best" onclick="setMode('best')" data-i18n="best">🏆 Best Answer</button>
+                {% endif %}
                 <button class="mode-btn" data-mode="image" onclick="setMode('image')" style="background:linear-gradient(135deg,rgba(232,67,147,0.15),rgba(108,92,231,0.1));border-color:rgba(232,67,147,0.4);color:#e84393;">🎨 Image Gen</button>
             </div>
             <!-- Templates -->
