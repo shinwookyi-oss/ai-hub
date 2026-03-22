@@ -78,6 +78,39 @@
             text-align: center; padding: 8px 20px;
         }
         body.speaker-mode #drivingStatus { display: block !important; }
+        /* AI Speaking: mic becomes speaker with equalizer bars */
+        body.speaker-mode #micBtn.ai-speaking {
+            border-color: #00b894 !important;
+            box-shadow: 0 4px 40px rgba(0, 184, 148, 0.5) !important;
+            animation: none !important;
+        }
+        body.speaker-mode #micBtn.ai-speaking::before,
+        body.speaker-mode #micBtn.ai-speaking::after {
+            content: '' !important; position: absolute !important;
+            inset: -10px !important; border-radius: 50% !important;
+            border: 3px solid rgba(0, 184, 148, 0.5) !important;
+            animation: waveRing 2s ease-out infinite !important;
+        }
+        body.speaker-mode #micBtn.ai-speaking::after {
+            animation-delay: 0.7s !important;
+        }
+        /* Equalizer bars container */
+        #drivingEqualizer {
+            display: none; justify-content: center; align-items: flex-end;
+            gap: 4px; height: 30px; margin-bottom: 8px;
+        }
+        body.speaker-mode .ai-speaking-active #drivingEqualizer { display: flex !important; }
+        @keyframes eqBar {
+            0%, 100% { height: 6px; }
+            25% { height: 22px; }
+            50% { height: 12px; }
+            75% { height: 28px; }
+        }
+        .eq-bar { width: 5px; border-radius: 3px; background: #00b894; animation: eqBar 0.8s ease-in-out infinite; }
+        .eq-bar:nth-child(2) { animation-delay: 0.15s; }
+        .eq-bar:nth-child(3) { animation-delay: 0.3s; }
+        .eq-bar:nth-child(4) { animation-delay: 0.45s; }
+        .eq-bar:nth-child(5) { animation-delay: 0.6s; }
         /* Exit button */
         #drivingExitBtn { display: none; }
         body.speaker-mode #drivingExitBtn {
@@ -981,6 +1014,7 @@
                     </select>
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
+                    <div id="drivingEqualizer"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>
                     <div id="drivingStatus">🎙️ 마이크를 눌러 말하세요</div>
                 </div>
                 <button id="drivingExitBtn" onclick="toggleSpeakerMode()">✕ 운전모드 종료</button>
@@ -4120,17 +4154,21 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             u.rate = 1.1;
             u.pitch = 1.0;
             window._isSpeaking = true;
+            var mic = document.getElementById('micBtn');
             var ds = document.getElementById('drivingStatus');
+            var row = document.getElementById('inputRow');
+            // Swap to speaker mode visual
+            if (mic) { mic.textContent = '🔊'; mic.classList.add('ai-speaking'); }
+            if (row) row.classList.add('ai-speaking-active');
             if (ds) ds.innerHTML = '🔊 AI가 말하고 있습니다...';
-            u.onend = function() {
+            function _resetSpeakerVisual() {
                 window._isSpeaking = false;
+                if (mic) { mic.textContent = String.fromCodePoint(127897, 65039); mic.classList.remove('ai-speaking'); }
+                if (row) row.classList.remove('ai-speaking-active');
                 if (ds && window._speakerMode) ds.innerHTML = '🎙️ 마이크를 눌러 말하세요';
-                _drivingModeAutoMic();
-            };
-            u.onerror = function() {
-                window._isSpeaking = false;
-                if (ds && window._speakerMode) ds.innerHTML = '🎙️ 마이크를 눌러 말하세요';
-            };
+            }
+            u.onend = function() { _resetSpeakerVisual(); _drivingModeAutoMic(); };
+            u.onerror = function() { _resetSpeakerVisual(); };
             window.speechSynthesis.speak(u);
         }
 
