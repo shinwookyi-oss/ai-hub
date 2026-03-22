@@ -9,7 +9,7 @@
 
 **Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface with AI-generated personas, multi-stakeholder analysis modes, and enterprise-grade security.
 
-🌐 **Live Demo**: [https://ai-hub-zqpf.onrender.com](https://ai-hub-zqpf.onrender.com/)
+✨ **Live Demo**: [https://firstaibot.com](https://firstaibot.com)
 
 ![AI Hub Screenshot](screenshots/main-ui.png)
 
@@ -78,6 +78,21 @@ Sidebar **Strategy** section with 5 professional analysis frameworks:
 - Type `/analyze [topic]` or `/분석 [주제]` for structured data analysis
 - Auto-generates: overview, data tables, key insights, visualization suggestions, conclusions
 - Works with uploaded file data when available
+
+### 📝 Output Format Selector
+Choose how AI formats its response before sending your message:
+| Format | Description |
+|--------|-------------|
+| 📋 **1페이지 요약서** | Concise 1-page summary |
+| 📊 **슬라이드** | Presentation slide structure |
+| 📑 **보고서** | Executive summary + analysis + conclusion |
+| ✉️ **편지** | Formal letter format |
+| 📧 **이메일** | Business email format |
+| 📅 **회의록** | Meeting notes with action items |
+| ⚖️ **비교분석표** | Side-by-side comparison table |
+| ✅ **체크리스트** | Prioritized checklist |
+| 💼 **제안서** | Persuasive proposal |
+| ❓ **FAQ** | Q&A format |
 
 ### ✏️ Editable Document Editor
 - **Edit Mode** — Click ✏️ Edit button to make the output panel editable (like Notion/Google Docs)
@@ -200,6 +215,13 @@ Each persona **accumulates knowledge** and evolves through conversations:
   - Conversations → AI continues the discussion
   - Slides → AI suggests improvements and additional content
   - Files → AI analyzes and summarizes the content
+
+### 📝 Quick Notes
+- **Sidebar button** with note count badge
+- **Create/Edit/Delete** notes with 6 color labels (💜💚💛🧡💙❤️)
+- **localStorage** persistence — instant save, no server needed
+- **📂 Workspace Sync** — export all notes to Workspace as Markdown
+- **Guest tier**: Notes work locally but Workspace sync is hidden; logout clears all data
 
 ### 📊 Responsive Spreadsheet
 - **Auto-render** — CSV/Excel files automatically display as interactive spreadsheets in the Output panel
@@ -403,7 +425,7 @@ Open http://localhost:5000
 1. Connect your GitHub repo to [Render](https://render.com)
 2. Set **Environment Variables** with your API keys
 3. Build Command: `pip install -r requirements.txt`
-4. Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --max-requests 200`
+4. Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1`
 
 ## 🐳 Docker / NAS Deployment (QNAP)
 
@@ -430,7 +452,7 @@ ai-hub/
 ├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin panel)
 ├── ai_hub.py           # AIHub core (5 providers, 75+ personas, AI persona gen, 11 modes, memory, RAG)
 ├── templates/
-│   ├── index.html      # Main SPA (2500+ lines: UI + JS logic + templates + strategy)
+│   ├── index.html      # Main SPA (4800+ lines: UI + JS logic + templates + strategy)
 │   └── login.html      # Login page with Spline 3D background
 ├── static/
 │   ├── css/style.css   # Full design system (5 themes, responsive, 580+ lines)
