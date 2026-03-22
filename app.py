@@ -38,6 +38,88 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB upload limit
 
 hub = AIHub()
 
+# ──────────────────────────── Model Catalog & Tier Access ────────────────────
+MODEL_CATALOG = [
+    {"id": "chatgpt:gpt-4o-mini", "provider": "chatgpt", "model": "gpt-4o-mini", "label": "GPT-4o Mini", "cost": "low"},
+    {"id": "chatgpt:gpt-4o", "provider": "chatgpt", "model": "gpt-4o", "label": "GPT-4o", "cost": "medium"},
+    {"id": "chatgpt:o3", "provider": "chatgpt", "model": "o3", "label": "GPT o3", "cost": "high"},
+    {"id": "gemini:gemini-2.5-flash", "provider": "gemini", "model": "gemini-2.5-flash", "label": "Gemini Flash", "cost": "low"},
+    {"id": "gemini:gemini-2.5-pro", "provider": "gemini", "model": "gemini-2.5-pro", "label": "Gemini Pro", "cost": "medium"},
+    {"id": "claude:claude-sonnet-4-20250514", "provider": "claude", "model": "claude-sonnet-4-20250514", "label": "Claude Sonnet 4", "cost": "medium"},
+    {"id": "grok:grok-3-mini-fast", "provider": "grok", "model": "grok-3-mini-fast", "label": "Grok Mini", "cost": "low"},
+    {"id": "azure:gpt-4o-mini", "provider": "azure", "model": "gpt-4o-mini", "label": "Azure GPT-4o Mini", "cost": "low"},
+]
+
+# Tier → default model IDs (what auto-routing selects from)
+TIER_MODELS = {
+    "owner": [m["id"] for m in MODEL_CATALOG],  # All models
+    "admin": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini"],
+    "premium": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast"],
+    "free": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
+    "guest": ["chatgpt:gpt-4o-mini"],
+}
+
+# Auto-routing: classify question complexity → pick appropriate model tier
+def auto_route_model(prompt: str, tier: str) -> tuple:
+    """Return (provider, model) based on prompt complexity and user tier."""
+    text = prompt.lower().strip()
+    length = len(text)
+
+    # Complexity signals
+    complex_keywords = ["분석", "전략", "보고서", "analyze", "strategy", "report", "compare",
+                        "evaluate", "설계", "design", "architecture", "세무", "tax", "법률",
+                        "legal", "financial", "코드", "code", "debug", "refactor", "audit"]
+    simple_keywords = ["번역", "translate", "요약", "summarize", "계산", "calculate",
+                       "날짜", "date", "감사합니다", "안녕"]
+
+    is_complex = any(kw in text for kw in complex_keywords) or length > 500
+    is_simple = any(kw in text for kw in simple_keywords) and length < 200
+
+    allowed = TIER_MODELS.get(tier, TIER_MODELS["guest"])
+
+    if tier == "guest":
+        return "chatgpt", "gpt-4o-mini"
+    elif tier == "owner":
+        if is_complex:
+            return "chatgpt", "o3"
+        elif is_simple:
+            return "chatgpt", "gpt-4o-mini"
+        else:
+            return "chatgpt", "gpt-4o"
+    elif tier == "admin":
+        if is_complex:
+            if "chatgpt:gpt-4o" in allowed:
+                return "chatgpt", "gpt-4o"
+            return "gemini", "gemini-2.5-pro"
+        else:
+            return "chatgpt", "gpt-4o-mini"
+    elif tier == "premium":
+        if is_complex:
+            if "claude:claude-sonnet-4-20250514" in allowed:
+                return "claude", "claude-sonnet-4-20250514"
+            return "gemini", "gemini-2.5-flash"
+        else:
+            return "chatgpt", "gpt-4o-mini"
+    else:
+        return "chatgpt", "gpt-4o-mini"
+
+def get_user_allowed_models(username: str, tier: str) -> list:
+    """Get allowed model IDs for a user (tier defaults + overrides from Supabase)."""
+    base_models = list(TIER_MODELS.get(tier, TIER_MODELS["guest"]))
+    if not supabase_client:
+        return base_models
+    try:
+        r = supabase_client.table("user_model_access").select("model_id,action").eq("username", username).execute()
+        if r.data:
+            for row in r.data:
+                if row["action"] == "add" and row["model_id"] not in base_models:
+                    base_models.append(row["model_id"])
+                elif row["action"] == "remove" and row["model_id"] in base_models:
+                    base_models.remove(row["model_id"])
+    except Exception:
+        pass
+    return base_models
+
 APP_USERNAME = os.getenv("APP_USERNAME", "admin")
 _raw_password = os.getenv("APP_PASSWORD", "aihub2026")
 
@@ -502,6 +584,86 @@ def _ensure_user_persona_registered(persona_key, username):
             pass
     return persona_key in hub.PERSONAS
 
+# ──────────────────────────── Model Access API ────────────────────────────
+@app.route("/api/available-models", methods=["GET"])
+@login_required
+def api_available_models():
+    """Return models available to current user (tier + overrides)."""
+    username = session.get("username", "")
+    tier = session.get("usertier", "free")
+    allowed_ids = get_user_allowed_models(username, tier)
+    # Check for fixed model
+    fixed_model = None
+    if supabase_client:
+        try:
+            r = supabase_client.table("user_model_access").select("model_id").eq("username", username).eq("action", "fixed").limit(1).execute()
+            if r.data:
+                fixed_model = r.data[0]["model_id"]
+        except Exception:
+            pass
+    models = [m for m in MODEL_CATALOG if m["id"] in allowed_ids]
+    return jsonify({
+        "models": models,
+        "tier": tier,
+        "fixed_model": fixed_model,
+        "can_select": tier == "owner",  # Only owner can manually select
+    })
+
+@app.route("/api/user-models", methods=["GET"])
+@login_required
+def api_user_models_list():
+    """Owner only: list all user model overrides."""
+    if session.get("usertier") != "owner":
+        return jsonify({"success": False, "error": "Owner only"}), 403
+    if not supabase_client:
+        return jsonify({"overrides": []})
+    try:
+        r = supabase_client.table("user_model_access").select("*").order("username").execute()
+        return jsonify({"overrides": r.data or [], "catalog": MODEL_CATALOG, "tiers": TIER_MODELS})
+    except Exception as e:
+        return jsonify({"overrides": [], "error": str(e)})
+
+@app.route("/api/user-models", methods=["POST"])
+@login_required
+def api_user_models_set():
+    """Owner only: set model override for a user (add/remove/fixed)."""
+    if session.get("usertier") != "owner":
+        return jsonify({"success": False, "error": "Owner only"}), 403
+    if not supabase_client:
+        return jsonify({"success": False, "error": "No database"})
+    data = request.json
+    username = data.get("username", "")
+    model_id = data.get("model_id", "")
+    action = data.get("action", "add")  # add, remove, fixed
+    if not username or not model_id:
+        return jsonify({"success": False, "error": "Missing username or model_id"})
+    try:
+        # If setting fixed, remove any existing fixed for this user first
+        if action == "fixed":
+            supabase_client.table("user_model_access").delete().eq("username", username).eq("action", "fixed").execute()
+        # Upsert
+        supabase_client.table("user_model_access").upsert({
+            "username": username,
+            "model_id": model_id,
+            "action": action
+        }, on_conflict="username,model_id").execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/user-models/<override_id>", methods=["DELETE"])
+@login_required
+def api_user_models_delete(override_id):
+    """Owner only: delete a model override."""
+    if session.get("usertier") != "owner":
+        return jsonify({"success": False, "error": "Owner only"}), 403
+    if not supabase_client:
+        return jsonify({"success": False})
+    try:
+        supabase_client.table("user_model_access").delete().eq("id", override_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/web-search/status", methods=["GET"])
 @login_required
@@ -791,9 +953,47 @@ def api_ask_stream():
                     except Exception:
                         pass
             else:
-                # Inject chat context as system prompt for cross-provider continuity
-                sys_prompt = history_context if history_context else ""
-                for chunk in hub.ask_stream(prompt, provider=provider, system_prompt=sys_prompt):
+                # ── Smart Model Routing ──
+                user_tier = session.get("usertier", "free")
+                selected_model = data.get("model", "")  # Owner manual selection
+                route_provider = provider
+                route_model = None
+
+                if selected_model and ":" in selected_model and user_tier == "owner":
+                    # Owner manually selected a model
+                    route_provider, route_model = selected_model.split(":", 1)
+                else:
+                    # Check for fixed model (Owner-assigned bypass)
+                    fixed_model = None
+                    if supabase_client:
+                        try:
+                            fr = supabase_client.table("user_model_access").select("model_id").eq("username", user_id).eq("action", "fixed").limit(1).execute()
+                            if fr.data:
+                                fixed_model = fr.data[0]["model_id"]
+                        except Exception:
+                            pass
+                    if fixed_model and ":" in fixed_model:
+                        route_provider, route_model = fixed_model.split(":", 1)
+                    else:
+                        # Auto-route based on complexity
+                        route_provider, route_model = auto_route_model(prompt, user_tier)
+
+                # Inject user memory + chat context
+                sys_prompt = ""
+                if supabase_client and user_tier != "guest":
+                    try:
+                        mem_r = supabase_client.table("user_memory").select("content").eq(
+                            "username", user_id
+                        ).order("created_at", desc=True).limit(20).execute()
+                        if mem_r.data:
+                            mem_lines = [m["content"] for m in mem_r.data]
+                            sys_prompt += "\n[USER MEMORY]\n" + "\n".join(f"- {m}" for m in mem_lines) + "\n[END USER MEMORY]\n"
+                    except Exception:
+                        pass
+                if history_context:
+                    sys_prompt += "\n" + history_context if sys_prompt else history_context
+
+                for chunk in hub.ask_stream(prompt, provider=route_provider, system_prompt=sys_prompt, model=route_model):
                     if chunk:
                         full_content += chunk
                         yield chunk

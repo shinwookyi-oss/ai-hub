@@ -301,7 +301,7 @@ class AIHub:
             self._gemini_model_obj = genai.Client(api_key=self.gemini_api_key)
         return self._gemini_model_obj
 
-    def _ask_chatgpt(self, prompt: str, system_prompt: str = "") -> AIResponse:
+    def _ask_chatgpt(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask ChatGPT"""
         import time
         start = time.time()
@@ -314,7 +314,7 @@ class AIHub:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self.chatgpt_model,
+                model=model or self.chatgpt_model,
                 messages=messages,
                 max_tokens=8192,
             )
@@ -323,18 +323,18 @@ class AIHub:
             self._add_to_history("chatgpt", "assistant", content)
             return AIResponse(
                 provider="ChatGPT",
-                model=self.chatgpt_model,
+                model=model or self.chatgpt_model,
                 content=content,
                 elapsed_seconds=round(time.time() - start, 2),
             )
         except Exception as e:
             return AIResponse(
-                provider="ChatGPT", model=self.chatgpt_model,
+                provider="ChatGPT", model=model or self.chatgpt_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
-    def _ask_gemini(self, prompt: str, system_prompt: str = "") -> AIResponse:
+    def _ask_gemini(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask Gemini"""
         import time
         start = time.time()
@@ -342,7 +342,7 @@ class AIHub:
             client = self._get_gemini_client()
             full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
             response = client.models.generate_content(
-                model=self.gemini_model,
+                model=model or self.gemini_model,
                 contents=full_prompt,
             )
             content = response.text
@@ -350,18 +350,18 @@ class AIHub:
             self._add_to_history("gemini", "assistant", content)
             return AIResponse(
                 provider="Gemini",
-                model=self.gemini_model,
+                model=model or self.gemini_model,
                 content=content,
                 elapsed_seconds=round(time.time() - start, 2),
             )
         except Exception as e:
             return AIResponse(
-                provider="Gemini", model=self.gemini_model,
+                provider="Gemini", model=model or self.gemini_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
-    def _ask_azure(self, prompt: str, system_prompt: str = "") -> AIResponse:
+    def _ask_azure(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask Azure OpenAI"""
         import time
         start = time.time()
@@ -374,7 +374,7 @@ class AIHub:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self.azure_model,
+                model=model or self.azure_model,
                 messages=messages,
                 max_tokens=8192,
             )
@@ -383,13 +383,13 @@ class AIHub:
             self._add_to_history("azure", "assistant", content)
             return AIResponse(
                 provider="Azure OpenAI",
-                model=self.azure_model,
+                model=model or self.azure_model,
                 content=content,
                 elapsed_seconds=round(time.time() - start, 2),
             )
         except Exception as e:
             return AIResponse(
-                provider="Azure OpenAI", model=self.azure_model,
+                provider="Azure OpenAI", model=model or self.azure_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
@@ -410,14 +410,14 @@ class AIHub:
             )
         return self._grok_client
 
-    def _ask_claude(self, prompt: str, system_prompt: str = "") -> AIResponse:
+    def _ask_claude(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask Claude (Anthropic)"""
         import time
         start = time.time()
         try:
             client = self._get_claude_client()
             kwargs = {
-                "model": self.claude_model,
+                "model": model or self.claude_model,
                 "max_tokens": 8192,
                 "messages": [{"role": "user", "content": prompt}],
             }
@@ -429,18 +429,18 @@ class AIHub:
             self._add_to_history("claude", "assistant", content)
             return AIResponse(
                 provider="Claude",
-                model=self.claude_model,
+                model=model or self.claude_model,
                 content=content,
                 elapsed_seconds=round(time.time() - start, 2),
             )
         except Exception as e:
             return AIResponse(
-                provider="Claude", model=self.claude_model,
+                provider="Claude", model=model or self.claude_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
-    def _ask_grok(self, prompt: str, system_prompt: str = "") -> AIResponse:
+    def _ask_grok(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask Grok (xAI)"""
         import time
         start = time.time()
@@ -452,7 +452,7 @@ class AIHub:
             messages.extend(self._history["grok"])
             messages.append({"role": "user", "content": prompt})
             response = client.chat.completions.create(
-                model=self.grok_model,
+                model=model or self.grok_model,
                 messages=messages,
                 max_tokens=8192,
             )
@@ -461,20 +461,20 @@ class AIHub:
             self._add_to_history("grok", "assistant", content)
             return AIResponse(
                 provider="Grok",
-                model=self.grok_model,
+                model=model or self.grok_model,
                 content=content,
                 elapsed_seconds=round(time.time() - start, 2),
             )
         except Exception as e:
             return AIResponse(
-                provider="Grok", model=self.grok_model,
+                provider="Grok", model=model or self.grok_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
 
     # ──────────────────────────── Stream Generators ────────────────────────────
 
-    def _ask_chatgpt_stream(self, prompt: str, system_prompt: str = ""):
+    def _ask_chatgpt_stream(self, prompt: str, system_prompt: str = "", model: str = None):
         try:
             client = self._get_openai_client()
             messages = []
@@ -484,7 +484,7 @@ class AIHub:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self.chatgpt_model,
+                model=model or self.chatgpt_model,
                 messages=messages,
                 stream=True,
                 max_tokens=8192,
@@ -500,7 +500,7 @@ class AIHub:
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
-    def _ask_azure_stream(self, prompt: str, system_prompt: str = ""):
+    def _ask_azure_stream(self, prompt: str, system_prompt: str = "", model: str = None):
         try:
             client = self._get_azure_client()
             messages = []
@@ -510,7 +510,7 @@ class AIHub:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self.azure_model,
+                model=model or self.azure_model,
                 messages=messages,
                 stream=True,
                 max_tokens=8192,
@@ -526,13 +526,13 @@ class AIHub:
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
-    def _ask_gemini_stream(self, prompt: str, system_prompt: str = ""):
+    def _ask_gemini_stream(self, prompt: str, system_prompt: str = "", model: str = None):
         try:
             client = self._get_gemini_client()
             full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
             full_content = ""
             for chunk in client.models.generate_content_stream(
-                model=self.gemini_model,
+                model=model or self.gemini_model,
                 contents=full_prompt,
             ):
                 if chunk.text:
@@ -543,11 +543,11 @@ class AIHub:
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
-    def _ask_claude_stream(self, prompt: str, system_prompt: str = ""):
+    def _ask_claude_stream(self, prompt: str, system_prompt: str = "", model: str = None):
         try:
             client = self._get_claude_client()
             kwargs = {
-                "model": self.claude_model,
+                "model": model or self.claude_model,
                 "max_tokens": 8192,
                 "messages": [{"role": "user", "content": prompt}],
             }
@@ -564,7 +564,7 @@ class AIHub:
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
-    def _ask_grok_stream(self, prompt: str, system_prompt: str = ""):
+    def _ask_grok_stream(self, prompt: str, system_prompt: str = "", model: str = None):
         try:
             client = self._get_grok_client()
             messages = []
@@ -574,7 +574,7 @@ class AIHub:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self.grok_model,
+                model=model or self.grok_model,
                 messages=messages,
                 stream=True,
                 max_tokens=8192,
@@ -616,7 +616,7 @@ class AIHub:
         "When file content is provided, analyze it thoroughly with structured sections and data-driven insights."
     )
 
-    def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "") -> AIResponse:
+    def ask(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask a specific AI provider. Automatically responds in the user's language."""
         provider = provider.lower()
         # Prepend language instruction to system prompt
@@ -624,15 +624,15 @@ class AIHub:
         if system_prompt:
             lang_sys = f"{self._LANG_INSTRUCTION}\n\n{system_prompt}"
         if provider == "chatgpt":
-            return self._ask_chatgpt(prompt, lang_sys)
+            return self._ask_chatgpt(prompt, lang_sys, model=model)
         elif provider == "gemini":
-            return self._ask_gemini(prompt, lang_sys)
+            return self._ask_gemini(prompt, lang_sys, model=model)
         elif provider == "azure":
-            return self._ask_azure(prompt, lang_sys)
+            return self._ask_azure(prompt, lang_sys, model=model)
         elif provider == "claude":
-            return self._ask_claude(prompt, lang_sys)
+            return self._ask_claude(prompt, lang_sys, model=model)
         elif provider == "grok":
-            return self._ask_grok(prompt, lang_sys)
+            return self._ask_grok(prompt, lang_sys, model=model)
         else:
             return AIResponse(
                 provider=provider, model="unknown",
@@ -640,7 +640,7 @@ class AIHub:
                 error=f"Unknown provider: {provider}. Available: {self.PROVIDERS}",
             )
 
-    def ask_stream(self, prompt: str, provider: str = "chatgpt", system_prompt: str = ""):
+    def ask_stream(self, prompt: str, provider: str = "chatgpt", system_prompt: str = "", model: str = None):
         """Ask a specific AI provider and yield streaming text chunks."""
         provider = provider.lower()
         lang_sys = self._LANG_INSTRUCTION
@@ -648,15 +648,15 @@ class AIHub:
             lang_sys = f"{self._LANG_INSTRUCTION}\n\n{system_prompt}"
         
         if provider == "chatgpt":
-            return self._ask_chatgpt_stream(prompt, lang_sys)
+            return self._ask_chatgpt_stream(prompt, lang_sys, model=model)
         elif provider == "gemini":
-            return self._ask_gemini_stream(prompt, lang_sys)
+            return self._ask_gemini_stream(prompt, lang_sys, model=model)
         elif provider == "azure":
-            return self._ask_azure_stream(prompt, lang_sys)
+            return self._ask_azure_stream(prompt, lang_sys, model=model)
         elif provider == "claude":
-            return self._ask_claude_stream(prompt, lang_sys)
+            return self._ask_claude_stream(prompt, lang_sys, model=model)
         elif provider == "grok":
-            return self._ask_grok_stream(prompt, lang_sys)
+            return self._ask_grok_stream(prompt, lang_sys, model=model)
         else:
             def err_gen():
                 yield f"Unknown provider: {provider}. Available: {self.PROVIDERS}"
