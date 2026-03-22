@@ -65,6 +65,22 @@
                 <option value="'Roboto',sans-serif">Roboto</option>
                 <option value="'Consolas','Courier New',monospace">Monospace</option>
             </select>
+            <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+            <div style="font-size:10px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Margins (px)</div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px;align-items:center;font-size:11px;color:var(--text2);">
+                <span>Heading ↑</span><input type="number" id="mHdTop" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>Heading ↓</span><input type="number" id="mHdBot" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>Paragraph ↑</span><input type="number" id="mPTop" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>Paragraph ↓</span><input type="number" id="mPBot" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>List Item ↑</span><input type="number" id="mLiTop" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+                <span>List Item ↓</span><input type="number" id="mLiBot" min="0" max="20" value="0" step="1" oninput="updateStyleSetting()" style="width:45px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">
+                <span style="font-size:10px;color:var(--text2)">px</span>
+            </div>
             <div style="display:flex;gap:6px;margin-top:4px;">
                 <button onclick="resetStyleSettings()" style="flex:1;padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.06);color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer;">Reset</button>
                 <button onclick="toggleStyleSettings()" style="flex:1;padding:4px 8px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">Done</button>
@@ -2135,38 +2151,34 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             const fs = document.getElementById('sliderFS').value;
             const ls = document.getElementById('sliderLS').value;
             const ff = document.getElementById('selectFont').value;
+            const mHdTop = document.getElementById('mHdTop').value;
+            const mHdBot = document.getElementById('mHdBot').value;
+            const mPTop = document.getElementById('mPTop').value;
+            const mPBot = document.getElementById('mPBot').value;
+            const mLiTop = document.getElementById('mLiTop').value;
+            const mLiBot = document.getElementById('mLiBot').value;
             document.getElementById('lhVal').textContent = lh;
             document.getElementById('fsVal').textContent = fs + 'px';
             document.getElementById('lsVal').textContent = ls + 'em';
-            // Apply to chat area
-            const style = document.documentElement.style;
-            style.setProperty('--custom-lh', lh);
-            style.setProperty('--custom-fs', fs + 'px');
-            style.setProperty('--custom-ls', ls + 'em');
-            style.setProperty('--custom-ff', ff);
-            applyCustomStyles();
-            // Save
-            localStorage.setItem('aiHubStyleSettings', JSON.stringify({lh, fs, ls, ff}));
+            applyCustomStylesDirect({lh, fs, ls, ff, mHdTop, mHdBot, mPTop, mPBot, mLiTop, mLiBot});
+            localStorage.setItem('aiHubStyleSettings', JSON.stringify({lh, fs, ls, ff, mHdTop, mHdBot, mPTop, mPBot, mLiTop, mLiBot}));
         }
-        function applyCustomStyles() {
-            const r = document.documentElement;
-            const lh = getComputedStyle(r).getPropertyValue('--custom-lh').trim();
-            const fs = getComputedStyle(r).getPropertyValue('--custom-fs').trim();
-            const ls = getComputedStyle(r).getPropertyValue('--custom-ls').trim();
-            const ff = getComputedStyle(r).getPropertyValue('--custom-ff').trim();
-            if (!lh) return;
-            // Apply to msg-body and doc-answer
+        function applyCustomStylesDirect(s) {
             const sheet = document.getElementById('customStyleSheet') || (function(){
-                const s = document.createElement('style');
-                s.id = 'customStyleSheet';
-                document.head.appendChild(s);
-                return s;
+                const el = document.createElement('style');
+                el.id = 'customStyleSheet';
+                document.head.appendChild(el);
+                return el;
             })();
             sheet.textContent = `
-                .msg-body { line-height: ${lh} !important; font-size: ${fs} !important; letter-spacing: ${ls} !important; font-family: ${ff} !important; }
-                .msg-body p, .msg-body li { line-height: ${lh} !important; }
-                .doc-answer { line-height: ${lh} !important; font-size: ${fs} !important; letter-spacing: ${ls} !important; font-family: ${ff} !important; }
-                .doc-answer li { line-height: ${lh} !important; }
+                .msg-body { line-height: ${s.lh} !important; font-size: ${s.fs}px !important; letter-spacing: ${s.ls}em !important; font-family: ${s.ff} !important; }
+                .msg-body p { line-height: ${s.lh} !important; margin-top: ${s.mPTop}px !important; margin-bottom: ${s.mPBot}px !important; }
+                .msg-body li { line-height: ${s.lh} !important; margin-top: ${s.mLiTop}px !important; margin-bottom: ${s.mLiBot}px !important; }
+                .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin-top: ${s.mHdTop}px !important; margin-bottom: ${s.mHdBot}px !important; }
+                .doc-answer { line-height: ${s.lh} !important; font-size: ${s.fs}px !important; letter-spacing: ${s.ls}em !important; font-family: ${s.ff} !important; }
+                .doc-answer p { margin-top: ${s.mPTop}px !important; margin-bottom: ${s.mPBot}px !important; }
+                .doc-answer li { line-height: ${s.lh} !important; margin-top: ${s.mLiTop}px !important; margin-bottom: ${s.mLiBot}px !important; }
+                .doc-answer h1,.doc-answer h2,.doc-answer h3 { margin-top: ${s.mHdTop}px !important; margin-bottom: ${s.mHdBot}px !important; }
             `;
         }
         function loadStyleSettings() {
@@ -2176,6 +2188,12 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     document.getElementById('sliderLH').value = saved.lh || 0.9;
                     document.getElementById('sliderFS').value = saved.fs || 13.5;
                     document.getElementById('sliderLS').value = saved.ls || -0.01;
+                    document.getElementById('mHdTop').value = saved.mHdTop || 0;
+                    document.getElementById('mHdBot').value = saved.mHdBot || 0;
+                    document.getElementById('mPTop').value = saved.mPTop || 0;
+                    document.getElementById('mPBot').value = saved.mPBot || 0;
+                    document.getElementById('mLiTop').value = saved.mLiTop || 0;
+                    document.getElementById('mLiBot').value = saved.mLiBot || 0;
                     if (saved.ff) {
                         const sel = document.getElementById('selectFont');
                         for (let i = 0; i < sel.options.length; i++) {
@@ -2191,6 +2209,12 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             document.getElementById('sliderFS').value = 13.5;
             document.getElementById('sliderLS').value = -0.01;
             document.getElementById('selectFont').selectedIndex = 0;
+            document.getElementById('mHdTop').value = 0;
+            document.getElementById('mHdBot').value = 0;
+            document.getElementById('mPTop').value = 0;
+            document.getElementById('mPBot').value = 0;
+            document.getElementById('mLiTop').value = 0;
+            document.getElementById('mLiBot').value = 0;
             updateStyleSetting();
             localStorage.removeItem('aiHubStyleSettings');
             const sheet = document.getElementById('customStyleSheet');
