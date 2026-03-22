@@ -686,7 +686,9 @@
             <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="openYtModal()">▶ YouTube</button>
             <button class="mode-btn" id="qnBtn" style="background:#1a1a0a;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:6px;" onclick="openQuickNotes()">📝 Quick Notes <span id="qnBadge" style="font-size:9px;background:#fdcb6e;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             {% if usertier != 'guest' %}
-            <button class="mode-btn" id="memoryBtn" style="background:#0a1a2a;border-color:#74b9ff;color:#74b9ff;margin-bottom:12px;" onclick="openMemoryPanel()">🧠 Memory <span id="memBadge" style="font-size:9px;background:#74b9ff;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            <button class="mode-btn" id="memoryBtn" style="background:#0a1a2a;border-color:#74b9ff;color:#74b9ff;margin-bottom:4px;" onclick="openMemoryPanel()">🧠 Memory <span id="memBadge" style="font-size:9px;background:#74b9ff;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            <button class="mode-btn" style="background:#0a1a20;border-color:#00d2a0;color:#00d2a0;margin-bottom:4px;" onclick="openProjectDashboard()">📋 Projects <span id="projBadge" style="font-size:9px;background:#00d2a0;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            <button class="mode-btn" style="background:#1a1a10;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:12px;" onclick="openRemindersPanel()">🔔 Reminders <span id="remBadge" style="font-size:9px;background:#ff7675;color:#fff;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
             {% endif %}
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
@@ -4872,6 +4874,262 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             _maData.overrides = r.overrides || [];
             maRenderFull(_maData);
         }
+
+
+        // ── Project Dashboard ──
+        async function openProjectDashboard() {
+            var html = '<div class="ws-overlay open" id="projOverlay" onclick="if(event.target===this)this.remove()" style="z-index:1100;">';
+            html += '<div class="ws-modal" style="max-width:700px;height:85vh;display:flex;flex-direction:column;">';
+            html += '<div class="ws-header"><h2>📋 프로젝트 대시보드</h2><button class="ws-close" onclick="document.getElementById(\'projOverlay\').remove()">×</button></div>';
+            // Tabs
+            html += '<div style="padding:8px 20px;display:flex;gap:6px;border-bottom:1px solid var(--border);">';
+            html += '<button id="projTabProj" onclick="projSwitchTab(\'proj\')" style="padding:4px 12px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;">📋 프로젝트</button>';
+            html += '<button id="projTabSched" onclick="projSwitchTab(\'sched\')" style="padding:4px 12px;font-size:11px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:5px;cursor:pointer;">🔄 반복 작업</button>';
+            html += '</div>';
+            // New project form
+            html += '<div style="padding:8px 20px;display:flex;gap:4px;flex-wrap:wrap;">';
+            html += '<input id="projName" placeholder="프로젝트명" style="flex:2;min-width:120px;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;">';
+            html += '<input id="projDeadline" type="date" style="flex:1;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);">';
+            html += '<input id="projTags" placeholder="태그 (쉼표)" style="flex:1;min-width:80px;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;">';
+            html += '<button onclick="projCreate()" style="padding:5px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;">+ 추가</button>';
+            html += '</div>';
+            html += '<div id="projContent" style="flex:1;overflow-y:auto;padding:0 20px 10px;"><div style="color:var(--text2);text-align:center;padding:20px;">로딩...</div></div>';
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            projLoadList();
+        }
+        var _projTab = 'proj';
+        function projSwitchTab(tab) {
+            _projTab = tab;
+            document.getElementById('projTabProj').style.background = tab==='proj' ? 'var(--accent)' : 'var(--surface2)';
+            document.getElementById('projTabProj').style.color = tab==='proj' ? '#fff' : 'var(--text2)';
+            document.getElementById('projTabSched').style.background = tab==='sched' ? 'var(--accent)' : 'var(--surface2)';
+            document.getElementById('projTabSched').style.color = tab==='sched' ? '#fff' : 'var(--text2)';
+            if (tab === 'proj') projLoadList();
+            else schedLoadList();
+        }
+        async function projLoadList() {
+            var el = document.getElementById('projContent');
+            if (!el) return;
+            try {
+                var r = await fetch('/api/projects').then(function(x){return x.json();});
+                var projects = r.projects || [];
+                if (!projects.length) { el.innerHTML = '<div style="color:var(--text2);font-size:11px;text-align:center;padding:30px;">프로젝트가 없습니다. 위에서 추가하세요!</div>'; return; }
+                var statusColors = {active:'#00d2a0',paused:'#fdcb6e',completed:'#74b9ff',archived:'#636e72'};
+                var statusLabels = {active:'🟢 진행중',paused:'⏸ 일시정지',completed:'✅ 완료',archived:'📦 보관'};
+                var h = '';
+                projects.forEach(function(p) {
+                    var st = p.status || 'active';
+                    var progress = p.progress || 0;
+                    var deadline = p.deadline ? new Date(p.deadline).toLocaleDateString('ko') : '';
+                    var tags = p.tags || [];
+                    var isOverdue = p.deadline && new Date(p.deadline) < new Date() && st !== 'completed';
+                    h += '<div style="padding:10px 12px;margin-bottom:6px;background:var(--surface2);border-radius:8px;border-left:3px solid ' + (statusColors[st]||'#636e72') + ';">';
+                    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+                    h += '<span style="font-weight:600;font-size:12px;color:var(--text);">' + p.name + '</span>';
+                    h += '<div style="display:flex;gap:4px;align-items:center;">';
+                    h += '<select onchange="projUpdateStatus(\'' + p.id + '\',this.value)" style="font-size:9px;padding:1px 4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:' + (statusColors[st]||'#636e72') + ';">';
+                    ['active','paused','completed','archived'].forEach(function(s){ h += '<option value="'+s+'"'+(s===st?' selected':'')+'>'+statusLabels[s]+'</option>'; });
+                    h += '</select>';
+                    h += '<button onclick="projReport(\'' + p.id + '\')" style="font-size:9px;padding:1px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--accent2);cursor:pointer;" title="AI 보고서">📊</button>';
+                    h += '<button onclick="projDelete(\'' + p.id + '\')" style="font-size:9px;padding:1px 4px;background:none;border:none;color:var(--text2);cursor:pointer;">✕</button>';
+                    h += '</div></div>';
+                    // Progress bar
+                    h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
+                    h += '<div style="flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+progress+'%;background:' + (statusColors[st]||'#636e72') + ';border-radius:3px;transition:width 0.3s;"></div></div>';
+                    h += '<input type="range" min="0" max="100" value="'+progress+'" onchange="projUpdateProgress(\'' + p.id + '\',this.value)" style="width:50px;accent-color:' + (statusColors[st]||'#636e72') + ';">';
+                    h += '<span style="font-size:10px;color:var(--text2);min-width:30px;">'+progress+'%</span>';
+                    h += '</div>';
+                    // Deadline + tags
+                    h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">';
+                    if (deadline) h += '<span style="font-size:9px;padding:1px 5px;background:' + (isOverdue?'rgba(255,118,117,0.2)':'rgba(255,255,255,0.05)') + ';border-radius:3px;color:' + (isOverdue?'#ff7675':'var(--text2)') + ';">📅 ' + deadline + (isOverdue?' ⚠️ 기한초과':'') + '</span>';
+                    tags.forEach(function(t){ h += '<span style="font-size:9px;padding:1px 5px;background:rgba(124,58,237,0.15);border-radius:3px;color:var(--accent2);">#' + t + '</span>'; });
+                    h += '</div>';
+                    h += '</div>';
+                });
+                el.innerHTML = h;
+                var badge = document.getElementById('projBadge');
+                if (badge) { badge.textContent = projects.filter(function(p){return p.status==='active';}).length; badge.style.display = 'inline'; }
+            } catch(e) { console.error(e); el.innerHTML = '<div style="color:#ff7675;padding:20px;">로드 실패</div>'; }
+        }
+        async function projCreate() {
+            var name = (document.getElementById('projName').value||'').trim();
+            if (!name) { alert('프로젝트명을 입력하세요.'); return; }
+            var deadline = document.getElementById('projDeadline').value || null;
+            var tagsStr = (document.getElementById('projTags').value||'').trim();
+            var tags = tagsStr ? tagsStr.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+            await fetch('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, deadline:deadline?(new Date(deadline)).toISOString():null, tags:tags})});
+            document.getElementById('projName').value = '';
+            document.getElementById('projDeadline').value = '';
+            document.getElementById('projTags').value = '';
+            projLoadList();
+        }
+        async function projUpdateStatus(id, status) {
+            await fetch('/api/projects/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:status})});
+            projLoadList();
+        }
+        async function projUpdateProgress(id, val) {
+            await fetch('/api/projects/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({progress:parseInt(val)})});
+            projLoadList();
+        }
+        async function projDelete(id) {
+            if (!confirm('이 프로젝트를 삭제할까요? 관련 리마인더도 함께 삭제됩니다.')) return;
+            await fetch('/api/projects/' + id, {method:'DELETE'});
+            projLoadList();
+        }
+        async function projReport(id) {
+            var el = document.getElementById('projContent');
+            if (el) el.innerHTML = '<div style="color:var(--accent2);text-align:center;padding:30px;">📊 AI 보고서 생성 중...</div>';
+            try {
+                var r = await fetch('/api/projects/' + id + '/report', {method:'POST'}).then(function(x){return x.json();});
+                if (r.success && r.report) {
+                    if (typeof docPanel !== 'undefined' && docPanel) { docPanel.innerHTML = '<div class="doc-answer">' + (typeof marked !== 'undefined' ? marked.parse(r.report) : r.report) + '</div>'; }
+                }
+            } catch(e) { console.error(e); }
+            projLoadList();
+        }
+
+        // ── Scheduled Tasks ──
+        async function schedLoadList() {
+            var el = document.getElementById('projContent');
+            if (!el) return;
+            try {
+                var r = await fetch('/api/scheduled-tasks').then(function(x){return x.json();});
+                var tasks = r.tasks || [];
+                var h = '<div style="padding:8px 0;"><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
+                h += '<input id="schedName" placeholder="작업명" style="flex:1;min-width:80px;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;">';
+                h += '<select id="schedFreq" style="padding:5px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);"><option value="daily">매일</option><option value="weekly" selected>매주</option><option value="monthly">매월</option></select>';
+                h += '<button onclick="schedCreate()" style="padding:5px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;">+ 추가</button>';
+                h += '</div>';
+                h += '<textarea id="schedPrompt" placeholder="실행할 AI 프롬프트 (예: 이번 주 세무 업무 체크리스트 생성)" style="width:100%;height:50px;padding:6px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);resize:vertical;outline:none;margin-bottom:8px;"></textarea></div>';
+                if (!tasks.length) { h += '<div style="color:var(--text2);font-size:11px;text-align:center;padding:20px;">반복 작업이 없습니다.</div>'; }
+                tasks.forEach(function(t) {
+                    var freqLabel = {daily:'매일',weekly:'매주',monthly:'매월'};
+                    h += '<div style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:6px;">';
+                    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">';
+                    h += '<span style="font-weight:600;font-size:11px;color:' + (t.is_active?'var(--text)':'var(--text2)') + ';">' + (t.is_active?'':'⏸ ') + t.name + '</span>';
+                    h += '<div style="display:flex;gap:3px;">';
+                    h += '<button onclick="schedRun(\'' + t.id + '\')" style="font-size:9px;padding:1px 6px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;" title="지금 실행">▶</button>';
+                    h += '<button onclick="schedToggle(\'' + t.id + '\',' + !t.is_active + ')" style="font-size:9px;padding:1px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;">' + (t.is_active?'⏸':'▶') + '</button>';
+                    h += '<button onclick="schedDelete(\'' + t.id + '\')" style="font-size:9px;padding:1px 4px;background:none;border:none;color:var(--text2);cursor:pointer;">✕</button>';
+                    h += '</div></div>';
+                    h += '<div style="font-size:9px;color:var(--text2);">🔄 ' + (freqLabel[t.frequency]||t.frequency) + ' | 최근: ' + (t.last_run ? new Date(t.last_run).toLocaleString('ko') : '없음') + '</div>';
+                    h += '<div style="font-size:9px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💬 ' + (t.prompt||'').substring(0,60) + '...</div>';
+                    h += '</div>';
+                });
+                el.innerHTML = h;
+            } catch(e) { console.error(e); }
+        }
+        async function schedCreate() {
+            var name = (document.getElementById('schedName').value||'').trim();
+            var prompt = (document.getElementById('schedPrompt').value||'').trim();
+            var freq = document.getElementById('schedFreq').value;
+            if (!name || !prompt) { alert('작업명과 프롬프트를 입력하세요.'); return; }
+            await fetch('/api/scheduled-tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, prompt:prompt, frequency:freq})});
+            schedLoadList();
+        }
+        async function schedRun(id) {
+            var el = document.getElementById('projContent');
+            if (el) el.innerHTML = '<div style="color:var(--accent2);text-align:center;padding:30px;">🔄 작업 실행 중...</div>';
+            try {
+                var r = await fetch('/api/scheduled-tasks/' + id + '/run', {method:'POST'}).then(function(x){return x.json();});
+                if (r.success && r.result && typeof docPanel !== 'undefined' && docPanel) {
+                    docPanel.innerHTML = '<div class="doc-answer">' + (typeof marked !== 'undefined' ? marked.parse(r.result) : r.result) + '</div>';
+                }
+            } catch(e) { console.error(e); }
+            schedLoadList();
+        }
+        async function schedToggle(id, active) {
+            await fetch('/api/scheduled-tasks/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_active:active})});
+            schedLoadList();
+        }
+        async function schedDelete(id) {
+            if (!confirm('이 반복 작업을 삭제할까요?')) return;
+            await fetch('/api/scheduled-tasks/' + id, {method:'DELETE'});
+            schedLoadList();
+        }
+
+        // ── Reminders ──
+        async function openRemindersPanel() {
+            var html = '<div class="ws-overlay open" id="remOverlay" onclick="if(event.target===this)this.remove()" style="z-index:1100;">';
+            html += '<div class="ws-modal" style="max-width:500px;height:70vh;display:flex;flex-direction:column;">';
+            html += '<div class="ws-header"><h2>🔔 리마인더</h2><button class="ws-close" onclick="document.getElementById(\'remOverlay\').remove()">×</button></div>';
+            // New reminder form
+            html += '<div style="padding:8px 20px;display:flex;gap:4px;flex-wrap:wrap;">';
+            html += '<input id="remTitle" placeholder="리마인더 제목" style="flex:2;min-width:120px;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;">';
+            html += '<input id="remDate" type="datetime-local" style="flex:1;padding:5px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);">';
+            html += '<select id="remProj" style="flex:1;padding:5px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);"><option value="">프로젝트 없음</option></select>';
+            html += '<button onclick="remCreate()" style="padding:5px 10px;font-size:11px;background:#fdcb6e;color:#000;border:none;border-radius:5px;cursor:pointer;font-weight:600;">+ 추가</button>';
+            html += '</div>';
+            html += '<div id="remList" style="flex:1;overflow-y:auto;padding:0 20px 10px;"><div style="color:var(--text2);text-align:center;padding:20px;">로딩...</div></div>';
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            // Load projects for dropdown
+            try {
+                var pr = await fetch('/api/projects').then(function(x){return x.json();});
+                var sel = document.getElementById('remProj');
+                (pr.projects||[]).forEach(function(p){ var o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
+            } catch(e){}
+            remLoadList();
+        }
+        async function remLoadList() {
+            var el = document.getElementById('remList');
+            if (!el) return;
+            try {
+                var r = await fetch('/api/reminders').then(function(x){return x.json();});
+                var rems = r.reminders || [];
+                if (!rems.length) { el.innerHTML = '<div style="color:var(--text2);font-size:11px;text-align:center;padding:30px;">리마인더가 없습니다.</div>'; return; }
+                var h = '';
+                var now = new Date();
+                rems.forEach(function(rem) {
+                    var due = new Date(rem.due_date);
+                    var isOverdue = due < now && !rem.is_done;
+                    var isDone = rem.is_done;
+                    h += '<div style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;gap:8px;opacity:' + (isDone?'0.5':'1') + ';">';
+                    h += '<input type="checkbox" ' + (isDone?'checked':'') + ' onchange="remToggle(\'' + rem.id + '\',this.checked)" style="accent-color:#00d2a0;">';
+                    h += '<div style="flex:1;">';
+                    h += '<div style="font-size:11px;color:var(--text);' + (isDone?'text-decoration:line-through;':'') + '">' + rem.title + '</div>';
+                    h += '<div style="font-size:9px;color:' + (isOverdue?'#ff7675':'var(--text2)') + ';">' + due.toLocaleString('ko') + (isOverdue?' ⚠️ 기한 초과':'') + '</div>';
+                    h += '</div>';
+                    h += '<button onclick="remDelete(\'' + rem.id + '\')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:10px;">✕</button>';
+                    h += '</div>';
+                });
+                el.innerHTML = h;
+            } catch(e) { console.error(e); }
+        }
+        async function remCreate() {
+            var title = (document.getElementById('remTitle').value||'').trim();
+            var date = document.getElementById('remDate').value;
+            var proj = document.getElementById('remProj').value;
+            if (!title || !date) { alert('제목과 날짜를 입력하세요.'); return; }
+            var body = {title:title, due_date: new Date(date).toISOString()};
+            if (proj) body.project_id = proj;
+            await fetch('/api/reminders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+            document.getElementById('remTitle').value = '';
+            remLoadList();
+        }
+        async function remToggle(id, done) {
+            await fetch('/api/reminders/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_done:done})});
+            remLoadList(); checkDueReminders();
+        }
+        async function remDelete(id) {
+            await fetch('/api/reminders/' + id, {method:'DELETE'});
+            remLoadList(); checkDueReminders();
+        }
+
+        // Check due reminders on page load
+        async function checkDueReminders() {
+            try {
+                var r = await fetch('/api/reminders/due').then(function(x){return x.json();});
+                var due = r.due || [];
+                var badge = document.getElementById('remBadge');
+                if (badge) {
+                    if (due.length > 0) { badge.textContent = due.length; badge.style.display = 'inline'; }
+                    else { badge.style.display = 'none'; }
+                }
+            } catch(e){}
+        }
+        checkDueReminders();
 
         async function confirmIntSave() {
             var type = intModalType;

@@ -878,6 +878,267 @@ def api_user_memory_clear():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+# ── Project Management APIs ──
+
+@app.route("/api/projects", methods=["GET"])
+@login_required
+def api_projects_list():
+    if not supabase_client:
+        return jsonify({"projects": []})
+    uid = session.get("username", "")
+    try:
+        r = supabase_client.table("projects").select("*").eq("user_id", uid).order("created_at", desc=True).execute()
+        return jsonify({"projects": r.data or []})
+    except Exception as e:
+        return jsonify({"projects": [], "error": str(e)})
+
+@app.route("/api/projects", methods=["POST"])
+@login_required
+def api_projects_create():
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        row = {"user_id": uid, "name": data.get("name", "새 프로젝트")}
+        if data.get("description"): row["description"] = data["description"]
+        if data.get("deadline"): row["deadline"] = data["deadline"]
+        if data.get("tags"): row["tags"] = data["tags"]
+        if data.get("status"): row["status"] = data["status"]
+        r = supabase_client.table("projects").insert(row).execute()
+        return jsonify({"success": True, "project": (r.data or [{}])[0]})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/projects/<project_id>", methods=["PUT"])
+@login_required
+def api_projects_update(project_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        update = {}
+        for k in ["name", "description", "status", "progress", "deadline", "tags"]:
+            if k in data:
+                update[k] = data[k]
+        from datetime import datetime, timezone
+        update["updated_at"] = datetime.now(timezone.utc).isoformat()
+        supabase_client.table("projects").update(update).eq("id", project_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/projects/<project_id>", methods=["DELETE"])
+@login_required
+def api_projects_delete(project_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    uid = session.get("username", "")
+    try:
+        supabase_client.table("projects").delete().eq("id", project_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/projects/<project_id>/report", methods=["POST"])
+@login_required
+def api_project_report(project_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    uid = session.get("username", "")
+    try:
+        pr = supabase_client.table("projects").select("*").eq("id", project_id).eq("user_id", uid).limit(1).execute()
+        if not pr.data:
+            return jsonify({"success": False, "error": "Not found"})
+        project = pr.data[0]
+        rem = supabase_client.table("reminders").select("*").eq("project_id", project_id).execute()
+        reminders = rem.data or []
+        prompt = f"""다음 프로젝트에 대한 주간 보고서를 작성해주세요:
+프로젝트명: {project['name']}
+설명: {project.get('description', '없음')}
+상태: {project.get('status', 'active')} | 진행률: {project.get('progress', 0)}%
+마감일: {project.get('deadline', '미정')} | 태그: {', '.join(project.get('tags', []))}
+리마인더 ({len(reminders)}건):
+""" + '\n'.join([f"- {'✅' if r.get('is_done') else '⬜'} {r['title']} ({r.get('due_date','미정')})" for r in reminders]) + """
+
+보고서 구성: 1.현황요약 2.완료항목 3.진행중 4.주의사항 5.다음단계"""
+        response = hub.ask("chatgpt", prompt, stream=False)
+        return jsonify({"success": True, "report": response.content if response.success else "생성 실패"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ── Reminders ──
+
+@app.route("/api/reminders", methods=["GET"])
+@login_required
+def api_reminders_list():
+    if not supabase_client:
+        return jsonify({"reminders": []})
+    uid = session.get("username", "")
+    try:
+        r = supabase_client.table("reminders").select("*").eq("user_id", uid).order("due_date").execute()
+        return jsonify({"reminders": r.data or []})
+    except Exception as e:
+        return jsonify({"reminders": [], "error": str(e)})
+
+@app.route("/api/reminders/due", methods=["GET"])
+@login_required
+def api_reminders_due():
+    if not supabase_client:
+        return jsonify({"due": []})
+    uid = session.get("username", "")
+    try:
+        from datetime import datetime, timezone, timedelta
+        soon = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+        r = supabase_client.table("reminders").select("*").eq("user_id", uid).eq("is_done", False).lte("due_date", soon).order("due_date").execute()
+        return jsonify({"due": r.data or []})
+    except Exception as e:
+        return jsonify({"due": [], "error": str(e)})
+
+@app.route("/api/reminders", methods=["POST"])
+@login_required
+def api_reminders_create():
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        row = {"user_id": uid, "title": data.get("title", ""), "due_date": data.get("due_date")}
+        if data.get("project_id"): row["project_id"] = data["project_id"]
+        r = supabase_client.table("reminders").insert(row).execute()
+        return jsonify({"success": True, "reminder": (r.data or [{}])[0]})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/reminders/<reminder_id>", methods=["PUT"])
+@login_required
+def api_reminders_update(reminder_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        update = {}
+        for k in ["title", "due_date", "is_done", "project_id"]:
+            if k in data: update[k] = data[k]
+        supabase_client.table("reminders").update(update).eq("id", reminder_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/reminders/<reminder_id>", methods=["DELETE"])
+@login_required
+def api_reminders_delete(reminder_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    uid = session.get("username", "")
+    try:
+        supabase_client.table("reminders").delete().eq("id", reminder_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ── Scheduled Tasks ──
+
+@app.route("/api/scheduled-tasks", methods=["GET"])
+@login_required
+def api_scheduled_tasks_list():
+    if not supabase_client:
+        return jsonify({"tasks": []})
+    uid = session.get("username", "")
+    try:
+        r = supabase_client.table("scheduled_tasks").select("*").eq("user_id", uid).order("created_at", desc=True).execute()
+        return jsonify({"tasks": r.data or []})
+    except Exception as e:
+        return jsonify({"tasks": [], "error": str(e)})
+
+@app.route("/api/scheduled-tasks", methods=["POST"])
+@login_required
+def api_scheduled_tasks_create():
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        from datetime import datetime, timezone, timedelta
+        freq = data.get("frequency", "weekly")
+        now = datetime.now(timezone.utc)
+        delta = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1), "monthly": timedelta(days=30)}
+        row = {"user_id": uid, "name": data.get("name", ""), "prompt": data.get("prompt", ""),
+               "frequency": freq, "next_run": (now + delta.get(freq, timedelta(weeks=1))).isoformat()}
+        if data.get("project_id"): row["project_id"] = data["project_id"]
+        r = supabase_client.table("scheduled_tasks").insert(row).execute()
+        return jsonify({"success": True, "task": (r.data or [{}])[0]})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/scheduled-tasks/<task_id>", methods=["PUT"])
+@login_required
+def api_scheduled_tasks_update(task_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        update = {}
+        for k in ["name", "prompt", "frequency", "is_active", "project_id"]:
+            if k in data: update[k] = data[k]
+        supabase_client.table("scheduled_tasks").update(update).eq("id", task_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/scheduled-tasks/<task_id>", methods=["DELETE"])
+@login_required
+def api_scheduled_tasks_delete(task_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    uid = session.get("username", "")
+    try:
+        supabase_client.table("scheduled_tasks").delete().eq("id", task_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/scheduled-tasks/<task_id>/run", methods=["POST"])
+@login_required
+def api_scheduled_tasks_run(task_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    uid = session.get("username", "")
+    try:
+        r = supabase_client.table("scheduled_tasks").select("*").eq("id", task_id).eq("user_id", uid).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "Not found"})
+        task = r.data[0]
+        response = hub.ask("chatgpt", task["prompt"], stream=False)
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        freq = task.get("frequency", "weekly")
+        delta = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1), "monthly": timedelta(days=30)}
+        supabase_client.table("scheduled_tasks").update({
+            "last_run": now.isoformat(), "next_run": (now + delta.get(freq, timedelta(weeks=1))).isoformat()
+        }).eq("id", task_id).execute()
+        return jsonify({"success": True, "result": response.content if response.success else "실행 실패"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ── Workspace File Tags ──
+
+@app.route("/api/workspace-files/<file_id>/tags", methods=["PUT"])
+@login_required
+def api_workspace_file_tags(file_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    data = request.get_json(force=True)
+    uid = session.get("username", "")
+    try:
+        supabase_client.table("workspace_files").update({"tags": data.get("tags", [])}).eq("id", file_id).eq("user_id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/ask_stream", methods=["POST"])
 @login_required
 def api_ask_stream():
