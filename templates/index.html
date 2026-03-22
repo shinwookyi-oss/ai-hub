@@ -25,6 +25,7 @@
         .speaker-mode-btn { width: 50px !important; height: 50px !important; font-size: 24px !important; border-radius: 50% !important; }
         body.speaker-mode #userInput { display: none !important; }
         body.speaker-mode #sendBtn { display: none !important; }
+        body.speaker-mode #langBtn { display: none !important; }
         body.speaker-mode .file-bar { display: none !important; }
         body.speaker-mode .url-bar { display: none !important; }
         body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; }
@@ -918,6 +919,7 @@
                 <div class="input-row" id="inputRow">
                     <textarea id="userInput" placeholder="Type your message..." autofocus></textarea>
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
+                    <button class="mic-btn" id="langBtn" onclick="toggleSttLang()" title="음성 언어 변경" style="font-size:14px;padding:8px 10px;">🌐</button>
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                 </div>
@@ -3945,7 +3947,11 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             recognition = new SR();
             recognition.continuous = false;
             recognition.interimResults = true;
-            recognition.lang = navigator.language || 'en-US';
+            // Multi-language: auto-detect or user-selected
+            window._sttLangs = ['', 'ko-KR', 'en-US', 'ja-JP', 'zh-CN', 'es-ES', 'fr-FR', 'de-DE'];
+            window._sttLangLabels = ['🌐 Auto', '🇰🇷 한국어', '🇺🇸 English', '🇯🇵 日本語', '🇨🇳 中文', '🇪🇸 Español', '🇫🇷 Français', '🇩🇪 Deutsch'];
+            window._sttLangIdx = 0;
+            recognition.lang = ''; // empty = auto-detect by browser
             recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039); };
             recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
             recognition.onresult = function(e) {
@@ -3980,6 +3986,30 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         function toggleMic() {
             if (!recognition) return;
             if (isRecording) recognition.stop(); else recognition.start();
+        }
+
+        // Language toggle for STT
+        function toggleSttLang() {
+            if (!window._sttLangs) return;
+            window._sttLangIdx = (window._sttLangIdx + 1) % window._sttLangs.length;
+            var lang = window._sttLangs[window._sttLangIdx];
+            if (recognition) recognition.lang = lang;
+            var label = window._sttLangLabels[window._sttLangIdx];
+            document.getElementById('langBtn').textContent = label;
+            addMessage('System', '🌐 음성 입력 언어: ' + label, 'system-msg');
+        }
+
+        // Auto-detect text language for TTS
+        function _detectTextLang(text) {
+            if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(text)) return 'ko-KR';
+            if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'ja-JP';
+            if (/[\u4E00-\u9FFF]/.test(text)) return 'zh-CN';
+            if (/[\u00C0-\u017F]/.test(text)) {
+                if (/\b(el|la|los|las|es|está)\b/i.test(text)) return 'es-ES';
+                if (/\b(le|la|les|des|est|avec)\b/i.test(text)) return 'fr-FR';
+                if (/\b(der|die|das|ist|und|nicht)\b/i.test(text)) return 'de-DE';
+            }
+            return 'en-US';
         }
 
         // ── Driving Mode (운전모드) ──
@@ -4036,7 +4066,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             } catch(e) { console.log('TTS fallback:', e); }
             if ('speechSynthesis' in window) {
                 var u = new SpeechSynthesisUtterance(cleaned);
-                u.lang = navigator.language || 'en-US';
+                // Auto-detect language for TTS
+                u.lang = _detectTextLang(cleaned);
                 u.onend = function() { _drivingModeAutoMic(); };
                 window.speechSynthesis.speak(u);
             } else {
