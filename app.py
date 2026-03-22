@@ -618,7 +618,7 @@ def api_available_models():
 @login_required
 def api_user_models_list():
     """Owner only: list all user model overrides."""
-    if session.get("usertier") != "owner":
+    if session.get("user_tier") != "owner":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"overrides": []})
@@ -639,7 +639,7 @@ def api_user_models_list():
 @login_required
 def api_user_models_set():
     """Owner only: set model override for a user (add/remove/fixed)."""
-    if session.get("usertier") != "owner":
+    if session.get("user_tier") != "owner":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False, "error": "No database"})
@@ -667,7 +667,7 @@ def api_user_models_set():
 @login_required
 def api_user_models_delete(override_id):
     """Owner only: delete a model override."""
-    if session.get("usertier") != "owner":
+    if session.get("user_tier") != "owner":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False})
@@ -785,7 +785,7 @@ def api_ask():
         else:
             # ── Long-term Memory Injection (non-persona chat) ──
             user_id = session.get("username", "admin")
-            user_tier = session.get("usertier", "free")
+            user_tier = session.get("user_tier", "free")
             memory_sys = ""
             if supabase_client and user_tier != "guest":
                 try:
@@ -1227,7 +1227,7 @@ def api_ask_stream():
                         pass
             else:
                 # ── Smart Model Routing ──
-                user_tier = session.get("usertier", "free")
+                user_tier = session.get("user_tier", "free")
                 selected_model = data.get("model", "")  # Owner manual selection
                 route_provider = provider
                 route_model = None
