@@ -28,12 +28,17 @@
         body.speaker-mode #langSelect { display: none !important; }
         body.speaker-mode .file-bar { display: none !important; }
         body.speaker-mode .url-bar { display: none !important; }
-        body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; }
+        body.speaker-mode .input-area { padding: 0 !important; position: fixed !important; inset: 0 !important; z-index: 50 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: var(--bg) !important; }
+        body.speaker-mode .chat-area { display: none !important; }
+        body.speaker-mode .header { display: none !important; }
+        body.speaker-mode .mobile-panel-tabs { display: none !important; }
+        body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; flex-direction: column !important; align-items: center !important; }
         body.speaker-mode #micBtn {
-            width: 120px !important; height: 120px !important; font-size: 48px !important;
-            border-radius: 50% !important; border: 3px solid var(--accent) !important;
+            width: 150px !important; height: 150px !important; font-size: 56px !important;
+            border-radius: 50% !important; border: 4px solid var(--accent) !important;
             background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(108,92,231,0.05)) !important;
-            box-shadow: 0 4px 20px rgba(108,92,231,0.3) !important;
+            box-shadow: 0 4px 30px rgba(108,92,231,0.4) !important;
+            animation: speakerPulse 2s ease-in-out infinite !important;
         }
         body.speaker-mode #micBtn.recording { border-color: var(--red) !important; box-shadow: 0 4px 30px rgba(255,107,107,0.4) !important; }
         .output-panel.mobile-show .output-area { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; min-height: 0 !important; flex: 1 !important; }
