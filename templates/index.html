@@ -569,9 +569,9 @@
                 <button class="ws-close" onclick="closeYtModal()">×</button>
             </div>
             <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
-                <div class="yt-input-row">
-                    <input class="yt-input" id="ytUrlInput" placeholder="YouTube URL 붙여넣기..." onkeydown="if(event.key==='Enter')ytLoad()">
-                    <button class="yt-load-btn" onclick="ytLoad()">▶ 재생</button>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <input class="yt-input" id="ytUrlInput" placeholder="YouTube URL 붙여넣기... (Enter로 재생)" onkeydown="if(event.key==='Enter')ytLoad()" style="width:100%;box-sizing:border-box;">
+                    <button class="yt-load-btn" onclick="ytLoad()" style="width:100%;padding:7px;">▶ 재생</button>
                 </div>
                 <div id="ytEmbedArea"></div>
                 <div id="ytAnalyzeBar" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -614,7 +614,9 @@
     </div>
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
+            {% if usertier == 'owner' %}
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
+            {% endif %}
             <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:12px;" onclick="openYtModal()">▶ YouTube</button>
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
