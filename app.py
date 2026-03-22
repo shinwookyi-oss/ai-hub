@@ -52,10 +52,10 @@ MODEL_CATALOG = [
 
 # Tier → default model IDs (what auto-routing selects from)
 TIER_MODELS = {
-    "owner": [m["id"] for m in MODEL_CATALOG],  # All models
-    "admin": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini"],
-    "premium": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast"],
-    "free": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
+    "president": [m["id"] for m in MODEL_CATALOG],  # All models
+    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini"],
+    "manager": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast"],
+    "staff": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
     "guest": ["chatgpt:gpt-4o-mini"],
 }
 
@@ -79,21 +79,21 @@ def auto_route_model(prompt: str, tier: str) -> tuple:
 
     if tier == "guest":
         return "chatgpt", "gpt-4o-mini"
-    elif tier == "owner":
+    elif tier == "president":
         if is_complex:
             return "chatgpt", "o3"
         elif is_simple:
             return "chatgpt", "gpt-4o-mini"
         else:
             return "chatgpt", "gpt-4o"
-    elif tier == "admin":
+    elif tier == "director":
         if is_complex:
             if "chatgpt:gpt-4o" in allowed:
                 return "chatgpt", "gpt-4o"
             return "gemini", "gemini-2.5-pro"
         else:
             return "chatgpt", "gpt-4o-mini"
-    elif tier == "premium":
+    elif tier == "manager":
         if is_complex:
             if "claude:claude-sonnet-4-20250514" in allowed:
                 return "claude", "claude-sonnet-4-20250514"
@@ -136,16 +136,17 @@ APP_PASSWORD_HASH = _hash_password(_raw_password)
 class RateLimiter:
     """In-memory tiered rate limiter per IP."""
     TIERS = {
-        "admin":   None,                               # unlimited
-        "premium": {"requests": 60,  "window": 60},   # 60 req/min
-        "free":    {"requests": 20,  "window": 60},   # 20 req/min
+        "director": None,                               # unlimited
+        "president": None,                              # unlimited
+        "manager":  {"requests": 60,  "window": 60},   # 60 req/min
+        "staff":    {"requests": 20,  "window": 60},   # 20 req/min
     }
 
     def __init__(self):
         self.requests = defaultdict(list)  # ip -> [timestamps]
 
-    def is_allowed(self, ip: str, tier: str = "free") -> bool:
-        cfg = self.TIERS.get(tier, self.TIERS["free"])
+    def is_allowed(self, ip: str, tier: str = "staff") -> bool:
+        cfg = self.TIERS.get(tier, self.TIERS["staff"])
         if cfg is None:
             return True  # admin: unlimited
         now = time.time()
@@ -155,16 +156,16 @@ class RateLimiter:
         self.requests[ip].append(now)
         return True
 
-    def remaining(self, ip: str, tier: str = "free") -> int:
-        cfg = self.TIERS.get(tier, self.TIERS["free"])
+    def remaining(self, ip: str, tier: str = "staff") -> int:
+        cfg = self.TIERS.get(tier, self.TIERS["staff"])
         if cfg is None:
             return -1  # unlimited
         now = time.time()
         self.requests[ip] = [t for t in self.requests[ip] if now - t < cfg["window"]]
         return max(0, cfg["requests"] - len(self.requests[ip]))
 
-    def tier_info(self, tier: str = "free") -> dict:
-        cfg = self.TIERS.get(tier, self.TIERS["free"])
+    def tier_info(self, tier: str = "staff") -> dict:
+        cfg = self.TIERS.get(tier, self.TIERS["staff"])
         if cfg is None:
             return {"tier": tier, "max_requests": "unlimited", "window_seconds": 0}
         return {"tier": tier, "max_requests": cfg["requests"], "window_seconds": cfg["window"]}
@@ -225,7 +226,7 @@ def login_required(f):
         # Tiered rate limiting for API calls
         if request.path.startswith("/api/"):
             ip = request.remote_addr or "unknown"
-            tier = session.get("user_tier", os.getenv("USER_TIER", "owner"))
+            tier = session.get("user_tier", os.getenv("USER_TIER", "president"))
             if not api_limiter.is_allowed(ip, tier):
                 info = api_limiter.tier_info(tier)
                 return jsonify({
@@ -267,7 +268,7 @@ def login_page():
                             session["logged_in"] = True
                             session["user_id"] = db_user["id"]
                             session["username"] = db_user["username"]
-                            session["user_tier"] = db_user.get("tier", "free")
+                            session["user_tier"] = db_user.get("tier", "staff")
                             session["display_name"] = db_user.get("display_name", username)
                             session["last_active"] = datetime.utcnow().isoformat()
                             session["login_time"] = datetime.utcnow().isoformat()
@@ -298,8 +299,8 @@ def login_page():
             session["logged_in"] = True
             session["user_id"] = "env_admin"
             session["username"] = username
-            session["user_tier"] = "owner"
-            session["display_name"] = "Owner"
+            session["user_tier"] = "president"
+            session["display_name"] = "President"
             session["last_active"] = datetime.utcnow().isoformat()
             session["login_time"] = datetime.utcnow().isoformat()
             return redirect("/")
@@ -312,21 +313,21 @@ def _seed_admin_user():
     if not supabase_client:
         return
     try:
-        res = supabase_admin.table("users").select("id").eq("tier", "owner").limit(1).execute()
+        res = supabase_admin.table("users").select("id").eq("tier", "president").limit(1).execute()
         if not res.data:
             supabase_admin.table("users").insert({
                 "username": APP_USERNAME,
                 "password_hash": APP_PASSWORD_HASH,
-                "tier": "owner",
-                "display_name": "System Owner",
+                "tier": "president",
+                "display_name": "System President",
                 "is_active": True,
             }).execute()
             print("  ✅ Admin user seeded in Supabase")
             
-        # Ensure shinwookyi is upgraded to owner
+        # Ensure shinwookyi is upgraded to president
         try:
-            supabase_admin.table("users").update({"tier": "owner"}).eq("username", "shinwookyi").execute()
-            print("  ✅ Ensured shinwookyi is owner")
+            supabase_admin.table("users").update({"tier": "president"}).eq("username", "shinwookyi").execute()
+            print("  ✅ Ensured shinwookyi is president")
         except Exception as e:
             print(f"  ⚠️ Failed to force-upgrade shinwookyi: {e}")
 
@@ -340,7 +341,7 @@ def _seed_admin_user():
             else:
                 supabase_admin.table("users").insert({
                     "username": "guest", "password_hash": guest_hash,
-                    "tier": "free", "display_name": "Guest", "is_active": True,
+                    "tier": "guest", "display_name": "Guest", "is_active": True,
                 }).execute()
                 print("  ✅ Guest user created")
         except Exception as e:
@@ -354,7 +355,7 @@ def _seed_admin_user():
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get("user_tier") != "owner":
+        if session.get("user_tier") != "president":
             return jsonify({"success": False, "error": "Owner access required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -362,11 +363,11 @@ def admin_required(f):
 
 @app.route("/logout")
 def logout():
-    user_tier = session.get("user_tier", "free")
+    user_tier = session.get("user_tier", "staff")
     username = session.get("username", "")
     
     # Guest/free tier: clear ALL data on logout
-    if user_tier in ("free", "guest") or username == "guest":
+    if user_tier in ("staff", "guest") or username == "guest":
         # Clear AI Hub chat history (server-side memory)
         hub.clear_history()
         
@@ -386,7 +387,7 @@ def logout():
     
     session.clear()
     # Redirect with cleanup flag for guest users
-    if user_tier in ("free", "guest") or username == "guest":
+    if user_tier in ("staff", "guest") or username == "guest":
         return redirect(url_for("login_page") + "?cleanup=1")
     return redirect(url_for("login_page"))
 
@@ -415,8 +416,8 @@ def index():
     persona_groups = hub.list_persona_groups()
 
     username = session.get("username", "")
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
 
     return render_template(
         "index.html",
@@ -436,8 +437,8 @@ def get_user_personas():
     """Load user's persona list from DB"""
     import json as _json
     username = session.get("username", "")
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     try:
         res = supabase_admin.table("user_personas").select("*").eq("username", username).execute()
         if res.data and len(res.data) > 0:
@@ -457,8 +458,8 @@ def save_user_personas():
     """Save user's persona list to DB"""
     import json as _json
     username = session.get("username", "")
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     data = request.json
     persona_list = data.get("personas", [])
     if len(persona_list) > tier_limits["personas"]:
@@ -485,8 +486,8 @@ def create_user_persona():
     """AI generates persona traits from name/job. Saves to user's persona list."""
     import json as _json
     username = session.get("username", "")
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     data = request.json
     name = data.get("name", "").strip()
     extra_traits = data.get("traits", "").strip()
@@ -595,7 +596,7 @@ def _ensure_user_persona_registered(persona_key, username):
 def api_available_models():
     """Return models available to current user (tier + overrides)."""
     username = session.get("username", "")
-    tier = session.get("usertier", "free")
+    tier = session.get("user_tier", "staff")
     allowed_ids = get_user_allowed_models(username, tier)
     # Check for fixed model
     fixed_model = None
@@ -611,14 +612,14 @@ def api_available_models():
         "models": models,
         "tier": tier,
         "fixed_model": fixed_model,
-        "can_select": tier == "owner",  # Only owner can manually select
+        "can_select": tier == "president",  # Only president can manually select
     })
 
 @app.route("/api/user-models", methods=["GET"])
 @login_required
 def api_user_models_list():
     """Owner only: list all user model overrides."""
-    if session.get("user_tier") != "owner":
+    if session.get("user_tier") != "president":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"overrides": []})
@@ -639,7 +640,7 @@ def api_user_models_list():
 @login_required
 def api_user_models_set():
     """Owner only: set model override for a user (add/remove/fixed)."""
-    if session.get("user_tier") != "owner":
+    if session.get("user_tier") != "president":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False, "error": "No database"})
@@ -667,7 +668,7 @@ def api_user_models_set():
 @login_required
 def api_user_models_delete(override_id):
     """Owner only: delete a model override."""
-    if session.get("user_tier") != "owner":
+    if session.get("user_tier") != "president":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False})
@@ -785,7 +786,7 @@ def api_ask():
         else:
             # ── Long-term Memory Injection (non-persona chat) ──
             user_id = session.get("username", "admin")
-            user_tier = session.get("user_tier", "free")
+            user_tier = session.get("user_tier", "staff")
             memory_sys = ""
             if supabase_client and user_tier != "guest":
                 try:
@@ -1227,12 +1228,12 @@ def api_ask_stream():
                         pass
             else:
                 # ── Smart Model Routing ──
-                user_tier = session.get("user_tier", "free")
+                user_tier = session.get("user_tier", "staff")
                 selected_model = data.get("model", "")  # Owner manual selection
                 route_provider = provider
                 route_model = None
 
-                if selected_model and ":" in selected_model and user_tier == "owner":
+                if selected_model and ":" in selected_model and user_tier == "president":
                     # Owner manually selected a model
                     route_provider, route_model = selected_model.split(":", 1)
                 else:
@@ -1934,8 +1935,8 @@ def api_conversation_delete(conv_id):
 @login_required
 def api_folders_list():
     """List all folders with workspace usage info"""
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     if not supabase_client:
         return jsonify({"folders": [], "workspace": False, "limits": tier_limits})
     try:
@@ -1963,8 +1964,8 @@ def api_folders_create():
     """Create a new folder (tier-limited)"""
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     # Free tier: no workspace
     if tier_limits["folders"] == 0:
         return jsonify({"error": "워크스페이스는 Premium 이상에서 사용 가능합니다. 업그레이드해주세요."}), 403
@@ -2040,8 +2041,8 @@ def api_files_create(folder_id):
     """Create/save a file in a folder (tier-limited)"""
     if not supabase_client:
         return jsonify({"error": "No database"}), 400
-    user_tier = session.get("user_tier", "free")
-    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["free"])
+    user_tier = session.get("user_tier", "staff")
+    tier_limits = hub.TIER_LIMITS.get(user_tier, hub.TIER_LIMITS["staff"])
     # Free tier: no workspace
     if tier_limits["files"] == 0:
         return jsonify({"error": "파일 저장은 Premium 이상에서 사용 가능합니다."}), 403
@@ -2521,13 +2522,13 @@ def admin_create_user():
     data = request.json
     username = (data.get("username") or "").strip()
     password = (data.get("password") or "").strip()
-    tier = data.get("tier", "free")
+    tier = data.get("tier", "staff")
     display_name = data.get("display_name", username)
     if not username or not password:
         return jsonify({"success": False, "error": "Username and password are required"}), 400
     if len(password) < 4:
         return jsonify({"success": False, "error": "Password must be at least 4 characters"}), 400
-    if tier not in ("owner", "admin", "premium", "free"):
+    if tier not in ("president", "director", "manager", "staff"):
         return jsonify({"success": False, "error": "Invalid tier"}), 400
     try:
         # Check if username exists
@@ -2554,7 +2555,7 @@ def admin_update_user(user_id):
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     data = request.json
     updates = {}
-    if "tier" in data and data["tier"] in ("owner", "admin", "premium", "free"):
+    if "tier" in data and data["tier"] in ("president", "director", "manager", "staff"):
         updates["tier"] = data["tier"]
     if "display_name" in data:
         updates["display_name"] = data["display_name"]
@@ -3318,7 +3319,7 @@ def _is_admin(username: str) -> bool:
         return True
     try:
         r = supabase_client.table("users").select("tier").eq("username", username).execute()
-        return bool(r.data and r.data[0].get("tier") in ("admin", "owner"))
+        return bool(r.data and r.data[0].get("tier") in ("director", "president"))
     except Exception:
         return False
 
@@ -3329,7 +3330,7 @@ def _is_owner(username: str) -> bool:
         return True
     try:
         r = supabase_client.table("users").select("tier").eq("username", username).execute()
-        return bool(r.data and r.data[0].get("tier") == "owner")
+        return bool(r.data and r.data[0].get("tier") == "president")
     except Exception:
         return False
 

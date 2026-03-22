@@ -206,7 +206,7 @@
                     <input type="text" id="newUsername" placeholder="Username" style="width:100px;">
                     <input type="password" id="newPassword" placeholder="Password" style="width:100px;">
                     <input type="text" id="newDisplayName" placeholder="Display Name" style="width:120px;">
-                    <select id="newTier"><option value="free">Free</option><option value="premium">Premium</option><option value="admin">Admin</option><option value="owner">Owner</option></select>
+                    <select id="newTier"><option value="staff">Staff</option><option value="manager">Manager</option><option value="director">Director</option><option value="president">President</option></select>
                     <button onclick="adminAddUser()">+ Add</button>
                 </div>
             </div>
@@ -534,7 +534,7 @@
                     <input type="text" id="grpMemberInput" class="auto-input" placeholder="유저명 입력 (username)" style="flex:1;">
                     <select id="grpMemberRole" class="auto-input" style="width:90px;">
                         <option value="member">멤버</option>
-                        <option value="admin">관리자</option>
+                        <option value="director">관리자</option>
                     </select>
                     <button class="auto-new-btn" onclick="grpAddMember()">추가</button>
                 </div>
@@ -680,7 +680,7 @@
     </div>
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
-            {% if usertier == 'owner' %}
+            {% if usertier == 'president' %}
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
             {% endif %}
             <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="openYtModal()">▶ YouTube</button>
@@ -695,7 +695,7 @@
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
             <div id="modeBasic">
                 <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
-                {% if usertier == 'owner' %}
+                {% if usertier == 'president' %}
                 <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
                 <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
@@ -735,12 +735,12 @@
             <div class="sidebar-section" id="sectionProvider">
             <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span data-i18n="provider">Provider</span>
-                {% if usertier == 'owner' %}
+                {% if usertier == 'president' %}
                 <button onclick="openModelAdmin()" style="font-size:9px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="사용자별 모델 관리">⚙ 관리</button>
                 {% endif %}
             </h3>
             <div id="modelButtonsContainer">
-            {% if usertier == 'owner' %}
+            {% if usertier == 'president' %}
             <!-- Owner: full model selection dropdown -->
             <select id="modelSelect" onchange="onModelSelect(this.value)" style="width:100%;padding:6px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:4px;">
                 <option value="auto">🤖 Auto (복잡도 기반)</option>
@@ -1115,9 +1115,9 @@
 
         function addCustomPersona() {
             let limit = 0;
-            if (USER_TIER === 'premium') limit = 5;
-            else if (USER_TIER === 'admin') limit = 10;
-            else if (USER_TIER === 'owner') limit = Infinity;
+            if (USER_TIER === 'manager') limit = 5;
+            else if (USER_TIER === 'director') limit = 10;
+            else if (USER_TIER === 'president') limit = Infinity;
             
             let pcs = getCustomPersonas();
             if (pcs.length >= limit) {
@@ -1221,7 +1221,7 @@
 
             const uPersonas = userPersonaConfig.personas || [];
             const limits = userPersonaConfig.limits || TIER_LIMITS;
-            const starMap = {'free':'⭐','premium':'⭐⭐','admin':'⭐⭐⭐','owner':'⭐⭐⭐⭐'};
+            const starMap = {'staff':'⭐','manager':'⭐⭐','director':'⭐⭐⭐','president':'⭐⭐⭐⭐'};
             const tierStars = starMap[USER_TIER] || '⭐';
 
             // Header: tier + count
@@ -3184,7 +3184,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
 
         // ── Admin Panel ──
         function initAdmin() {
-            if (USER_TIER === 'owner') {
+            if (USER_TIER === 'president') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
                 document.getElementById('styleSettingsBtn').style.display = 'inline-block';
             }
@@ -3322,10 +3322,10 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                         <td><strong>${u.username}</strong></td>
                         <td><input type="text" id="editName_${u.id}" value="${escapeHtml(u.display_name||'')}" style="width:100px;background:#1a1a2e;color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:3px;" onchange="adminUpdateField('${u.id}', 'display_name', this.value)"></td>
                         <td><select onchange="adminUpdateTier('${u.id}',this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px;font-size:11px;">
-                            <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
-                            <option value="premium" ${u.tier==='premium'?'selected':''}>Premium</option>
-                            <option value="admin" ${u.tier==='admin'?'selected':''}>Admin</option>
-                            <option value="owner" ${u.tier==='owner'?'selected':''}>Owner</option>
+                            <option value="staff" ${u.tier==='staff'?'selected':''}>Staff</option>
+                            <option value="manager" ${u.tier==='manager'?'selected':''}>Manager</option>
+                            <option value="director" ${u.tier==='director'?'selected':''}>Director</option>
+                            <option value="president" ${u.tier==='president'?'selected':''}>President</option>
                         </select></td>
                         <td><button class="admin-btn-sm" onclick="adminToggleActive('${u.id}',${!u.is_active})">${statusIcon}</button></td>
                         <td style="font-size:11px;color:var(--text2);">${lastLogin}</td>
@@ -4149,7 +4149,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             });
             // Groups tab: owner only
             var grpTab = document.getElementById('autoTab-grp');
-            if (grpTab) grpTab.style.display = (USER_TIER === 'owner') ? '' : 'none';
+            if (grpTab) grpTab.style.display = (USER_TIER === 'president') ? '' : 'none';
         }
         function closeAutomation() { document.getElementById('autoOverlay').style.display = 'none'; }
 
@@ -4748,7 +4748,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 }
             } catch(e) { console.error('loadModels:', e); }
         }
-        {% if usertier == 'owner' %}
+        {% if usertier == 'president' %}
         loadAvailableModels();
         {% endif %}
 
@@ -4811,8 +4811,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         function maRenderFull(r) {
             var el = document.getElementById('maList');
             var h = '';
-            var tierColors = {owner:'#e17055',admin:'#74b9ff',premium:'#00d2a0',free:'#fdcb6e',guest:'#636e72'};
-            var tierLabels = {owner:'Owner',admin:'Admin',premium:'Premium',free:'Free',guest:'Guest'};
+            var tierColors = {president:'#e17055',director:'#74b9ff',manager:'#00d2a0',staff:'#fdcb6e',guest:'#636e72'};
+            var tierLabels = {president:'President',director:'Director',manager:'Manager',staff:'Staff',guest:'Guest'};
             var users = r.users || [];
             var tiers = r.tiers || {};
             var catalog = r.catalog || [];
