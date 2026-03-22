@@ -30,11 +30,11 @@
 
 ## ✨ Features
 
-### 🤖 5 AI Providers in One Place
-| Provider | Model | API |
-|----------|-------|-----|
-| **ChatGPT** | gpt-4o-mini | OpenAI |
-| **Gemini** | gemini-2.5-flash | Google AI |
+### 🤖 5 AI Providers, 8 Models
+| Provider | Models | API |
+|----------|--------|-----|
+| **ChatGPT** | gpt-4o-mini, gpt-4o, o3 | OpenAI |
+| **Gemini** | gemini-2.5-flash, gemini-2.5-pro | Google AI |
 | **Azure OpenAI** | gpt-4o-mini | Microsoft Azure |
 | **Claude** | claude-sonnet-4 | Anthropic |
 | **Grok** | grok-3-mini-fast | xAI |
@@ -73,6 +73,33 @@ Sidebar **Strategy** section with 5 professional analysis frameworks:
 - ⚔️ **Porter's 5 Forces** — Competition intensity, barriers, substitutes, buyer/supplier power
 - 📈 **BCG Matrix** — Star, Cash Cow, Question Mark, Dog classification
 - 🎯 **Business Model Canvas** — 9 building blocks of a business model
+
+### 🌐 Web Search (Perplexity)
+- Type `/검색 [query]` or `/search [query]` for real-time web search
+- 🌐 **Toggle button** near input — enable/disable auto web search for all queries
+- Powered by **Perplexity Sonar** model (real-time web-grounded answers)
+- Returns cited, up-to-date information with source attribution
+
+### 🧠 Long-term User Memory
+- AI **auto-extracts key facts** from conversations and remembers them
+- Memories injected into system prompt for personalized responses
+- 🧠 **Memory panel** in sidebar — view, add, delete memories
+- Per-user isolation (each user has private memories)
+- Guest tier excluded from memory features
+
+### 🤖 Smart Model Routing
+- **Auto-routing**: AI classifies question complexity → selects optimal model
+- **Keyword analysis** + **message length** for complexity scoring
+- **Owner**: Manual model selection via sidebar dropdown (all 8 models)
+- **Per-user model overrides**: Owner can add/remove/fix models per user
+- 🔒 **Fixed model**: Bypasses auto-routing, always uses assigned model
+
+| Tier | Simple Query | Complex Query |
+|------|:---:|:---:|
+| Owner | gpt-4o-mini | o3 |
+| Admin | gpt-4o-mini | gpt-4o |
+| Premium | gpt-4o-mini | claude-sonnet-4 |
+| Guest | gpt-4o-mini | gpt-4o-mini |
 
 ### 📊 Data Analysis Command
 - Type `/analyze [topic]` or `/분석 [주제]` for structured data analysis
@@ -312,6 +339,9 @@ export SUPABASE_SERVICE_KEY=eyJ...  # Service role key (bypasses RLS for admin o
 export APP_USERNAME=admin
 export APP_PASSWORD=your_password
 export SECRET_KEY=your_flask_secret  # Auto-generated if not set
+
+# Web Search (Perplexity)
+export PERPLEXITY_API_KEY=pplx-...
 ```
 
 ### Supabase Tables Required
@@ -408,6 +438,24 @@ CREATE TABLE workspace_files (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- User long-term memory
+CREATE TABLE user_memory (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User model access overrides (Owner assigns per-user models)
+CREATE TABLE user_model_access (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  action TEXT DEFAULT 'add',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(username, model_id)
+);
 ```
 
 ### Run Locally
@@ -449,8 +497,8 @@ docker-compose up -d
 
 ```
 ai-hub/
-├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin panel)
-├── ai_hub.py           # AIHub core (5 providers, 75+ personas, AI persona gen, 11 modes, memory, RAG)
+├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin + model routing)
+├── ai_hub.py           # AIHub core (5 providers, 8 models, 75+ personas, AI persona gen, 11 modes, memory, RAG)
 ├── templates/
 │   ├── index.html      # Main SPA (4800+ lines: UI + JS logic + templates + strategy)
 │   └── login.html      # Login page with Spline 3D background
@@ -475,7 +523,8 @@ ai-hub/
 |-------|-----------|
 | Backend | Python, Flask, SSE Streaming |
 | Frontend | Vanilla HTML/CSS/JS (Split-panel SPA) |
-| AI SDKs | OpenAI, Google GenAI, Anthropic |
+| AI SDKs | OpenAI, Google GenAI, Anthropic, xAI |
+| Web Search | Perplexity Sonar API |
 | Image Gen | DALL-E 3 (OpenAI) |
 | Voice | OpenAI TTS (Nova), OpenAI Whisper, Web Speech API |
 | Slides | python-pptx, reveal.js |
@@ -511,9 +560,10 @@ graph LR
 
 **Request Flow:**
 ```
-User → Flask UI/API → Auth Layer → Provider Router → AI Providers (OpenAI / Gemini / Anthropic / xAI / Azure)
-                                                   ↘ Supabase (History · Memory · Workspace · Prompts)
-                                                   ↘ ChromaDB (RAG · Document Indexing)
+User → Flask UI/API → Auth Layer → Smart Model Router → AI Providers (OpenAI / Gemini / Anthropic / xAI / Azure)
+                                                       ↘ Perplexity (Web Search)
+                                                       ↘ Supabase (History · Memory · Workspace · Prompts · User Models)
+                                                       ↘ ChromaDB (RAG · Document Indexing)
 ```
 
 ---
