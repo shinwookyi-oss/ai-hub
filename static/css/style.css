@@ -634,6 +634,17 @@
         .auto-save-btn:disabled { opacity:0.4; cursor:not-allowed; }
         .auto-step-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px; }
         .auto-step-progress { font-size:12px; color:var(--text2); padding:6px 10px; background:var(--surface2); border-radius:6px; border-left:3px solid var(--accent); }
+        /* Integrations */
+        .int-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        @media(max-width:500px) { .int-grid { grid-template-columns:1fr; } }
+        .int-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px; transition:border-color 0.2s; }
+        .int-card:hover { border-color:var(--accent2); }
+        .int-icon { font-size:24px; }
+        .int-name { font-size:13px; font-weight:700; color:var(--text); }
+        .int-desc { font-size:11px; color:var(--text2); line-height:1.4; }
+        .int-status { min-height:16px; }
+        .int-badge { font-size:10px; padding:1px 7px; border-radius:20px; background:var(--surface2); border:1px solid var(--border); color:var(--text2); }
+        .int-badge.active { background:rgba(0,210,160,0.12); border-color:var(--green); color:var(--green); }
         /* ── Theme Picker ── */
         .theme-picker-btn { border:none; background:none; cursor:pointer; font-size:17px; padding:3px 7px; transition:transform 0.2s; }
         .theme-picker-btn:hover { transform:rotate(20deg); }

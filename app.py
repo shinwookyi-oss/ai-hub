@@ -2577,6 +2577,283 @@ def api_webhook_receive(token):
         return jsonify({"error": str(e)}), 500
 
 
+# ──────────────────────────── Phase 3: Integrations ────────────────────────────
+import smtplib as _smtplib
+from email.mime.text import MIMEText as _MIMEText
+from email.mime.multipart import MIMEMultipart as _MIMEMultipart
+import http.client as _http_client
+import urllib.parse as _urlparse
+
+
+def _integrations_for(user: str, itype: str = None) -> list:
+    """Fetch active integrations from DB."""
+    if not supabase_client:
+        return []
+    try:
+        q = supabase_client.table("integrations").select("*").eq("user_id", user).eq("is_active", True)
+        if itype:
+            q = q.eq("type", itype)
+        return q.execute().data or []
+    except Exception:
+        return []
+
+
+def _send_slack(webhook_url: str, text: str) -> tuple[bool, str]:
+    """Post message to Slack incoming webhook."""
+    try:
+        import requests as _req
+        r = _req.post(webhook_url, json={"text": text}, timeout=10)
+        if r.status_code == 200:
+            return True, "ok"
+        return False, f"HTTP {r.status_code}: {r.text[:200]}"
+    except Exception as e:
+        return False, str(e)
+
+
+def _send_notion_page(token: str, database_id: str, title: str, content: str) -> tuple[bool, str]:
+    """Create a page in a Notion database."""
+    try:
+        import requests as _req
+        body = {
+            "parent": {"database_id": database_id},
+            "properties": {
+                "Name": {"title": [{"text": {"content": title[:100]}}]}
+            },
+            "children": [
+                {"object": "block", "type": "paragraph",
+                 "paragraph": {"rich_text": [{"text": {"content": seg}}]}}
+                for seg in [content[i:i+2000] for i in range(0, min(len(content), 10000), 2000)]
+            ]
+        }
+        r = _req.post(
+            "https://api.notion.com/v1/pages",
+            headers={"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28",
+                     "Content-Type": "application/json"},
+            json=body, timeout=15
+        )
+        if r.status_code in (200, 201):
+            return True, r.json().get("url", "")
+        return False, f"HTTP {r.status_code}: {r.text[:300]}"
+    except Exception as e:
+        return False, str(e)
+
+
+def _send_email(cfg: dict, subject: str, body: str) -> tuple[bool, str]:
+    """Send email via SMTP (Gmail app password or any SMTP)."""
+    try:
+        msg = _MIMEMultipart()
+        msg["From"] = cfg["user"]
+        msg["To"] = cfg.get("to", cfg["user"])
+        msg["Subject"] = subject
+        msg.attach(_MIMEText(body, "plain", "utf-8"))
+        with _smtplib.SMTP(cfg.get("host", "smtp.gmail.com"), int(cfg.get("port", 587))) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(cfg["user"], cfg["password"])
+            smtp.sendmail(cfg["user"], msg["To"], msg.as_string())
+        return True, f"Sent to {msg['To']}"
+    except Exception as e:
+        return False, str(e)
+
+
+def _get_calendar_events(ical_url: str, max_events: int = 10) -> str:
+    """Fetch upcoming events from a Google Calendar iCal URL."""
+    try:
+        import requests as _req
+        from datetime import timezone
+        r = _req.get(ical_url, timeout=10)
+        if r.status_code != 200:
+            return f"[Calendar fetch error: HTTP {r.status_code}]"
+        text = r.text
+        now = datetime.now(timezone.utc)
+        events = []
+        # Simple iCal parser — no external library needed
+        for vevent in text.split("BEGIN:VEVENT")[1:]:
+            try:
+                def _get(field):
+                    for line in vevent.splitlines():
+                        if line.startswith(field + ":") or line.startswith(field + ";"):
+                            return line.split(":", 1)[1].strip() if ":" in line else ""
+                    return ""
+                summary = _get("SUMMARY")
+                dtstart_raw = _get("DTSTART")
+                dtend_raw = _get("DTEND")
+                # Parse date
+                def _parse_dt(s):
+                    s = s.replace("Z", "").replace("-", "").replace(":", "").replace("T", "")
+                    if len(s) >= 8:
+                        try:
+                            return datetime(int(s[:4]), int(s[4:6]), int(s[6:8]),
+                                            int(s[8:10]) if len(s) > 8 else 0,
+                                            int(s[10:12]) if len(s) > 10 else 0,
+                                            tzinfo=timezone.utc)
+                        except Exception:
+                            return None
+                    return None
+                start = _parse_dt(dtstart_raw)
+                if start and start >= now:
+                    events.append((start, summary, dtend_raw))
+            except Exception:
+                continue
+        events.sort(key=lambda x: x[0])
+        if not events:
+            return "일정 없음"
+        lines = [f"• {e[0].strftime('%m/%d %H:%M')} {e[1]}" for e in events[:max_events]]
+        return "\n".join(lines)
+    except Exception as e:
+        return f"[Calendar error: {e}]"
+
+
+# ── Integration CRUD ──────────────────────────────────────────────────────────
+
+@app.route("/api/integrations", methods=["GET"])
+@login_required
+def api_integrations_list():
+    if not supabase_client:
+        return jsonify({"integrations": []})
+    try:
+        r = supabase_client.table("integrations").select(
+            "id,type,name,is_active,last_used_at,created_at"
+        ).eq("user_id", session.get("username", "admin")).order("created_at").execute()
+        return jsonify({"integrations": r.data or []})
+    except Exception as e:
+        return jsonify({"integrations": [], "error": str(e)})
+
+
+@app.route("/api/integrations", methods=["POST"])
+@login_required
+def api_integrations_create():
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    data = request.json or {}
+    try:
+        # Upsert by type+name
+        existing = supabase_client.table("integrations").select("id").eq(
+            "user_id", session.get("username", "admin")
+        ).eq("type", data.get("type", "")).eq("name", data.get("name", "")).execute()
+        payload = {
+            "user_id": session.get("username", "admin"),
+            "type": data.get("type"),
+            "name": data.get("name", data.get("type", "Integration")),
+            "config": data.get("config", {}),
+            "is_active": True,
+        }
+        if existing.data:
+            supabase_client.table("integrations").update(payload).eq("id", existing.data[0]["id"]).execute()
+            iid = existing.data[0]["id"]
+        else:
+            r = supabase_client.table("integrations").insert(payload).execute()
+            iid = r.data[0]["id"] if r.data else None
+        return jsonify({"id": iid, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/integrations/<iid>", methods=["DELETE"])
+@login_required
+def api_integrations_delete(iid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        supabase_client.table("integrations").delete().eq("id", iid).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/integrations/<iid>/test", methods=["POST"])
+@login_required
+def api_integrations_test(iid):
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        r = supabase_client.table("integrations").select("*").eq("id", iid).execute()
+        if not r.data:
+            return jsonify({"error": "Not found"}), 404
+        integ = r.data[0]
+        cfg = integ.get("config") or {}
+        itype = integ.get("type")
+        test_msg = "✅ AI Hub 연동 테스트 메시지입니다."
+        if itype == "slack":
+            ok, msg = _send_slack(cfg.get("webhook_url", ""), test_msg)
+        elif itype == "notion":
+            ok, msg = _send_notion_page(cfg.get("token", ""), cfg.get("database_id", ""), "AI Hub 테스트", test_msg)
+        elif itype == "email":
+            ok, msg = _send_email(cfg, "AI Hub 테스트 이메일", test_msg)
+        elif itype == "calendar":
+            events = _get_calendar_events(cfg.get("ical_url", ""))
+            ok, msg = True, f"일정 미리보기:\n{events}"
+        else:
+            ok, msg = False, "Unknown integration type"
+        return jsonify({"success": ok, "message": msg})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/api/integrations/send", methods=["POST"])
+@login_required
+def api_integrations_send():
+    """Send text to one or more integrations by type."""
+    data = request.json or {}
+    itype = data.get("type")
+    text = data.get("text", "")
+    title = data.get("title", "AI Hub 결과")
+    username = session.get("username", "admin")
+    integ_id = data.get("integration_id")
+    if not supabase_client:
+        return jsonify({"error": "No database"}), 400
+    try:
+        if integ_id:
+            r = supabase_client.table("integrations").select("*").eq("id", integ_id).execute()
+        else:
+            r = supabase_client.table("integrations").select("*").eq("user_id", username).eq("type", itype).eq("is_active", True).execute()
+        integs = r.data or []
+        if not integs:
+            return jsonify({"error": "연동 설정이 없습니다."}), 400
+        results = []
+        for integ in integs:
+            cfg = integ.get("config") or {}
+            t = integ.get("type")
+            if t == "slack":
+                ok, msg = _send_slack(cfg.get("webhook_url", ""), f"*{title}*\n{text}")
+            elif t == "notion":
+                ok, msg = _send_notion_page(cfg.get("token", ""), cfg.get("database_id", ""), title, text)
+            elif t == "email":
+                ok, msg = _send_email(cfg, title, text)
+            else:
+                ok, msg = False, f"Send not supported for type: {t}"
+            if ok:
+                supabase_client.table("integrations").update({"last_used_at": datetime.utcnow().isoformat()}).eq("id", integ["id"]).execute()
+            results.append({"id": integ["id"], "name": integ["name"], "success": ok, "message": msg})
+        all_ok = all(r["success"] for r in results)
+        return jsonify({"success": all_ok, "results": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/integrations/calendar/events", methods=["GET"])
+@login_required
+def api_calendar_events():
+    """Return upcoming calendar events as text (for prompt injection)."""
+    username = session.get("username", "admin")
+    integ_id = request.args.get("id")
+    if not supabase_client:
+        return jsonify({"events": "", "error": "No database"})
+    try:
+        if integ_id:
+            r = supabase_client.table("integrations").select("*").eq("id", integ_id).execute()
+        else:
+            r = supabase_client.table("integrations").select("*").eq("user_id", username).eq("type", "calendar").eq("is_active", True).execute()
+        integs = r.data or []
+        if not integs:
+            return jsonify({"events": "캘린더 연동이 설정되지 않았습니다.", "count": 0})
+        cfg = integs[0].get("config") or {}
+        events = _get_calendar_events(cfg.get("ical_url", ""), max_events=15)
+        return jsonify({"events": events, "count": len(events.splitlines())})
+    except Exception as e:
+        return jsonify({"events": "", "error": str(e)})
+
+
 # ── Favicon & common browser requests ──
 @app.route("/favicon.ico")
 def favicon():
