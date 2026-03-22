@@ -2704,7 +2704,33 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     } else if (window._docType && applyDocumentUpdate(fullText)) {
                         if (docEl) docEl.innerHTML = renderMarkdown(fullText);
                     } else {
-                        if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                        // Check for Chart.js JSON in response
+                        var chartRendered = false;
+                        try {
+                            var chartMatch = fullText.match(/```(?:json)?\s*(\{[\s\S]*?"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"[\s\S]*?\})\s*```/);
+                            if (!chartMatch) {
+                                // Try bare JSON (no code fence)
+                                chartMatch = fullText.match(/(\{[\s\S]*?"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"[\s\S]*\})/);
+                            }
+                            if (chartMatch) {
+                                var chartJson = JSON.parse(chartMatch[1]);
+                                if (chartJson.type && chartJson.data && chartJson.data.datasets) {
+                                    var chartTitle = (chartJson.options && chartJson.options.plugins && chartJson.options.plugins.title && chartJson.options.plugins.title.text) || '📊 Chart';
+                                    var chartData = chartJson.data || chartJson;
+                                    chartData.type = chartJson.type || chartData.type || 'bar';
+                                    renderChart(chartData, chartTitle);
+                                    // Show remaining text as markdown (remove chart JSON)
+                                    var remainText = fullText.replace(chartMatch[0], '').trim();
+                                    if (docEl) docEl.innerHTML = remainText ? renderMarkdown(remainText) : '<div style="color:var(--text2);text-align:center;padding:8px;">📊 차트가 Output 패널에 표시되었습니다.</div>';
+                                    document.getElementById('outputBadge').style.display = 'inline-flex';
+                                    if (window.innerWidth <= 768) showMobilePanel('output');
+                                    chartRendered = true;
+                                }
+                            }
+                        } catch(chartErr) { console.log('Chart parse:', chartErr); }
+                        if (!chartRendered) {
+                            if (docEl) docEl.innerHTML = renderMarkdown(fullText);
+                        }
                     }
                     document.getElementById('stream-' + streamId).querySelector('.msg-header').innerHTML += `<span class="time">Done</span>`;
                     // Auto-TTS in speaker mode
