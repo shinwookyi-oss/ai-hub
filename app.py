@@ -503,6 +503,35 @@ def _ensure_user_persona_registered(persona_key, username):
     return persona_key in hub.PERSONAS
 
 
+@app.route("/api/web-search/status", methods=["GET"])
+@login_required
+def api_web_search_status():
+    return jsonify({"available": hub.web_search_available()})
+
+@app.route("/api/web-search", methods=["POST"])
+@login_required
+def api_web_search():
+    try:
+        data = request.json
+        query = data.get("query", "").strip()
+        if not query:
+            return jsonify({"success": False, "error": "No query provided"})
+        if not hub.web_search_available():
+            return jsonify({"success": False, "error": "Web search not configured (PERPLEXITY_API_KEY missing)"})
+        result = hub.web_search(query)
+        if result.success:
+            return jsonify({
+                "success": True,
+                "content": result.content,
+                "provider": result.provider,
+                "model": result.model,
+                "elapsed": result.elapsed_seconds,
+            })
+        else:
+            return jsonify({"success": False, "error": result.error})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/ask", methods=["POST"])
 @login_required
 def api_ask():

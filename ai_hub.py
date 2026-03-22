@@ -63,6 +63,7 @@ class AIHub:
         self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         self.claude_api_key = claude_api_key or os.getenv("CLAUDE_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
         self.grok_api_key = grok_api_key or os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")
+        self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
 
         # 모델 설정
         self.chatgpt_model = chatgpt_model
@@ -82,6 +83,7 @@ class AIHub:
         self._gemini_model_obj = None
         self._claude_client = None
         self._grok_client = None
+        self._perplexity_client = None
         self._chroma_client = None
         self._embedding_function = None
 
@@ -132,6 +134,72 @@ class AIHub:
                     self._history[provider] = self._history[provider][2:]
                 else:
                     self._history[provider].pop(0)
+
+    # ──────────────────────────── Web Search (Perplexity) ────────────────────────────
+
+    def _get_perplexity_client(self):
+        if self._perplexity_client is None:
+            from openai import OpenAI
+            self._perplexity_client = OpenAI(
+                api_key=self.perplexity_api_key,
+                base_url="https://api.perplexity.ai",
+                timeout=30.0,
+            )
+        return self._perplexity_client
+
+    def web_search(self, query: str, language: str = "auto") -> 'AIResponse':
+        """Perform web search using Perplexity Sonar model."""
+        import time
+        start = time.time()
+        if not self.perplexity_api_key:
+            return AIResponse(
+                provider="Perplexity", model="sonar",
+                content="", success=False, error="PERPLEXITY_API_KEY not configured",
+            )
+        try:
+            client = self._get_perplexity_client()
+            lang_instruction = ""
+            if language == "ko":
+                lang_instruction = "한국어로 답변해주세요. "
+            elif language == "auto":
+                lang_instruction = "Detect the language of the query and respond in the same language. "
+
+            response = client.chat.completions.create(
+                model="sonar",
+                messages=[
+                    {"role": "system", "content": f"{lang_instruction}You are a helpful search assistant. Provide accurate, up-to-date information. Always include source URLs when possible. Format with clear headings and bullet points."},
+                    {"role": "user", "content": query}
+                ],
+            )
+            content = response.choices[0].message.content
+            # Extract citations if available
+            citations = []
+            if hasattr(response, 'citations') and response.citations:
+                citations = response.citations
+            elif hasattr(response.choices[0].message, 'citations'):
+                citations = response.choices[0].message.citations or []
+
+            # Append citations if found
+            if citations:
+                content += "\n\n---\n**📚 출처 (Sources):**\n"
+                for i, url in enumerate(citations[:8], 1):
+                    content += f"{i}. {url}\n"
+
+            return AIResponse(
+                provider="Perplexity", model="sonar",
+                content=content,
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+        except Exception as e:
+            return AIResponse(
+                provider="Perplexity", model="sonar",
+                content="", success=False, error=str(e),
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+
+    def web_search_available(self) -> bool:
+        """Check if web search is available."""
+        return bool(self.perplexity_api_key)
 
     # ──────────────────────────── Vector DB (RAG) ────────────────────────────
 
