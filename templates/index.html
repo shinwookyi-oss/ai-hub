@@ -135,27 +135,35 @@
         </div>
     </div>
 
-    <!-- Temp Password Modal (Owner) -->
+    <!-- Owner: Set User Password Modal -->
     <div class="auto-overlay" id="tempPwOverlay" onclick="if(event.target===this)closeTempPw()" style="display:none;z-index:400;">
-        <div class="auto-form-modal" style="max-width:360px;">
+        <div class="auto-form-modal" style="max-width:400px;">
             <div class="auto-header">
-                <h3 style="font-size:14px;color:var(--text);">🔐 임시 비밀번호 발급</h3>
+                <h3 style="font-size:14px;color:var(--text);">🔐 유저 비밀번호 변경</h3>
                 <button class="ws-close" onclick="closeTempPw()">×</button>
             </div>
             <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-                <div style="font-size:12px;color:var(--text2);">대상 유저: <strong id="tempPwUsername" style="color:var(--text);"></strong></div>
-                <div id="tempPwResult" style="display:none;">
-                    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">발급된 임시 비밀번호:</div>
+                <div style="font-size:12px;color:var(--text2);">대상 유저: <strong id="tempPwUsername" style="color:var(--accent2);"></strong></div>
+                <div>
+                    <label class="auto-label">새 비밀번호</label>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="tempPwInput" class="auto-input" placeholder="6자 이상 입력" style="flex:1;">
+                        <button class="yt-load-btn" style="white-space:nowrap;font-size:11px;padding:5px 10px;" onclick="tempPwGenRandom()">🎲 랜덤</button>
+                    </div>
+                </div>
+                <div><label class="auto-label">비밀번호 확인</label>
+                    <input type="text" id="tempPwConfirm" class="auto-input" placeholder="다시 입력"></div>
+                <div id="tempPwResult" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+                    <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">변경 완료 — 유저에게 전달할 비밀번호:</div>
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <code id="tempPwValue" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:14px;color:var(--green);flex:1;word-break:break-all;"></code>
+                        <code id="tempPwValue" style="font-size:14px;color:var(--green);flex:1;word-break:break-all;"></code>
                         <button class="auto-icon-btn" onclick="copyTempPw()" title="복사">📋</button>
                     </div>
-                    <div style="font-size:11px;color:var(--orange);margin-top:8px;">⚠️ 유저에게 전달 후 즉시 변경하도록 안내하세요.</div>
                 </div>
                 <div id="tempPwMsg" style="font-size:12px;min-height:16px;"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
                     <button class="ws-btn" onclick="closeTempPw()">닫기</button>
-                    <button class="auto-save-btn" id="tempPwBtn" onclick="issueTempPw()">🔐 발급</button>
+                    <button class="auto-save-btn" id="tempPwBtn" onclick="issueTempPw()">✅ 변경</button>
                 </div>
             </div>
         </div>
@@ -2950,32 +2958,46 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             } catch(e) { msg.style.color='var(--red)'; msg.textContent='❌ 오류: ' + e.message; }
         }
 
-        // ── Temp Password (owner only) ──
+        // ── Owner: Set User Password ──
         var tempPwUserId = '', tempPwUserName = '';
         function openTempPw(id, name) {
             tempPwUserId = id; tempPwUserName = name;
             document.getElementById('tempPwUsername').textContent = name;
+            document.getElementById('tempPwInput').value = '';
+            document.getElementById('tempPwConfirm').value = '';
             document.getElementById('tempPwResult').style.display = 'none';
             document.getElementById('tempPwMsg').textContent = '';
             document.getElementById('tempPwBtn').style.display = '';
             document.getElementById('tempPwOverlay').style.display = 'flex';
+            setTimeout(function(){ document.getElementById('tempPwInput').focus(); }, 100);
         }
         function closeTempPw() { document.getElementById('tempPwOverlay').style.display = 'none'; }
+        function tempPwGenRandom() {
+            var chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+            var pw = Array.from({length: 10}, function() { return chars[Math.floor(Math.random()*chars.length)]; }).join('');
+            document.getElementById('tempPwInput').value = pw;
+            document.getElementById('tempPwConfirm').value = pw;
+        }
         async function issueTempPw() {
+            var pw = document.getElementById('tempPwInput').value.trim();
+            var cfm = document.getElementById('tempPwConfirm').value.trim();
             var msg = document.getElementById('tempPwMsg');
-            msg.style.color='var(--text2)'; msg.textContent='발급 중...';
+            if (!pw) { msg.style.color='var(--orange)'; msg.textContent='비밀번호를 입력하세요.'; return; }
+            if (pw.length < 6) { msg.style.color='var(--orange)'; msg.textContent='6자 이상이어야 합니다.'; return; }
+            if (pw !== cfm) { msg.style.color='var(--red)'; msg.textContent='비밀번호가 일치하지 않습니다.'; return; }
+            msg.style.color='var(--text2)'; msg.textContent='변경 중...';
             try {
                 var r = await fetch('/api/admin/temp-password', {
                     method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: tempPwUserId})
+                    body: JSON.stringify({user_id: tempPwUserId, password: pw})
                 });
                 var data = await r.json();
                 if (data.success) {
-                    document.getElementById('tempPwValue').textContent = data.temp_password;
+                    document.getElementById('tempPwValue').textContent = pw;
                     document.getElementById('tempPwResult').style.display = 'block';
                     document.getElementById('tempPwBtn').style.display = 'none';
-                    msg.textContent = '';
-                } else { msg.style.color='var(--red)'; msg.textContent='❌ ' + (data.error || '발급 실패'); }
+                    msg.style.color='var(--green)'; msg.textContent='✅ 변경 완료';
+                } else { msg.style.color='var(--red)'; msg.textContent='❌ ' + (data.error || '변경 실패'); }
             } catch(e) { msg.style.color='var(--red)'; msg.textContent='❌ 오류: ' + e.message; }
         }
         function copyTempPw() {

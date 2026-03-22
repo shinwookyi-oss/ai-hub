@@ -3147,13 +3147,15 @@ def api_temp_password():
         return jsonify({"error": "DB 연결 없음"}), 400
     data = request.json or {}
     user_id = data.get("user_id", "")
+    custom_pw = data.get("password", "").strip()
     if not user_id:
         return jsonify({"error": "user_id 필요"}), 400
+    if not custom_pw or len(custom_pw) < 6:
+        return jsonify({"error": "비밀번호는 6자 이상이어야 합니다."}), 400
     try:
-        temp_pw = secrets.token_urlsafe(8)  # 11자 랜덤 문자열
-        new_hash = _hash_password(temp_pw)
+        new_hash = _hash_password(custom_pw)
         supabase_client.table("users").update({"password_hash": new_hash}).eq("id", user_id).execute()
-        return jsonify({"success": True, "temp_password": temp_pw})
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
