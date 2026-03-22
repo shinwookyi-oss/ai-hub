@@ -2128,7 +2128,6 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             if (USER_TIER === 'owner') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
                 document.getElementById('styleSettingsBtn').style.display = 'inline-block';
-                loadStyleSettings();
             }
         }
         function openAdmin() {
@@ -2142,9 +2141,35 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         // ── Style Settings (Owner Only) ──
         function toggleStyleSettings() {
             const popup = document.getElementById('styleSettingsPopup');
+            const wasOpen = popup.classList.contains('open');
             popup.classList.toggle('open');
-            // Close theme picker if open
             document.getElementById('themePickerPopup').classList.remove('open');
+            // Load saved values into UI when opening (without applying)
+            if (!wasOpen) {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('aiHubStyleSettings'));
+                    if (saved) {
+                        document.getElementById('sliderLH').value = saved.lh || 0.9;
+                        document.getElementById('sliderFS').value = saved.fs || 13.5;
+                        document.getElementById('sliderLS').value = saved.ls || -0.01;
+                        document.getElementById('mHdTop').value = saved.mHdTop || 0;
+                        document.getElementById('mHdBot').value = saved.mHdBot || 0;
+                        document.getElementById('mPTop').value = saved.mPTop || 0;
+                        document.getElementById('mPBot').value = saved.mPBot || 0;
+                        document.getElementById('mLiTop').value = saved.mLiTop || 0;
+                        document.getElementById('mLiBot').value = saved.mLiBot || 0;
+                        if (saved.ff) {
+                            const sel = document.getElementById('selectFont');
+                            for (let i = 0; i < sel.options.length; i++) {
+                                if (sel.options[i].value === saved.ff) { sel.selectedIndex = i; break; }
+                            }
+                        }
+                        document.getElementById('lhVal').textContent = saved.lh || 0.9;
+                        document.getElementById('fsVal').textContent = (saved.fs || 13.5) + 'px';
+                        document.getElementById('lsVal').textContent = (saved.ls || -0.01) + 'em';
+                    }
+                } catch(e) {}
+            }
         }
         function updateStyleSetting() {
             const lh = document.getElementById('sliderLH').value;
