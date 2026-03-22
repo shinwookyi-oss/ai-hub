@@ -401,6 +401,11 @@ def logout():
 def health():
     return "ok", 200
 
+@app.route("/manual")
+@login_required
+def manual_page():
+    return render_template("manual.html")
+
 @app.route("/")
 @login_required
 def index():
