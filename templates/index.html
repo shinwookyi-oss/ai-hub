@@ -684,7 +684,10 @@
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
             {% endif %}
             <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="openYtModal()">▶ YouTube</button>
-            <button class="mode-btn" id="qnBtn" style="background:#1a1a0a;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:12px;" onclick="openQuickNotes()">📝 Quick Notes <span id="qnBadge" style="font-size:9px;background:#fdcb6e;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            <button class="mode-btn" id="qnBtn" style="background:#1a1a0a;border-color:#fdcb6e;color:#fdcb6e;margin-bottom:6px;" onclick="openQuickNotes()">📝 Quick Notes <span id="qnBadge" style="font-size:9px;background:#fdcb6e;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            {% if usertier != 'guest' %}
+            <button class="mode-btn" id="memoryBtn" style="background:#0a1a2a;border-color:#74b9ff;color:#74b9ff;margin-bottom:12px;" onclick="openMemoryPanel()">🧠 Memory <span id="memBadge" style="font-size:9px;background:#74b9ff;color:#000;padding:1px 5px;border-radius:8px;margin-left:4px;display:none;">0</span></button>
+            {% endif %}
             <!-- Mode Section -->
             <div class="sidebar-section active" id="sectionMode">
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
@@ -4636,6 +4639,70 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 btn.textContent = '\ud83c\udf10 \uc6f9\uac80\uc0c9';
             }
         }
+
+        // ── Long-term Memory Panel ──
+        async function openMemoryPanel() {
+            var html = '<div class="ws-overlay open" id="memOverlay" onclick="if(event.target===this)closeMemoryPanel()" style="z-index:1100;">';
+            html += '<div class="ws-modal" style="max-width:500px;height:75vh;display:flex;flex-direction:column;">';
+            html += '<div class="ws-header"><h2>🧠 AI Memory</h2><button class="ws-close" onclick="closeMemoryPanel()">×</button></div>';
+            html += '<div style="padding:0 20px 8px;display:flex;gap:6px;">';
+            html += '<input id="memNewInput" type="text" placeholder="기억할 내용 입력..." style="flex:1;padding:6px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;">';
+            html += '<button onclick="memAdd()" style="padding:6px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;">+ 추가</button>';
+            html += '</div>';
+            html += '<div style="padding:0 20px 6px;font-size:10px;color:var(--text2);">AI가 대화에서 자동으로 핵심 사실을 기억합니다. 직접 추가/삭제도 가능합니다.</div>';
+            html += '<div id="memList" style="flex:1;overflow-y:auto;padding:0 20px 10px;"><div style="color:var(--text2);text-align:center;padding:30px;">로딩...</div></div>';
+            html += '<div style="padding:8px 20px;border-top:1px solid var(--border);">';
+            html += '<button onclick="memClear()" style="width:100%;padding:6px;font-size:10px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.3);border-radius:6px;color:#ff7675;cursor:pointer;">🗑 모든 기억 삭제</button>';
+            html += '</div></div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            await memLoad();
+        }
+        function closeMemoryPanel() { var el = document.getElementById('memOverlay'); if (el) el.remove(); }
+
+        async function memLoad() {
+            try {
+                var r = await fetch('/api/user-memory').then(function(r){return r.json();});
+                var el = document.getElementById('memList');
+                var mems = r.memories || [];
+                var badge = document.getElementById('memBadge');
+                if (badge) { if (mems.length > 0) { badge.textContent = mems.length; badge.style.display = 'inline'; } else { badge.style.display = 'none'; } }
+                if (mems.length === 0) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">아직 기억된 내용이 없습니다.<br>AI와 대화하면 자동으로 기억됩니다.</div>'; return; }
+                var html = '';
+                mems.forEach(function(m) {
+                    var date = new Date(m.created_at).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+                    html += '<div style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-left:3px solid #74b9ff;border-radius:6px;display:flex;align-items:center;gap:8px;">';
+                    html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text);line-height:1.4;">' + (m.content||'').replace(/</g,'&lt;') + '</div>';
+                    html += '<div style="font-size:9px;color:var(--text2);margin-top:2px;opacity:0.7;">' + date + '</div></div>';
+                    html += '<button onclick="memDelete(\'' + m.id + '\')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:2px;" title="삭제">✕</button>';
+                    html += '</div>';
+                });
+                el.innerHTML = html;
+            } catch(e) { console.error('memLoad error:', e); }
+        }
+        async function memAdd() {
+            var input = document.getElementById('memNewInput');
+            var content = (input ? input.value : '').trim();
+            if (!content) return;
+            await fetch('/api/user-memory', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:content})});
+            if (input) input.value = '';
+            await memLoad();
+        }
+        async function memDelete(id) {
+            await fetch('/api/user-memory/' + id, {method:'DELETE'});
+            await memLoad();
+        }
+        async function memClear() {
+            if (!confirm('모든 기억을 삭제할까요? 이 작업은 되돌릴 수 없습니다.')) return;
+            await fetch('/api/user-memory/clear', {method:'POST'});
+            await memLoad();
+        }
+        // Load memory badge on page load
+        {% if usertier != 'guest' %}
+        fetch('/api/user-memory').then(function(r){return r.json();}).then(function(r) {
+            var badge = document.getElementById('memBadge');
+            if (badge && r.memories && r.memories.length > 0) { badge.textContent = r.memories.length; badge.style.display = 'inline'; }
+        }).catch(function(){});
+        {% endif %}
 
         async function confirmIntSave() {
             var type = intModalType;

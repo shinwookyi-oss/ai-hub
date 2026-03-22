@@ -609,12 +609,100 @@ def api_ask():
                     except Exception:
                         pass
         else:
-            response = hub.ask(prompt, provider=provider)
+            # ── Long-term Memory Injection (non-persona chat) ──
+            user_id = session.get("username", "admin")
+            user_tier = session.get("usertier", "free")
+            memory_sys = ""
+            if supabase_client and user_tier != "guest":
+                try:
+                    mem_r = supabase_client.table("user_memory").select("content").eq(
+                        "username", user_id
+                    ).order("created_at", desc=True).limit(20).execute()
+                    if mem_r.data:
+                        mem_lines = [m["content"] for m in mem_r.data]
+                        memory_sys = "\n[USER MEMORY - Facts you remember about this user]\n" + "\n".join(f"- {m}" for m in mem_lines) + "\n[END USER MEMORY]\n"
+                except Exception:
+                    pass
+            response = hub.ask(prompt, provider=provider, system_prompt=memory_sys)
+            # ── Auto-extract memory from response ──
+            if response.success and supabase_client and user_tier != "guest" and len(response.content) > 50:
+                try:
+                    extract = hub.ask(
+                        f"From this conversation, extract ONE concise key fact about the user worth remembering "
+                        f"for future conversations (e.g., their name, job, preferences, ongoing projects). "
+                        f"1 sentence max, in the language of the content. "
+                        f"If nothing personal or useful, respond with exactly 'NONE'.\n\n"
+                        f"User: {prompt[:500]}\nAI: {response.content[:1000]}",
+                        provider="chatgpt",
+                        system_prompt="You extract personal facts about users. Only extract genuinely useful, personal facts. Respond with a single sentence or 'NONE'."
+                    )
+                    if extract.success and extract.content.strip().upper() != "NONE" and len(extract.content.strip()) > 5:
+                        supabase_client.table("user_memory").insert({
+                            "username": user_id,
+                            "content": extract.content.strip()[:500]
+                        }).execute()
+                except Exception:
+                    pass
         return jsonify({"provider": response.provider, "model": response.model,
                          "content": response.content, "success": response.success,
                          "error": response.error, "elapsed_seconds": response.elapsed_seconds})
     except Exception as e:
         return jsonify({"success": False, "error": f"서버 오류: {str(e)}", "content": "", "provider": "error", "model": "", "elapsed_seconds": 0}), 500
+
+# ── User Long-term Memory Management ──
+@app.route("/api/user-memory", methods=["GET"])
+@login_required
+def api_user_memory_list():
+    username = session.get("username", "")
+    if not supabase_client:
+        return jsonify({"memories": []})
+    try:
+        r = supabase_client.table("user_memory").select("*").eq(
+            "username", username
+        ).order("created_at", desc=True).limit(50).execute()
+        return jsonify({"memories": r.data or []})
+    except Exception as e:
+        return jsonify({"memories": [], "error": str(e)})
+
+@app.route("/api/user-memory", methods=["POST"])
+@login_required
+def api_user_memory_add():
+    data = request.json
+    content = data.get("content", "").strip()
+    if not content or not supabase_client:
+        return jsonify({"success": False})
+    try:
+        supabase_client.table("user_memory").insert({
+            "username": session.get("username", ""),
+            "content": content[:500]
+        }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/user-memory/<memory_id>", methods=["DELETE"])
+@login_required
+def api_user_memory_delete(memory_id):
+    if not supabase_client:
+        return jsonify({"success": False})
+    try:
+        supabase_client.table("user_memory").delete().eq("id", memory_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/user-memory/clear", methods=["POST"])
+@login_required
+def api_user_memory_clear():
+    if not supabase_client:
+        return jsonify({"success": False})
+    try:
+        supabase_client.table("user_memory").delete().eq(
+            "username", session.get("username", "")
+        ).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/ask_stream", methods=["POST"])
 @login_required
