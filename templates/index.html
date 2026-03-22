@@ -23,24 +23,70 @@
     /* Inline backup: Mobile Driving Mode + Output Panel Fixes */
     @media (max-width: 768px) {
         .speaker-mode-btn { width: 50px !important; height: 50px !important; font-size: 24px !important; border-radius: 50% !important; }
+        /* Driving mode: hide everything except mic */
         body.speaker-mode #userInput { display: none !important; }
         body.speaker-mode #sendBtn { display: none !important; }
         body.speaker-mode #langSelect { display: none !important; }
         body.speaker-mode .file-bar { display: none !important; }
         body.speaker-mode .url-bar { display: none !important; }
-        body.speaker-mode .input-area { padding: 0 !important; position: fixed !important; inset: 0 !important; z-index: 50 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: var(--bg) !important; }
+        body.speaker-mode #speakerModeBtn { display: none !important; }
+        body.speaker-mode #inputToolsPanel { display: none !important; }
+        body.speaker-mode .input-tools { display: none !important; }
         body.speaker-mode .chat-area { display: none !important; }
         body.speaker-mode .header { display: none !important; }
         body.speaker-mode .mobile-panel-tabs { display: none !important; }
-        body.speaker-mode #inputRow { justify-content: center !important; gap: 16px !important; flex-direction: column !important; align-items: center !important; }
+        body.speaker-mode .sidebar { display: none !important; }
+        body.speaker-mode .output-panel { display: none !important; }
+        /* Fullscreen centered mic */
+        body.speaker-mode .input-area {
+            padding: 0 !important; position: fixed !important; inset: 0 !important;
+            z-index: 50 !important; display: flex !important;
+            align-items: center !important; justify-content: center !important;
+            background: var(--bg) !important;
+        }
+        body.speaker-mode #inputRow {
+            justify-content: center !important; flex-direction: column !important;
+            align-items: center !important; gap: 20px !important; width: 100% !important;
+        }
         body.speaker-mode #micBtn {
-            width: 150px !important; height: 150px !important; font-size: 56px !important;
+            width: 160px !important; height: 160px !important; font-size: 60px !important;
             border-radius: 50% !important; border: 4px solid var(--accent) !important;
             background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(108,92,231,0.05)) !important;
             box-shadow: 0 4px 30px rgba(108,92,231,0.4) !important;
-            animation: speakerPulse 2s ease-in-out infinite !important;
+            position: relative !important; z-index: 2 !important;
         }
-        body.speaker-mode #micBtn.recording { border-color: var(--red) !important; box-shadow: 0 4px 30px rgba(255,107,107,0.4) !important; }
+        body.speaker-mode #micBtn.recording {
+            border-color: var(--red) !important;
+            box-shadow: 0 4px 30px rgba(255,107,107,0.4) !important;
+            animation: none !important;
+        }
+        /* Wave animation rings when recording */
+        @keyframes waveRing { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.2); opacity: 0; } }
+        body.speaker-mode #micBtn.recording::before,
+        body.speaker-mode #micBtn.recording::after {
+            content: '' !important; position: absolute !important;
+            inset: -8px !important; border-radius: 50% !important;
+            border: 3px solid var(--red) !important;
+            animation: waveRing 1.5s ease-out infinite !important;
+        }
+        body.speaker-mode #micBtn.recording::after {
+            animation-delay: 0.5s !important;
+        }
+        /* Status text below mic */
+        #drivingStatus {
+            display: none; font-size: 16px; color: var(--text2);
+            text-align: center; padding: 8px 20px;
+        }
+        body.speaker-mode #drivingStatus { display: block !important; }
+        /* Exit button */
+        #drivingExitBtn { display: none; }
+        body.speaker-mode #drivingExitBtn {
+            display: block !important; position: fixed !important;
+            top: 20px !important; right: 20px !important; z-index: 60 !important;
+            padding: 8px 16px !important; font-size: 14px !important;
+            background: var(--surface2) !important; border: 1px solid var(--border) !important;
+            border-radius: 10px !important; color: var(--text) !important; cursor: pointer !important;
+        }
         .output-panel.mobile-show .output-area { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; min-height: 0 !important; flex: 1 !important; }
         .output-panel.mobile-show { width: 100% !important; max-width: 100% !important; }
     }
@@ -935,7 +981,9 @@
                     </select>
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드">🚗</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
+                    <div id="drivingStatus">🎙️ 마이크를 눌러 말하세요</div>
                 </div>
+                <button id="drivingExitBtn" onclick="toggleSpeakerMode()">✕ 운전모드 종료</button>
             </div>
         </div>
         <div class="panel-divider" id="panelDivider" title="Drag to resize · Double-click to reset"></div>
@@ -4000,8 +4048,16 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             window._sttLangLabels = ['🇰🇷 한국어', '🇺🇸 English', '🇯🇵 日本語', '🇨🇳 中文', '🇪🇸 Español', '🇫🇷 Français', '🇩🇪 Deutsch'];
             window._sttLangIdx = 0;
             recognition.lang = 'ko-KR'; // default Korean
-            recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039); };
-            recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039); };
+            recognition.onstart = function() {
+                isRecording = true; micBtn.classList.add('recording'); micBtn.textContent = String.fromCodePoint(9209,65039);
+                var ds = document.getElementById('drivingStatus');
+                if (ds) ds.innerHTML = '🔴 듣고 있습니다...';
+            };
+            recognition.onend = function() {
+                isRecording = false; micBtn.classList.remove('recording'); micBtn.textContent = String.fromCodePoint(127897,65039);
+                var ds = document.getElementById('drivingStatus');
+                if (ds && window._speakerMode) ds.innerHTML = '⏳ 답변 준비중...';
+            };
             recognition.onresult = function(e) {
                 var t = '';
                 for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
@@ -4097,12 +4153,16 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 b.textContent = String.fromCodePoint(128266);
                 b.title = 'Read aloud';
             });
+            var ds = document.getElementById('drivingStatus');
+            if (ds && window._speakerMode) ds.innerHTML = '🎙️ 마이크를 눌러 말하세요';
         }
 
         async function speakText(text, btn) {
             // Toggle: if already speaking, stop
             if (window._isSpeaking) { stopSpeaking(); return; }
             stopSpeaking();
+            var ds = document.getElementById('drivingStatus');
+            if (ds && window._speakerMode) ds.innerHTML = '🔊 AI가 말하고 있습니다...';
             var cleaned = text.replace(/[#*`_~>|\\-]/g, '').replace(/\n+/g, '. ').substring(0, 4000);
             try {
                 var resp = await fetch('/api/tts', {
