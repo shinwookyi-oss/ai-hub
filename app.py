@@ -3160,6 +3160,59 @@ def api_temp_password():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/user-templates", methods=["GET"])
+@login_required
+def api_user_templates_list():
+    if not supabase_client:
+        return jsonify({"templates": []})
+    user_id = session.get("username", "")
+    ttype = request.args.get("type", "")
+    try:
+        q = supabase_client.table("user_templates").select("*").eq("user_id", user_id).order("created_at")
+        if ttype:
+            q = q.eq("type", ttype)
+        r = q.execute()
+        return jsonify({"templates": r.data or []})
+    except Exception as e:
+        return jsonify({"templates": [], "error": str(e)})
+
+
+@app.route("/api/user-templates", methods=["POST"])
+@login_required
+def api_user_templates_create():
+    if not supabase_client:
+        return jsonify({"error": "DB 연결 없음"}), 400
+    user_id = session.get("username", "")
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    prompt = data.get("prompt", "").strip()
+    ttype = data.get("type", "template")
+    if not name or not prompt:
+        return jsonify({"error": "이름과 프롬프트를 입력하세요."}), 400
+    if ttype not in ("template", "strategy"):
+        return jsonify({"error": "type은 template 또는 strategy"}), 400
+    try:
+        r = supabase_client.table("user_templates").insert({
+            "user_id": user_id, "type": ttype, "name": name, "prompt": prompt
+        }).execute()
+        return jsonify({"template": r.data[0] if r.data else {}, "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user-templates/<tid>", methods=["DELETE"])
+@login_required
+def api_user_templates_delete(tid):
+    if not supabase_client:
+        return jsonify({"error": "DB 연결 없음"}), 400
+    user_id = session.get("username", "")
+    try:
+        supabase_client.table("user_templates").delete().eq("id", tid).eq("user_id", user_id).execute()
+        return jsonify({"deleted": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/youtube/transcript", methods=["POST"])
 @login_required
 def api_youtube_transcript():

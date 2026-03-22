@@ -169,6 +169,27 @@
         </div>
     </div>
 
+    <!-- User Custom Template Create Modal -->
+    <div class="auto-overlay" id="userTmplCreateOverlay" onclick="if(event.target===this)closeUserTmplCreate()" style="display:none;z-index:400;">
+        <div class="auto-form-modal" style="max-width:420px;">
+            <div class="auto-header">
+                <h3 style="font-size:14px;color:var(--text);" id="userTmplCreateTitle">➕ 템플릿 추가</h3>
+                <button class="ws-close" onclick="closeUserTmplCreate()">×</button>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div><label class="auto-label">이름</label>
+                    <input type="text" id="userTmplName" class="auto-input" placeholder="템플릿 이름 (예: 회의록 작성)"></div>
+                <div><label class="auto-label">프롬프트</label>
+                    <textarea id="userTmplPrompt" class="auto-input" rows="5" placeholder="프롬프트 내용을 입력하세요..." style="resize:vertical;min-height:100px;"></textarea></div>
+                <div id="userTmplMsg" style="font-size:12px;min-height:16px;"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="ws-btn" onclick="closeUserTmplCreate()">취소</button>
+                    <button class="auto-save-btn" onclick="confirmUserTmplCreate()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Admin Panel Modal -->
     <div class="admin-overlay" id="adminOverlay" style="display:none;" onclick="if(event.target===this)closeAdmin()">
         <div class="admin-modal">
@@ -678,7 +699,10 @@
                 <button class="mode-btn" data-mode="image" onclick="setMode('image')" style="background:linear-gradient(135deg,rgba(232,67,147,0.15),rgba(108,92,231,0.1));border-color:rgba(232,67,147,0.4);color:#e84393;">🎨 Image Gen</button>
             </div>
             <!-- Templates -->
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;" onclick="toggleModeGroup('modeTemplates')">📋 Templates <span id="modeTemplatesArrow" style="float:right;">▶</span></h3>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;display:flex;align-items:center;justify-content:space-between;" onclick="toggleModeGroup('modeTemplates')">
+                <span>📋 Templates <span id="modeTemplatesArrow">▶</span></span>
+                <button onclick="event.stopPropagation();openUserTmplCreate('template')" title="내 템플릿 추가" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--accent2);font-size:11px;cursor:pointer;padding:1px 5px;line-height:1.4;">＋</button>
+            </h3>
             <div id="modeTemplates" style="display:none;">
                 <button class="mode-btn template-btn" onclick="useTemplate('business_plan')">📊 사업계획서</button>
                 <button class="mode-btn template-btn" onclick="useTemplate('proposal')">📝 제안서</button>
@@ -686,15 +710,20 @@
                 <button class="mode-btn template-btn" onclick="useTemplate('meeting')">📋 회의록</button>
                 <button class="mode-btn template-btn" onclick="useTemplate('resume')">👤 이력서</button>
                 <button class="mode-btn template-btn" onclick="useTemplate('contract')">📜 계약서</button>
+                <div id="userTmplList"></div>
             </div>
             <!-- Strategy Analysis -->
-            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;" onclick="toggleModeGroup('modeStrategy')">🧠 Strategy <span id="modeStrategyArrow" style="float:right;">▶</span></h3>
+            <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:10px 0 4px;border-top:1px solid var(--border);padding-top:8px;display:flex;align-items:center;justify-content:space-between;" onclick="toggleModeGroup('modeStrategy')">
+                <span>🧠 Strategy <span id="modeStrategyArrow">▶</span></span>
+                <button onclick="event.stopPropagation();openUserTmplCreate('strategy')" title="내 전략 추가" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--accent2);font-size:11px;cursor:pointer;padding:1px 5px;line-height:1.4;">＋</button>
+            </h3>
             <div id="modeStrategy" style="display:none;">
                 <button class="mode-btn template-btn" onclick="useStrategy('swot')">📊 SWOT 분석</button>
                 <button class="mode-btn template-btn" onclick="useStrategy('pest')">🌍 PEST 분석</button>
                 <button class="mode-btn template-btn" onclick="useStrategy('porter')">⚔️ Porter 5 Forces</button>
                 <button class="mode-btn template-btn" onclick="useStrategy('bcg')">📈 BCG Matrix</button>
                 <button class="mode-btn template-btn" onclick="useStrategy('canvas')">🎯 Business Canvas</button>
+                <div id="userStrategyList"></div>
             </div>
             </div>
             <!-- Provider Section -->
@@ -1447,6 +1476,7 @@
             document.getElementById('imgPromptInput')?.addEventListener('keydown', e=>{
                 if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); generateImageMode(); }
             });
+            loadUserTemplates();
         });
         function setProvider(p) {
             currentProvider=p;
@@ -3420,6 +3450,87 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             input.setSelectionRange(tmpl.length, tmpl.length);
             if (window.innerWidth <= 768) { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
         }
+        // ── User Custom Templates & Strategy ──
+        let _userTmplCreateType = 'template';
+        function openUserTmplCreate(type) {
+            _userTmplCreateType = type || 'template';
+            document.getElementById('userTmplCreateTitle').textContent = type === 'strategy' ? '➕ 전략 추가' : '➕ 템플릿 추가';
+            document.getElementById('userTmplName').value = '';
+            document.getElementById('userTmplPrompt').value = '';
+            document.getElementById('userTmplMsg').textContent = '';
+            document.getElementById('userTmplCreateOverlay').style.display = 'flex';
+            setTimeout(function(){ document.getElementById('userTmplName').focus(); }, 100);
+        }
+        function closeUserTmplCreate() {
+            document.getElementById('userTmplCreateOverlay').style.display = 'none';
+        }
+        async function confirmUserTmplCreate() {
+            var name = document.getElementById('userTmplName').value.trim();
+            var prompt = document.getElementById('userTmplPrompt').value.trim();
+            var msg = document.getElementById('userTmplMsg');
+            if (!name) { msg.style.color = 'var(--red)'; msg.textContent = '이름을 입력해주세요.'; return; }
+            if (!prompt) { msg.style.color = 'var(--red)'; msg.textContent = '프롬프트를 입력해주세요.'; return; }
+            msg.style.color = 'var(--text2)'; msg.textContent = '저장 중...';
+            try {
+                var res = await fetch('/api/user-templates', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: name, prompt: prompt, type: _userTmplCreateType})
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error');
+                closeUserTmplCreate();
+                loadUserTemplates();
+            } catch(e) {
+                msg.style.color = 'var(--red)'; msg.textContent = e.message;
+            }
+        }
+        async function loadUserTemplates() {
+            try {
+                var res = await fetch('/api/user-templates');
+                if (!res.ok) return;
+                var data = await res.json();
+                renderUserTemplates(data.templates || []);
+            } catch(e) {}
+        }
+        function renderUserTemplates(list) {
+            var tmplDiv = document.getElementById('userTmplList');
+            var stratDiv = document.getElementById('userStrategyList');
+            if (!tmplDiv || !stratDiv) return;
+            var tmplItems = list.filter(function(t){ return t.type === 'template'; });
+            var stratItems = list.filter(function(t){ return t.type === 'strategy'; });
+            tmplDiv.innerHTML = tmplItems.map(function(t) {
+                return '<div style="display:flex;align-items:center;gap:4px;margin:2px 0;">' +
+                    '<button class="mode-btn template-btn" style="flex:1;text-align:left;" onclick="useCustomTemplate(' + JSON.stringify(t.prompt) + ')">' + escHtml(t.name) + '</button>' +
+                    '<button onclick="deleteUserTemplate(\'' + t.id + '\')" title="삭제" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 4px;flex-shrink:0;">✕</button>' +
+                    '</div>';
+            }).join('');
+            stratDiv.innerHTML = stratItems.map(function(t) {
+                return '<div style="display:flex;align-items:center;gap:4px;margin:2px 0;">' +
+                    '<button class="mode-btn template-btn" style="flex:1;text-align:left;" onclick="useCustomTemplate(' + JSON.stringify(t.prompt) + ')">' + escHtml(t.name) + '</button>' +
+                    '<button onclick="deleteUserTemplate(\'' + t.id + '\')" title="삭제" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 4px;flex-shrink:0;">✕</button>' +
+                    '</div>';
+            }).join('');
+        }
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function useCustomTemplate(prompt) {
+            var input = document.getElementById('userInput');
+            input.value = prompt;
+            input.focus();
+            input.setSelectionRange(prompt.length, prompt.length);
+            if (window.innerWidth <= 768) { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+        }
+        async function deleteUserTemplate(id) {
+            if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+            try {
+                var res = await fetch('/api/user-templates/' + id, {method: 'DELETE'});
+                if (!res.ok) { var d = await res.json(); alert(d.error || '삭제 실패'); return; }
+                loadUserTemplates();
+            } catch(e) { alert('삭제 중 오류: ' + e.message); }
+        }
+
         function toggleInputTools() {
             const p = document.getElementById('inputToolsPanel');
             p.style.display = p.style.display === 'none' ? 'block' : 'none';
