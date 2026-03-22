@@ -2718,12 +2718,12 @@ def _user_group_ids(username: str) -> list:
 
 
 def _is_admin(username: str) -> bool:
-    """Check if user is system admin (env admin or tier=admin in DB)."""
+    """Check if user is system admin (env admin or tier=admin/owner in DB)."""
     if username == APP_USERNAME:
         return True
     try:
         r = supabase_client.table("users").select("tier").eq("username", username).execute()
-        return bool(r.data and r.data[0].get("tier") == "admin")
+        return bool(r.data and r.data[0].get("tier") in ("admin", "owner"))
     except Exception:
         return False
 
