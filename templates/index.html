@@ -779,6 +779,7 @@
             <div class="history-section">
                 <h3 data-i18n="history">Chat History</h3>
                 <button class="new-chat-btn" onclick="newConversation()" data-i18n="new_chat">+ New Chat</button>
+                <button class="new-chat-btn" onclick="clearScreen()" style="background:transparent;border:1px solid var(--border);color:var(--text2);margin-top:4px;" title="화면 지우기">🧹 Clear Screen</button>
                 <div class="history-list" id="historyList">
                     <div class="history-empty">Loading...</div>
                 </div>
@@ -2909,6 +2910,9 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             chatArea.innerHTML = '';
             if (typeof docPanel !== 'undefined' && docPanel) docPanel.innerHTML = '';
             initHistory();
+        }
+        function clearScreen() {
+            chatArea.innerHTML = '';
         }
 
         async function ensureConversation(firstMsg) {
