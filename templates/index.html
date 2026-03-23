@@ -145,7 +145,7 @@
         <div style="display:flex;align-items:center;gap:10px;">
             <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
             <button class="sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebarCollapse()" title="Toggle sidebar">◀</button>
-            <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi</span></h1>
+            <h1>⚡ AI Hub <span style="font-size:12px;font-weight:400;color:var(--text2);">by Shinwook Yi CPA MBA</span></h1>
         </div>
         <div class="header-tabs" id="headerTabs">
             <button class="header-tab active" id="tabMode" onclick="switchSidebarTab('mode')" data-i18n="mode">Mode</button>
@@ -1036,7 +1036,9 @@
                 <button id="drivingExitBtn" onclick="toggleSpeakerMode()" data-i18n="driving_exit">✕ Exit</button>
             </div>
         </div>
-        <div class="panel-divider" id="panelDivider" title="Drag to resize · Double-click to reset"></div>
+        <div class="panel-divider" id="panelDivider" title="Drag to resize · Double-click to reset">
+            <div onclick="toggleOutputPanel();_updateResultToggle();" style="position:absolute;top:50%;right:-1px;transform:translateY(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:6px 0 0 6px;padding:8px 4px;cursor:pointer;writing-mode:vertical-lr;font-size:10px;color:var(--accent2);letter-spacing:1px;z-index:5;user-select:none;" id="dividerTab">◀ Result</div>
+        </div>
         <div class="output-panel" id="outputPanel">
             <div class="output-panel-header">
                 <div class="output-panel-title">
@@ -1057,7 +1059,7 @@
                         <option value="csv">CSV</option>
                     </select>
                     <button class="output-action-btn" onclick="clearOutput()" data-i18n="clear">Clear</button>
-                    <button class="output-action-btn" onclick="toggleOutputPanel()" title="Close Output Panel" style="font-size:16px;padding:5px 8px;">✕</button>
+                    <button class="output-action-btn" onclick="toggleOutputPanel();_updateResultToggle();" title="Close Output Panel" style="font-size:16px;padding:5px 8px;">✕</button>
                 </div>
             </div>
             <button class="mobile-back-btn" onclick="showMobilePanel('chat')">← Chat으로 돌아가기</button>
@@ -1065,7 +1067,7 @@
                 <div class="doc-empty"><div class="ei">📝</div><p style="font-size:13px;" data-i18n="empty_output">AI analysis results<br>will be documented here</p></div>
             </div>
         </div>
-    <button class="open-output-btn" id="openOutputBtn" onclick="toggleOutputPanel()" title="Open Result Document">📄</button>
+    <button class="open-output-btn" id="openOutputBtn" onclick="toggleOutputPanel();_updateResultToggle();" title="Open Result Document">📄 Result</button>
     </div>
     <script>
         // ── i18n: Browser Language Detection & Translation ──
@@ -3522,6 +3524,19 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             }
         }
         // Restore output panel state (desktop only)
+        function _updateResultToggle() {
+            var tab = document.getElementById('dividerTab');
+            var panel = document.getElementById('outputPanel');
+            var collapsed = panel && panel.classList.contains('collapsed');
+            if (tab) tab.textContent = collapsed ? '▶ Result' : '◀ Result';
+            var btn = document.getElementById('resultToggleBtn');
+            if (!btn) return;
+            if (window.innerWidth <= 768) { btn.style.display = 'none'; return; }
+            btn.style.display = '';
+            btn.innerHTML = collapsed ? '📄 ◀' : '📄 ▶';
+            btn.title = collapsed ? 'Result 패널 열기' : 'Result 패널 닫기';
+        }
+        // Restore output panel state (desktop only)
         (function() {
             if (window.innerWidth > 768 && localStorage.getItem('outputPanelCollapsed') === '1') {
                 document.getElementById('outputPanel').classList.add('collapsed');
@@ -3531,15 +3546,6 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             }
             _updateResultToggle();
         })();
-        function _updateResultToggle() {
-            var btn = document.getElementById('resultToggleBtn');
-            if (!btn) return;
-            if (window.innerWidth <= 768) { btn.style.display = 'none'; return; }
-            btn.style.display = '';
-            var collapsed = document.getElementById('outputPanel').classList.contains('collapsed');
-            btn.innerHTML = collapsed ? '📄 ◀' : '📄 ▶';
-            btn.title = collapsed ? 'Result 패널 열기' : 'Result 패널 닫기';
-        }
 
         // ── Panel Divider Drag Resize ──
         (function initPanelDivider() {
