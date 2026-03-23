@@ -19,5 +19,6 @@ RUN mkdir -p uploads
 
 EXPOSE 5000
 
-# Production server
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--timeout", "300", "--workers", "1", "--max-requests", "200"]
+# Production server – Render injects $PORT (default 10000)
+ENV PORT=10000
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --max-requests 200
