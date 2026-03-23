@@ -159,7 +159,8 @@
             <button class="theme-picker-btn" id="styleSettingsBtn" onclick="toggleStyleSettings()" title="Style Settings" style="display:none;">🔤</button>
             <button class="settings-btn" id="adminBtn" onclick="openAdmin()" title="Admin Settings" style="display:none;">⚙️</button>
             <a href="/manual" target="_blank" class="theme-picker-btn" title="User Manual" style="text-decoration:none;font-size:13px;">📖</a>
-            <button class="theme-picker-btn" onclick="openChangePw()" title="비밀번호 변경">🔑</button>
+            <button class="theme-picker-btn" id="pwaInstallBtn" onclick="pwaInstall()" title="Install App" style="display:none;font-size:13px;">📲</button>
+            <button class="theme-picker-btn" onclick="openChangePw()" title="Change Password">🔑</button>
             <a href="/logout" class="logout-btn" data-i18n="logout" onclick="localStorage.clear();">Logout</a>
         </div>
     </div>
@@ -6302,6 +6303,37 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js', {scope: '/'})
                 .catch(err => console.log('SW registration failed:', err));
+        }
+        // PWA Install Prompt
+        var _deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            _deferredPrompt = e;
+            var btn = document.getElementById('pwaInstallBtn');
+            if (btn) btn.style.display = 'inline-block';
+        });
+        window.addEventListener('appinstalled', function() {
+            _deferredPrompt = null;
+            var btn = document.getElementById('pwaInstallBtn');
+            if (btn) btn.style.display = 'none';
+        });
+        function pwaInstall() {
+            if (_deferredPrompt) {
+                _deferredPrompt.prompt();
+                _deferredPrompt.userChoice.then(function(result) {
+                    if (result.outcome === 'accepted') console.log('PWA installed');
+                    _deferredPrompt = null;
+                    var btn = document.getElementById('pwaInstallBtn');
+                    if (btn) btn.style.display = 'none';
+                });
+            } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                alert('To install AI Hub:\n1. Tap the Share button (📤) at the bottom\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add"');
+            }
+        }
+        // Show install button on iOS (manual instructions)
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.navigator.standalone) {
+            var btn = document.getElementById('pwaInstallBtn');
+            if (btn) btn.style.display = 'inline-block';
         }
     </script>
 </body>
