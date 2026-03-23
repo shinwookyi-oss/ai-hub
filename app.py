@@ -61,7 +61,8 @@ MODEL_CATALOG = [
 
 # Tier → default model IDs (what auto-routing selects from)
 TIER_MODELS = {
-    "president": [m["id"] for m in MODEL_CATALOG],  # All 12 models
+    "ceo": [m["id"] for m in MODEL_CATALOG],  # All 12 models
+    "executive": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "chatgpt:gpt-5.2", "chatgpt:gpt-5.4", "gemini:gemini-2.5-flash", "gemini:gemini-3.1-pro", "claude:claude-sonnet-4-6-20260217", "grok:grok-4.20", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
     "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "gemini:gemini-3.1-pro", "claude:claude-sonnet-4-6-20260217", "grok:grok-4.20", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
     "manager": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-6-20260217", "deepseek:deepseek-chat"],
     "staff": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
@@ -88,7 +89,14 @@ def auto_route_model(prompt: str, tier: str) -> tuple:
 
     if tier == "guest":
         return "chatgpt", "gpt-4o-mini"
-    elif tier == "president":
+    elif tier == "ceo":
+        if is_complex:
+            return "chatgpt", "gpt-5.4"
+        elif is_simple:
+            return "chatgpt", "gpt-4o-mini"
+        else:
+            return "chatgpt", "gpt-5.2"
+    elif tier == "executive":
         if is_complex:
             return "chatgpt", "gpt-5.4"
         elif is_simple:
@@ -145,8 +153,9 @@ APP_PASSWORD_HASH = _hash_password(_raw_password)
 class RateLimiter:
     """In-memory tiered rate limiter per IP."""
     TIERS = {
+        "ceo": None,                                    # unlimited
+        "executive": None,                               # unlimited
         "director": None,                               # unlimited
-        "president": None,                              # unlimited
         "manager":  {"requests": 60,  "window": 60},   # 60 req/min
         "staff":    {"requests": 20,  "window": 60},   # 20 req/min
     }
@@ -248,7 +257,7 @@ def login_required(f):
         # Tiered rate limiting for API calls
         if request.path.startswith("/api/"):
             ip = request.remote_addr or "unknown"
-            tier = session.get("user_tier", os.getenv("USER_TIER", "president"))
+            tier = session.get("user_tier", os.getenv("USER_TIER", "ceo"))
             if not api_limiter.is_allowed(ip, tier):
                 info = api_limiter.tier_info(tier)
                 return jsonify({
@@ -321,7 +330,7 @@ def login_page():
             session["logged_in"] = True
             session["user_id"] = "env_admin"
             session["username"] = username
-            session["user_tier"] = "president"
+            session["user_tier"] = "ceo"
             session["display_name"] = "President"
             session["last_active"] = datetime.utcnow().isoformat()
             session["login_time"] = datetime.utcnow().isoformat()
@@ -335,13 +344,30 @@ def _seed_admin_user():
     if not supabase_client:
         return
     try:
-        res = supabase_admin.table("users").select("id").eq("tier", "president").limit(1).execute()
+        # Ensure shinwookyi is created/upgraded to ceo
+        res = supabase_admin.table("users").select("id").eq("tier", "ceo").limit(1).execute()
+        if not (res.data and len(res.data) > 0):
+            supabase_admin.table("users").upsert({
+                "username": "shinwookyi",
+                "password_hash": _hash_password(_raw_password),
+                "tier": "ceo",
+                "display_name": "Shin Wook Yi",
+                "is_active": True,
+            }).execute()
+            print("  ✅ Created CEO user: shinwookyi")
+        else:
+            # If shinwookyi already exists, ensure tier is ceo
+            supabase_admin.table("users").update({"tier": "ceo"}).eq("username", "shinwookyi").execute()
+            print("  ✅ Ensured shinwookyi is ceo")
+
+        # Seed default admin user if not shinwookyi and not already ceo
+        res = supabase_admin.table("users").select("id").eq("tier", "ceo").eq("username", APP_USERNAME).limit(1).execute()
         if not res.data:
             supabase_admin.table("users").insert({
                 "username": APP_USERNAME,
                 "password_hash": APP_PASSWORD_HASH,
-                "tier": "president",
-                "display_name": "System President",
+                "tier": "ceo",
+                "display_name": "System CEO",
                 "is_active": True,
             }).execute()
             print("  ✅ Admin user seeded in Supabase")
@@ -377,7 +403,7 @@ def _seed_admin_user():
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get("user_tier") != "president":
+        if session.get("user_tier") != "ceo":
             return jsonify({"success": False, "error": "Owner access required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -641,14 +667,14 @@ def api_available_models():
         "models": models,
         "tier": tier,
         "fixed_model": fixed_model,
-        "can_select": tier == "president",  # Only president can manually select
+        "can_select": tier == "ceo",  # Only ceo can manually select
     })
 
 @app.route("/api/user-models", methods=["GET"])
 @login_required
 def api_user_models_list():
     """Owner only: list all user model overrides."""
-    if session.get("user_tier") != "president":
+    if session.get("user_tier") != "ceo":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"overrides": []})
@@ -669,7 +695,7 @@ def api_user_models_list():
 @login_required
 def api_user_models_set():
     """Owner only: set model override for a user (add/remove/fixed)."""
-    if session.get("user_tier") != "president":
+    if session.get("user_tier") != "ceo":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False, "error": "No database"})
@@ -697,7 +723,7 @@ def api_user_models_set():
 @login_required
 def api_user_models_delete(override_id):
     """Owner only: delete a model override."""
-    if session.get("user_tier") != "president":
+    if session.get("user_tier") != "ceo":
         return jsonify({"success": False, "error": "Owner only"}), 403
     if not supabase_client:
         return jsonify({"success": False})
@@ -1262,7 +1288,7 @@ def api_ask_stream():
                 route_provider = provider
                 route_model = None
 
-                if selected_model and ":" in selected_model and user_tier == "president":
+                if selected_model and ":" in selected_model and user_tier == "ceo":
                     # Owner manually selected a model
                     route_provider, route_model = selected_model.split(":", 1)
                 else:
@@ -2724,7 +2750,7 @@ def admin_create_user():
         return jsonify({"success": False, "error": "Username and password are required"}), 400
     if len(password) < 4:
         return jsonify({"success": False, "error": "Password must be at least 4 characters"}), 400
-    if tier not in ("president", "director", "manager", "staff"):
+    if tier not in ("ceo", "executive", "director", "manager", "staff"):
         return jsonify({"success": False, "error": "Invalid tier"}), 400
     try:
         # Check if username exists
@@ -2751,7 +2777,7 @@ def admin_update_user(user_id):
         return jsonify({"success": False, "error": "Supabase not configured"}), 400
     data = request.json
     updates = {}
-    if "tier" in data and data["tier"] in ("president", "director", "manager", "staff"):
+    if "tier" in data and data["tier"] in ("ceo", "executive", "director", "manager", "staff"):
         updates["tier"] = data["tier"]
     if "display_name" in data:
         updates["display_name"] = data["display_name"]
@@ -3515,7 +3541,7 @@ def _is_admin(username: str) -> bool:
         return True
     try:
         r = supabase_client.table("users").select("tier").eq("username", username).execute()
-        return bool(r.data and r.data[0].get("tier") in ("director", "president"))
+        return bool(r.data and r.data[0].get("tier") in ("director", "executive", "ceo"))
     except Exception:
         return False
 
@@ -3526,7 +3552,7 @@ def _is_owner(username: str) -> bool:
         return True
     try:
         r = supabase_client.table("users").select("tier").eq("username", username).execute()
-        return bool(r.data and r.data[0].get("tier") == "president")
+        return bool(r.data and r.data[0].get("tier") == "ceo")
     except Exception:
         return False
 

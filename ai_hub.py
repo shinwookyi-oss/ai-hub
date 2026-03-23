@@ -869,10 +869,11 @@ class AIHub:
     ]
 
     TIER_LIMITS = {
-        "staff":     {"personas": 1,  "folders": 2,    "files": 10,   "storage_mb": 10,   "file_size_mb": 2},
-        "manager":   {"personas": 3,  "folders": 10,   "files": 50,   "storage_mb": 50,   "file_size_mb": 5},
-        "director":  {"personas": 5,  "folders": 30,   "files": 200,  "storage_mb": 500,  "file_size_mb": 20},
-        "president": {"personas": 50, "folders": 9999, "files": 9999, "storage_mb": 9999, "file_size_mb": 100},
+        "staff":      {"personas": 1,  "folders": 2,    "files": 10,   "storage_mb": 10,   "file_size_mb": 2},
+        "manager":    {"personas": 3,  "folders": 10,   "files": 50,   "storage_mb": 50,   "file_size_mb": 5},
+        "director":   {"personas": 5,  "folders": 30,   "files": 200,  "storage_mb": 500,  "file_size_mb": 20},
+        "executive":  {"personas": 10, "folders": 50,   "files": 500,  "storage_mb": 1000, "file_size_mb": 50},
+        "ceo":        {"personas": 50, "folders": 9999, "files": 9999, "storage_mb": 9999, "file_size_mb": 100},
     }
 
     PERSONAS = {
