@@ -7,7 +7,7 @@
 ![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?logo=render&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, and Grok through a single unified interface with AI-generated personas, multi-stakeholder analysis modes, and enterprise-grade security.
+**Multi-AI Platform** — Access ChatGPT, Gemini, Azure OpenAI, Claude, Grok, and DeepSeek through a single unified interface with AI-generated personas, multi-stakeholder analysis modes, and enterprise-grade security.
 
 ✨ **Live Demo**: [https://firstaibot.com](https://firstaibot.com)
 
@@ -30,7 +30,7 @@
 
 ## ✨ Features
 
-### 🤖 5 AI Providers, 8 Models
+### 🤖 6 AI Providers, 10 Models
 | Provider | Models | API |
 |----------|--------|-----|
 | **ChatGPT** | gpt-4o-mini, gpt-4o, o3 | OpenAI |
@@ -38,6 +38,7 @@
 | **Azure OpenAI** | gpt-4o-mini | Microsoft Azure |
 | **Claude** | claude-sonnet-4 | Anthropic |
 | **Grok** | grok-3-mini-fast | xAI |
+| **DeepSeek** | deepseek-chat (V3), deepseek-reasoner (R1) | DeepSeek |
 
 ### 🎯 11 Interaction Modes
 - 💬 **Chat** — 1-on-1 conversation with any AI (with real-time SSE streaming)
@@ -219,7 +220,17 @@ Each persona **accumulates knowledge** and evolves through conversations:
 - 🎙️ **Speech-to-Text** — Click the mic button, speak, and auto-send
 - 🔊 **Text-to-Speech (OpenAI TTS)** — Natural AI voice (Nova) with browser TTS fallback
 - 🎧 **Audio File Transcription (Whisper)** — Upload MP3/WAV/M4A → auto-transcribe and analyze
+- ⏹️ **TTS Stop** — Tap mic button while AI is speaking to stop TTS
 - Supports multiple languages
+
+### 🚗 Driving Mode
+- **Hands-free voice interaction** — Mic button centered, all UI hidden
+- **Auto TTS** — AI responses are automatically read aloud
+- **Auto Mic Restart** — After AI finishes speaking, mic automatically re-opens
+- **TTS Stop & Resume** — Tap mic once to stop AI talking, tap again to speak
+- **Exit button** — Glassmorphism-styled exit button always visible
+- **Voice commands** — Say "운전모드 취소" or "입력모드" to exit
+- **iOS/Android compatible** — TTS warmup + resume workaround for mobile browsers
 
 ### 📊 AI Slide Generation
 - Type `/slides [topic]` in chat to auto-generate 6-10 slide presentations
@@ -291,6 +302,7 @@ export PASSWORD_SALT=your_salt  # Custom salt for password hashing
 - Persona and Mode tabs accessible via header on mobile
 - **Full-screen Output Panel** — 100% height with absolute positioning on mobile
 - **← Back Button** — Physical button to return from Output to Chat
+- **🚗 Driving Mode** — Full-screen mic with auto-TTS, hands-free voice interaction
 - Optimized layout for all screen sizes
 
 ### 🌐 Supported Browsers
@@ -325,6 +337,7 @@ export OPENAI_API_KEY=sk-...
 export GEMINI_API_KEY=AIza...
 export ANTHROPIC_API_KEY=sk-ant-...
 export GROK_API_KEY=xai-...
+export DEEPSEEK_API_KEY=sk-...
 
 # Optional
 export AZURE_OPENAI_API_KEY=...
@@ -498,7 +511,7 @@ docker-compose up -d
 ```
 ai-hub/
 ├── app.py              # Flask app (UI + API routes + auth + SSE streaming + admin + model routing)
-├── ai_hub.py           # AIHub core (5 providers, 8 models, 75+ personas, AI persona gen, 11 modes, memory, RAG)
+├── ai_hub.py           # AIHub core (6 providers, 10 models, 75+ personas, AI persona gen, 11 modes, memory, RAG)
 ├── templates/
 │   ├── index.html      # Main SPA (4800+ lines: UI + JS logic + templates + strategy)
 │   └── login.html      # Login page with Spline 3D background
@@ -523,7 +536,7 @@ ai-hub/
 |-------|-----------|
 | Backend | Python, Flask, SSE Streaming |
 | Frontend | Vanilla HTML/CSS/JS (Split-panel SPA) |
-| AI SDKs | OpenAI, Google GenAI, Anthropic, xAI |
+| AI SDKs | OpenAI, Google GenAI, Anthropic, xAI, DeepSeek |
 | Web Search | Perplexity Sonar API |
 | Image Gen | DALL-E 3 (OpenAI) |
 | Voice | OpenAI TTS (Nova), OpenAI Whisper, Web Speech API |
@@ -549,6 +562,7 @@ graph LR
     D --> G[Anthropic]
     D --> H[Azure OpenAI]
     D --> I[xAI / Grok]
+    D --> I2[DeepSeek]
     B --> J[Supabase]
     J --> K[Conversation History]
     J --> L[Persona Memory & Q&A]

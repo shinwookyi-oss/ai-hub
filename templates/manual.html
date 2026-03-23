@@ -61,7 +61,7 @@ tr:nth-child(even) td { background:var(--surface); }
   <div class="header-bar">
     <div>
       <h1>⚡ AI Hub 사용자 매뉴얼</h1>
-      <p class="subtitle">v3.0 — Multi-AI Platform by Shinwook Yi, CPA, MBA</p>
+      <p class="subtitle">v3.1 — Multi-AI Platform by Shinwook Yi, CPA, MBA</p>
     </div>
     <a href="/" class="back-btn">← AI Hub</a>
   </div>
@@ -83,6 +83,7 @@ tr:nth-child(even) td { background:var(--surface); }
     <a href="#settings">13. 설정 & 테마</a>
     <a href="#tiers">14. 사용자 등급</a>
     <a href="#faq">15. 자주 묻는 질문</a>
+    <a href="#driving">16. 🚗 운전모드 (Driving Mode)</a>
   </div>
 
   <!-- 1. 시작하기 -->
@@ -132,6 +133,8 @@ tr:nth-child(even) td { background:var(--surface); }
       <tr><td>🟡 Claude Sonnet 4</td><td>Anthropic, 창의적 글쓰기</td><td>보통</td></tr>
       <tr><td>💚 Grok Mini</td><td>xAI, 빠른 응답</td><td>저렴</td></tr>
       <tr><td>💚 Azure GPT-4o Mini</td><td>Microsoft Azure 연동</td><td>저렴</td></tr>
+      <tr><td>📚 DeepSeek V3</td><td>중국 AI, 빠르고 저렴</td><td>저렴</td></tr>
+      <tr><td>🧠 DeepSeek R1</td><td>중국 AI, 최고 추론 성능</td><td>보통</td></tr>
     </table>
   </div>
   <div class="card">
@@ -359,8 +362,35 @@ tr:nth-child(even) td { background:var(--surface); }
     <p>AI 응답 상단에 사용된 모델명이 표시됩니다. Owner는 수동으로 모델을 직접 선택할 수도 있습니다.</p>
   </div>
 
+  <!-- 16. 운전모드 -->
+  <h2 id="driving"><span class="emoji-icon">🚗</span>16. 운전모드 (Driving Mode)</h2>
+  <div class="card">
+    <h3>운전모드란?</h3>
+    <p>운전 중 <strong>핸즈프리</strong>로 AI를 사용할 수 있는 모드입니다. 화면에는 <strong>마이크 버튼만</strong> 표시되고, AI 응답이 <strong>자동으로 음성 출력</strong>됩니다.</p>
+  </div>
+  <div class="card">
+    <h3>사용 방법</h3>
+    <ol>
+      <li>사이드바 하단 <strong>🚗 운전모드</strong> 버튼 클릭</li>
+      <li>화면에 큰 <strong>🎙️ 마이크 버튼</strong>만 표시됨</li>
+      <li>마이크 탭 → <strong>말하기</strong> → AI가 자동 응답</li>
+      <li>AI 응답 후 <strong>자동으로 마이크 재시작</strong></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>음성 중단 및 종료</h3>
+    <table>
+      <tr><th>동작</th><th>방법</th></tr>
+      <tr><td>🔊 AI 음성 중단</td><td>마이크 버튼 탭 1회 → 음성 중단</td></tr>
+      <tr><td>🎙️ 다시 말하기</td><td>마이크 버튼 탭 2회 → 마이크 재시작</td></tr>
+      <tr><td>✕ 운전모드 종료</td><td>오른쪽 상단 <strong>✕ 종료</strong> 버튼 탭</td></tr>
+      <tr><td>🗣️ 음성으로 종료</td><td>"운전모드 취소" 또는 "입력모드" 라고 말하기</td></tr>
+    </table>
+    <div class="tip">운전 중에는 음성 중단 + 다시 말하기가 탭 2회이미로 안전합니다.</div>
+  </div>
+
   <div style="text-align:center;padding:40px 0;color:var(--text2);font-size:0.85rem;">
-    <p>⚡ AI Hub v3.0 — Built by Shinwook Yi, CPA, MBA</p>
+    <p>⚡ AI Hub v3.1 — Built by Shinwook Yi, CPA, MBA</p>
     <p style="margin-top:4px;font-size:0.8rem;">© 2026 All Rights Reserved</p>
   </div>
 </div>
