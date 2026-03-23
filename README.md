@@ -91,15 +91,17 @@ Sidebar **Strategy** section with 5 professional analysis frameworks:
 ### 🤖 Smart Model Routing
 - **Auto-routing**: AI classifies question complexity → selects optimal model
 - **Keyword analysis** + **message length** for complexity scoring
-- **President**: Manual model selection via sidebar dropdown (all 10 models)
-- **Per-user model overrides**: President can add/remove/fix models per user
+- **CEO**: Manual model selection via sidebar dropdown (all 12 models)
+- **Per-user model overrides**: CEO can add/remove/fix models per user
 - 🔒 **Fixed model**: Bypasses auto-routing, always uses assigned model
 
 | Tier | Simple Query | Complex Query |
 |------|:---:|:---:|
-| President | gpt-4o-mini | o3 |
-| Director | gpt-4o-mini | gpt-4o |
-| Manager | gpt-4o-mini | claude-sonnet-4 |
+| CEO | gpt-4o-mini | gpt-5.4 |
+| Executive | gpt-4o-mini | gpt-5.4 |
+| Director | gpt-4o-mini | gpt-5.2 |
+| Manager | gpt-4o-mini | claude-sonnet-4.6 |
+| Staff | gpt-4o-mini | gpt-4o-mini |
 | Guest | gpt-4o-mini | gpt-4o-mini |
 
 ### 📊 Data Analysis Command
@@ -145,9 +147,10 @@ Users **create their own personas** by providing a name or job title. AI automat
 | Staff | ⭐ | 1 |
 | Manager | ⭐⭐ | 3 |
 | Director | ⭐⭐⭐ | 5 |
-| President | ⭐⭐⭐⭐ | 50 |
+| Executive | ⭐⭐⭐⭐ | 10 |
+| CEO | ⭐⭐⭐⭐⭐ | 50 |
 
-**75+ Built-in Personas** also available for debate modes (Corporate, Advisory, Function, President groups).
+**75+ Built-in Personas** also available for debate modes (Corporate, Advisory, Function, CEO groups).
 
 ### 🔄 Persona Self-Evolution
 Each persona **accumulates knowledge** and evolves through conversations:
@@ -174,7 +177,7 @@ Each persona **accumulates knowledge** and evolves through conversations:
 ### 🛠️ Convenience Features
 - **🧠 AI Persona Creation** — Enter a name/job → AI auto-generates traits, skills, and system prompt.
   - User can add extra traits; persona self-evolves through conversations.
-  - **Tier-based Limits**: Free: 1, Premium: 3, Admin: 5, Owner: 50 personas.
+  - **Tier-based Limits**: Staff: 1, Manager: 3, Director: 5, Executive: 10, CEO: 50 personas.
 - **📄 Multi-Format Export** — Export output panel as PDF, HTML, Word (.doc), Excel (.xls), or CSV
 - **🎙️ Voice Input (STT)** — Web Speech API, auto-sends on final result
 - **📋 Save/Load Prompts** — Supabase-backed prompt template management
@@ -282,7 +285,7 @@ Each persona **accumulates knowledge** and evolves through conversations:
 |---------|-------------|
 | **Multi-User Auth** | Supabase `users` table with SHA-256 hashed passwords (env-var fallback) |
 | **Admin Panel** | ⚙️ button → manage users: add, delete, toggle active, change tier, reset password |
-| **Tiered Rate Limiting** | `president/director`: **unlimited**, `manager`: 60 req/min, `free`: 20 req/min |
+| **Tiered Rate Limiting** | `ceo/executive/director`: **unlimited**, `manager`: 60 req/min, `staff`: 20 req/min |
 | **Login Protection** | 20 attempts/min per IP to prevent brute force |
 | **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
 | **Password Change** | Self-service password change via API for Supabase users |
@@ -364,7 +367,7 @@ CREATE TABLE users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  tier TEXT DEFAULT 'free' CHECK (tier IN ('owner', 'admin', 'premium', 'free')),
+  tier TEXT DEFAULT 'staff' CHECK (tier IN ('ceo', 'executive', 'director', 'manager', 'staff', 'guest')),
   display_name TEXT,
   email TEXT,
   phone TEXT,

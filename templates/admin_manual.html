@@ -39,7 +39,7 @@
   <div class="header-bar">
     <div>
       <h1>🔐 AI Hub 운영자 매뉴얼</h1>
-      <p class="subtitle">v3.2 — President Only · Shinwook Yi, CPA, MBA</p>
+      <p class="subtitle">v3.2 — CEO Only · Shinwook Yi, CPA, MBA</p>
     </div>
     <div style="display:flex;gap:8px;">
       <a href="/manual" class="back-btn">📖 사용자 매뉴얼</a>
@@ -99,8 +99,9 @@
     <p>사용자 목록에서 등급 드롭다운 변경 후 저장:</p>
     <table>
       <tr><th>등급</th><th>권한</th></tr>
-      <tr><td><span class="badge badge-owner">President</span></td><td>모든 기능 + 관리자 패널 + 모델 수동 선택</td></tr>
-      <tr><td>Director</td><td>대부분 기능, 11개 모델 접근</td></tr>
+      <tr><td><span class="badge badge-owner">CEO</span></td><td>모든 기능 + 관리자 패널 + 모델 수동 선택</td></tr>
+      <tr><td>Executive</td><td>대부분 기능, 10개 모델 접근</td></tr>
+      <tr><td>Director</td><td>대부분 기능, 10개 모델 접근</td></tr>
       <tr><td>Manager</td><td>기본 기능, 5개 모델</td></tr>
       <tr><td>Staff</td><td>제한 기능, 2개 모델</td></tr>
       <tr><td>Guest</td><td>채팅만, 1개 모델</td></tr>
@@ -155,7 +156,8 @@
     <p>파일: <code>app.py</code> → <code>TIER_MODELS</code> (약 62행)</p>
     <table>
       <tr><th>등급</th><th>접근 가능 모델</th></tr>
-      <tr><td>President</td><td>전체 12개 모델 (MODEL_CATALOG 전체)</td></tr>
+      <tr><td>CEO</td><td>전체 12개 모델 (MODEL_CATALOG 전체)</td></tr>
+      <tr><td>Executive</td><td>10개 (gpt-5.4 포함, o3 제외)</td></tr>
       <tr><td>Director</td><td>10개 (gpt-5.4, o3 제외)</td></tr>
       <tr><td>Manager</td><td>5개 (gpt-4o-mini, gpt-5.2, gemini-flash, claude-sonnet-4.6, deepseek-chat)</td></tr>
       <tr><td>Staff</td><td>2개 (gpt-4o-mini, gemini-flash)</td></tr>
@@ -165,7 +167,7 @@
   <div class="card">
     <h3>등급별 특수 권한</h3>
     <ul>
-      <li><strong>President 전용</strong>: User Management, 모델 수동 선택, 비밀번호 변경, 시스템 프롬프트 수정, 페르소나 전체 관리</li>
+      <li><strong>CEO 전용</strong>: User Management, 모델 수동 선택, 비밀번호 변경, 시스템 프롬프트 수정, 페르소나 전체 관리</li>
       <li><strong>Director</strong>: 워크스페이스 전체, 메모리, 템플릿, 50개 대화</li>
       <li><strong>Manager</strong>: 워크스페이스, 메모리, 60회/분 제한</li>
       <li><strong>Staff</strong>: 기본 채팅, 1개 페르소나, 20회/분</li>
@@ -180,10 +182,10 @@
     <p>파일: <code>app.py</code> → <code>auto_route_model()</code> (약 72행)</p>
     <p>질문의 복잡도를 자동 분석하여 최적 모델 배정:</p>
     <table>
-      <tr><th>조건</th><th>President</th><th>Director</th><th>Manager</th><th>Staff/Guest</th></tr>
-      <tr><td>복잡한 질문</td><td>gpt-5.2-pro</td><td>gpt-5.2</td><td>claude-sonnet-4</td><td>gpt-4o-mini</td></tr>
-      <tr><td>일반 질문</td><td>gpt-5.2</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td></tr>
-      <tr><td>간단한 질문</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td></tr>
+      <tr><th>조건</th><th>CEO</th><th>Executive</th><th>Director</th><th>Manager</th><th>Staff/Guest</th></tr>
+      <tr><td>복잡한 질문</td><td>gpt-5.4</td><td>gpt-5.4</td><td>gpt-5.2</td><td>claude-sonnet-4.6</td><td>gpt-4o-mini</td></tr>
+      <tr><td>일반 질문</td><td>gpt-5.2</td><td>gpt-5.2</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td></tr>
+      <tr><td>간단한 질문</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td><td>gpt-4o-mini</td></tr>
     </table>
     <h3 style="margin-top:12px;">복잡도 키워드</h3>
     <ul>
@@ -200,7 +202,8 @@
     <p>파일: <code>app.py</code> → <code>RateLimiter.TIERS</code></p>
     <table>
       <tr><th>등급</th><th>분당 요청</th><th>초과 시</th></tr>
-      <tr><td>President</td><td>무제한</td><td>-</td></tr>
+      <tr><td>CEO</td><td>무제한</td><td>-</td></tr>
+      <tr><td>Executive</td><td>무제한</td><td>-</td></tr>
       <tr><td>Director</td><td>무제한</td><td>-</td></tr>
       <tr><td>Manager</td><td>60회</td><td>429 Too Many Requests 오류</td></tr>
       <tr><td>Staff</td><td>20회</td><td>429 오류</td></tr>
@@ -289,7 +292,7 @@
     <ul>
       <li>각 페르소나는 이름, 직업, 성격, 전문 분야, 응답 스타일 정의</li>
       <li>사용자가 커스텀 페르소나 생성 가능 (DB에 저장)</li>
-      <li>President는 모든 페르소나 관리 가능</li>
+      <li>CEO는 모든 페르소나 관리 가능</li>
     </ul>
   </div>
   <div class="card">
@@ -406,7 +409,7 @@
 
   <div style="text-align:center;padding:40px 0;color:var(--text2);font-size:0.85rem;">
     <p>🔐 AI Hub 운영자 매뉴얼 v3.2</p>
-    <p style="margin-top:4px;font-size:0.8rem;">President Only · © 2026 Shinwook Yi, CPA, MBA</p>
+    <p style="margin-top:4px;font-size:0.8rem;">CEO Only · © 2026 Shinwook Yi, CPA, MBA</p>
   </div>
 </div>
 </body>
