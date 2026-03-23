@@ -47,6 +47,8 @@ def healthz():
 MODEL_CATALOG = [
     {"id": "chatgpt:gpt-4o-mini", "provider": "chatgpt", "model": "gpt-4o-mini", "label": "GPT-4o Mini", "cost": "low"},
     {"id": "chatgpt:gpt-4o", "provider": "chatgpt", "model": "gpt-4o", "label": "GPT-4o", "cost": "medium"},
+    {"id": "chatgpt:gpt-5.2", "provider": "chatgpt", "model": "gpt-5.2", "label": "GPT-5.2", "cost": "medium"},
+    {"id": "chatgpt:gpt-5.2-pro", "provider": "chatgpt", "model": "gpt-5.2-pro", "label": "GPT-5.2 Pro", "cost": "high"},
     {"id": "chatgpt:o3", "provider": "chatgpt", "model": "o3", "label": "GPT o3", "cost": "high"},
     {"id": "gemini:gemini-2.5-flash", "provider": "gemini", "model": "gemini-2.5-flash", "label": "Gemini Flash", "cost": "low"},
     {"id": "gemini:gemini-2.5-pro", "provider": "gemini", "model": "gemini-2.5-pro", "label": "Gemini Pro", "cost": "medium"},
@@ -60,7 +62,7 @@ MODEL_CATALOG = [
 # Tier → default model IDs (what auto-routing selects from)
 TIER_MODELS = {
     "president": [m["id"] for m in MODEL_CATALOG],  # All models
-    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
+    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
     "manager": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "deepseek:deepseek-chat"],
     "staff": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
     "guest": ["chatgpt:gpt-4o-mini"],
@@ -88,15 +90,15 @@ def auto_route_model(prompt: str, tier: str) -> tuple:
         return "chatgpt", "gpt-4o-mini"
     elif tier == "president":
         if is_complex:
-            return "chatgpt", "o3"
+            return "chatgpt", "gpt-5.2-pro"
         elif is_simple:
             return "chatgpt", "gpt-4o-mini"
         else:
-            return "chatgpt", "gpt-4o"
+            return "chatgpt", "gpt-5.2"
     elif tier == "director":
         if is_complex:
-            if "chatgpt:gpt-4o" in allowed:
-                return "chatgpt", "gpt-4o"
+            if "chatgpt:gpt-5.2" in allowed:
+                return "chatgpt", "gpt-5.2"
             return "gemini", "gemini-2.5-pro"
         else:
             return "chatgpt", "gpt-4o-mini"
