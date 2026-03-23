@@ -23,15 +23,9 @@
     /* Inline backup: Mobile Driving Mode + Output Panel Fixes */
     @media (max-width: 768px) {
         .speaker-mode-btn { width: 50px !important; height: 50px !important; font-size: 24px !important; border-radius: 50% !important; }
-        /* Driving mode: hide everything except mic */
-        body.speaker-mode #userInput { display: none !important; }
-        body.speaker-mode #sendBtn { display: none !important; }
-        body.speaker-mode #langSelect { display: none !important; }
-        body.speaker-mode .file-bar { display: none !important; }
-        body.speaker-mode .url-bar { display: none !important; }
-        body.speaker-mode #speakerModeBtn { display: none !important; }
-        body.speaker-mode #inputToolsPanel { display: none !important; }
-        body.speaker-mode .input-tools { display: none !important; }
+        /* Driving mode: hide everything except mic, equalizer, status */
+        body.speaker-mode .input-area > *:not(#inputRow) { display: none !important; }
+        body.speaker-mode #inputRow > *:not(#micBtn):not(#drivingEqualizer):not(#drivingStatus) { display: none !important; }
         body.speaker-mode .chat-area { display: none !important; }
         body.speaker-mode .header { display: none !important; }
         body.speaker-mode .mobile-panel-tabs { display: none !important; }
