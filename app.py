@@ -344,6 +344,9 @@ def _seed_admin_user():
     if not supabase_client:
         return
     try:
+        # Auto-migrate: rename old "president" tier to "ceo"
+        supabase_admin.table("users").update({"tier": "ceo"}).eq("tier", "president").execute()
+        print("  🔄 Migrated president → ceo tier")
         # Ensure shinwookyi is created/upgraded to ceo
         res = supabase_admin.table("users").select("id").eq("tier", "ceo").limit(1).execute()
         if not (res.data and len(res.data) > 0):
