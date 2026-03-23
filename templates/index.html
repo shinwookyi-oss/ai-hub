@@ -2881,29 +2881,36 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                             // Try code-fenced JSON first
                             var chartMatch = fullText.match(/```(?:json)?\s*(\{[\s\S]*?"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"[\s\S]*?\})\s*```/);
                             if (!chartMatch) {
-                                // Try bare JSON: find { "type": ... } block directly
-                                chartMatch = fullText.match(/(\{\s*"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*"datasets"\s*:\s*\[[\s\S]*?\]\s*\}\s*\})/);
+                                // Try bare JSON: match from {"type" to end of object
+                                chartMatch = fullText.match(/(\{\s*"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"\s*:\s*\[[\s\S]*?\]\s*\}[\s\S]*?\})/);
                             }
                             if (!chartMatch) {
-                                // Fallback: try to find any JSON block with chart keys by scanning { positions
-                                var braceIdx = fullText.indexOf('{"type"');
-                                if (braceIdx === -1) braceIdx = fullText.indexOf('{ "type"');
-                                if (braceIdx === -1) braceIdx = fullText.indexOf('{  "type"');
-                                if (braceIdx >= 0) {
-                                    // Find matching closing brace
+                                // Fallback: scan for "type" keyword anywhere and find enclosing { }
+                                var typeRe = /"\s*type\s*"\s*:\s*"(bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"/g;
+                                var typeMatch;
+                                while ((typeMatch = typeRe.exec(fullText)) !== null) {
+                                    // Walk backwards from "type" to find the opening {
+                                    var startSearch = typeMatch.index;
+                                    var braceStart = -1;
+                                    for (var bi = startSearch - 1; bi >= 0; bi--) {
+                                        if (fullText[bi] === '{') { braceStart = bi; break; }
+                                        if (fullText[bi] === '}' || fullText[bi] === '\n') break; // not the right block
+                                    }
+                                    if (braceStart < 0) continue;
+                                    // Walk forward to find matching closing }
                                     var depth = 0, endIdx = -1;
-                                    for (var ci = braceIdx; ci < fullText.length; ci++) {
+                                    for (var ci = braceStart; ci < fullText.length; ci++) {
                                         if (fullText[ci] === '{') depth++;
                                         else if (fullText[ci] === '}') { depth--; if (depth === 0) { endIdx = ci; break; } }
                                     }
-                                    if (endIdx > braceIdx) {
-                                        try {
-                                            var candidate = JSON.parse(fullText.substring(braceIdx, endIdx + 1));
-                                            if (candidate.type && candidate.data && candidate.data.datasets) {
-                                                chartMatch = [fullText.substring(braceIdx, endIdx + 1), fullText.substring(braceIdx, endIdx + 1)];
-                                            }
-                                        } catch(e2) {}
-                                    }
+                                    if (endIdx <= braceStart) continue;
+                                    try {
+                                        var candidate = JSON.parse(fullText.substring(braceStart, endIdx + 1));
+                                        if (candidate.type && candidate.data && candidate.data.datasets) {
+                                            chartMatch = [fullText.substring(braceStart, endIdx + 1), fullText.substring(braceStart, endIdx + 1)];
+                                            break;
+                                        }
+                                    } catch(e2) {}
                                 }
                             }
                             if (chartMatch) {
