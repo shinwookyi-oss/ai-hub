@@ -1766,7 +1766,7 @@ def api_upload():
 
 @app.route("/api/files", methods=["GET"])
 @login_required
-def api_files_list():
+def storage_files_list():
     """List user's files in Supabase Storage."""
     try:
         sb = supabase_admin or supabase_client
@@ -1791,7 +1791,7 @@ def api_files_list():
 
 @app.route("/api/files/download", methods=["POST"])
 @login_required
-def api_files_download():
+def storage_files_download():
     """Download a file from Supabase Storage."""
     try:
         sb = supabase_admin or supabase_client
@@ -1818,7 +1818,7 @@ def api_files_download():
 
 @app.route("/api/files/delete", methods=["POST"])
 @login_required
-def api_files_delete():
+def storage_files_delete():
     """Delete a file from Supabase Storage."""
     try:
         sb = supabase_admin or supabase_client
@@ -1837,7 +1837,7 @@ def api_files_delete():
 
 @app.route("/api/files/load", methods=["POST"])
 @login_required
-def api_files_load():
+def storage_files_load():
     """Load a file from Storage back into the chat (re-extract text)."""
     try:
         sb = supabase_admin or supabase_client
