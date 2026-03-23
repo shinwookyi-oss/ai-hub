@@ -60,10 +60,13 @@ tr:nth-child(even) td { background:var(--surface); }
 <div class="container">
   <div class="header-bar">
     <div>
-      <h1>⚡ AI Hub 사용자 매뉴얼</h1>
+      <h1 id="manualTitle">⚡ AI Hub 사용자 매뉴얼</h1>
       <p class="subtitle">v3.1 — Multi-AI Platform by Shinwook Yi, CPA, MBA</p>
     </div>
-    <a href="/" class="back-btn">← AI Hub</a>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button id="manualLangBtn" onclick="applyManualLang(MANUAL_LANG==='ko'?'en':'ko')" style="padding:6px 12px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--accent2);cursor:pointer;">🇺🇸 EN</button>
+      <a href="/" class="back-btn">← AI Hub</a>
+    </div>
   </div>
 
   <div class="toc">
@@ -389,10 +392,256 @@ tr:nth-child(even) td { background:var(--surface); }
     <div class="tip">운전 중에는 음성 중단 + 다시 말하기가 탭 2회이미로 안전합니다.</div>
   </div>
 
-  <div style="text-align:center;padding:40px 0;color:var(--text2);font-size:0.85rem;">
+<div style="text-align:center;padding:40px 0;color:var(--text2);font-size:0.85rem;">
     <p>⚡ AI Hub v3.1 — Built by Shinwook Yi, CPA, MBA</p>
     <p style="margin-top:4px;font-size:0.8rem;">© 2026 All Rights Reserved</p>
   </div>
 </div>
+<script>
+// Manual i18n system
+var MANUAL_LANG = (navigator.language || 'ko').substring(0,2) === 'ko' ? 'ko' : 'en';
+var EN = {
+  // Header
+  title: '⚡ AI Hub User Manual',
+  toc_title: '📑 Table of Contents',
+  back: '← AI Hub',
+  // TOC
+  toc1: '1. Getting Started', toc2: '2. Chat — Talk with AI', toc3: '3. AI Models & Auto Routing',
+  toc4: '4. Analysis Modes (11)', toc5: '5. AI Personas', toc6: '6. Special Commands',
+  toc7: '7. Workspace', toc8: '8. Long-term Memory', toc9: '9. Web Search',
+  toc10: '10. File Upload & Analysis', toc11: '11. Document Templates', toc12: '12. Export',
+  toc13: '13. Settings & Themes', toc14: '14. User Tiers', toc15: '15. FAQ',
+  toc16: '16. 🚗 Driving Mode',
+  // Section headers
+  s1: '🚀 1. Getting Started', s2: '💬 2. Chat — Talk with AI', s3: '🤖 3. AI Models & Auto Routing',
+  s4: '🎯 4. Analysis Modes (11)', s5: '🎭 5. AI Personas', s6: '⌨️ 6. Special Commands',
+  s7: '📂 7. Workspace', s8: '🧠 8. Long-term Memory', s9: '🌐 9. Web Search',
+  s10: '📁 10. File Upload & Analysis', s11: '📋 11. Document Templates', s12: '📤 12. Export',
+  s13: '🎨 13. Settings & Themes', s14: '👥 14. User Tiers', s15: '❓ 15. FAQ',
+  s16: '🚗 16. Driving Mode',
+  // Section 1
+  login_title: 'Login',
+  login_p: 'Visit <code>firstaibot.com</code> in your browser to see the login screen.',
+  login_li1: 'Enter the <strong>username</strong> and <strong>password</strong> provided by your admin.',
+  login_li2: 'If you received a temporary password, you must change it on first login.',
+  login_li3: '<strong>Guest account</strong>: Login with username <code>guest</code> (limited features).',
+  layout_title: 'Screen Layout',
+  layout_li1: '<strong>Left Sidebar</strong> — Mode, AI model, persona, strategy, workspace selection',
+  layout_li2: '<strong>Center Chat Panel</strong> — Chat with AI',
+  layout_li3: '<strong>Right Output Panel</strong> — Reports, slides, charts and other outputs',
+  layout_li4: '<strong>Drag the divider</strong> between panels to resize.',
+  // Section 2
+  chat_p: 'Type your question in the input field and press <span class="key">Enter</span> or click Send.',
+  chat_li1: 'AI responses appear in <strong>real-time streaming</strong>, character by character.',
+  chat_li2: 'Previous context is remembered for continuous conversation.',
+  chat_li3: 'Press <span class="key">Shift</span> + <span class="key">Enter</span> for a new line.',
+  chat_tip: '🎙️ Click the mic button for <strong>voice input</strong> (Chrome/Edge recommended).',
+  // Section 3
+  model_title: 'Available AI Models', model_th1: 'Model', model_th2: 'Description', model_th3: 'Cost',
+  m1d: 'Fast & efficient, best for general chat', m2d: 'High-quality analysis & reports',
+  m3d: 'Top-tier reasoning, complex analysis', m4d: 'Google AI, fast response',
+  m5d: 'Google AI, deep analysis', m6d: 'Anthropic, creative writing',
+  m7d: 'xAI, fast response', m8d: 'Microsoft Azure', m9d: 'Chinese AI, fast & affordable',
+  m10d: 'Chinese AI, top reasoning',
+  cost_low: 'Low', cost_mid: 'Medium', cost_high: 'High',
+  auto_title: '🤖 Auto Routing (Auto Mode)',
+  auto_p: 'Automatically <strong>analyzes question complexity</strong> and selects the optimal model:',
+  auto_li1: '<strong>Simple questions</strong> (translation, summary, calculation) → 💚 Low-cost model',
+  auto_li2: '<strong>Complex questions</strong> (analysis, strategy, code, tax) → 🟡🔴 Premium model',
+  auto_tip: 'Auto routing saves costs while delivering top performance for complex questions.',
+  // Section 4
+  mode_th1: 'Mode', mode_th2: 'Description', mode_th3: 'Use Case',
+  md1: '1:1 AI chat', md2: 'Compare 5 AIs', md3: 'AI vs AI debate', md4: 'AI round-robin discussion',
+  md5: 'All AIs answer then vote', md6: 'Persona debate', md7: 'Group discussion',
+  md8: 'Comprehensive report', md9: 'Decision matrix', md10: 'Sequential deep analysis', md11: 'Approval/oppose vote',
+  mu1: 'General Q&A, work help', mu2: 'Find best answer', mu3: 'Both-sides analysis',
+  mu4: 'Multi-angle opinions', mu5: 'Select best answer', mu6: 'Role-play analysis',
+  mu7: 'Diverse perspectives', mu8: 'Expert-level reports', mu9: 'Score-based decisions',
+  mu10: 'Step-by-step analysis', mu11: 'Proposal evaluation',
+  // Section 5
+  persona_title: 'What are Personas?',
+  persona_p: 'Give AI a <strong>specific role</strong> to respond like an expert:',
+  persona_li1: '<strong>75+ built-in personas</strong> — CPA, lawyer, marketer, CEO, engineer, etc.',
+  persona_li2: '<strong>Custom personas</strong> — Enter name/job → AI auto-generates personality, skills, and response style',
+  persona_how: 'How to Use',
+  persona_h1: 'Click desired persona in sidebar <strong>Persona</strong> section',
+  persona_h2: 'When activated, the AI responds in that role',
+  persona_h3: 'Click <strong>+ Add</strong> to create a new persona',
+  persona_tip: 'Personas <strong>auto-learn</strong> from conversations. More chats = more accurate responses.',
+  // Section 6
+  cmd_th1: 'Command', cmd_th2: 'Description',
+  cmd1: '🎨 AI Image Generation (DALL-E 3)', cmd2: '🌐 Real-time Web Search',
+  cmd3: '📊 Structured Data Analysis', cmd4: '📊 Auto-generate presentation slides',
+  cmd_tip: 'Type <code>/</code> in the chat to see available commands.',
+  // Section 7
+  ws_p: 'Manage project <strong>folders and files</strong> (cloud storage):',
+  ws1: '<strong>Create folders</strong> — With icons, names, descriptions',
+  ws2: '<strong>Save notes</strong> — Save chats, reports, slides to folders',
+  ws3: '<strong>Upload files</strong> — Direct PDF, Excel, Word file uploads',
+  ws4: '<strong>📌 Pin</strong> — Pin important files to top',
+  ws5: '<strong>🤖 AI Integration</strong> — One-click "Ask AI / Continue / Develop" on saved files',
+  // Section 8
+  mem_p: 'AI <strong>auto-extracts key facts</strong> from conversations and remembers them:',
+  mem_ex1: '"I am a CPA" → AI auto-references in future chats',
+  mem_ex2: '"Our company has 50 employees" → Saved to memory',
+  mem_manage: 'How to Manage',
+  mem_mp: 'Click <strong>🧠 Memory</strong> button in sidebar:',
+  mem_m1: 'View saved memories', mem_m2: 'Manually add/delete memories', mem_m3: 'Clear all memories',
+  mem_warn: 'Guest accounts cannot use memory features.',
+  // Section 9
+  ws_sp: 'Search real-time internet info for up-to-date answers:',
+  ws_how: 'How to Use',
+  ws_h1: '<strong>Command</strong>: <code>/search today dollar won exchange rate</code>',
+  ws_h2: '<strong>Toggle</strong>: Click 🌐 button near input → Enable web search for all queries',
+  ws_ex: 'Examples',
+  // Section 10
+  file_fmt: 'Supported Formats',
+  file_fp: 'PDF, DOCX, XLSX, CSV, TXT, Images (JPG/PNG), Audio (MP3/WAV), etc.',
+  file_how: 'How to Use',
+  file_h1: 'Click <strong>📎 file button</strong> next to chat input or <strong>drag & drop</strong>',
+  file_h2: 'Text auto-extracted & AI-analyzed after upload',
+  file_h3: 'Image PDFs auto-scanned via <strong>AI Vision OCR</strong>',
+  file_tip: 'Excel/CSV files auto-display as <strong>spreadsheet viewer</strong>. Cell editing and AI analysis available.',
+  // Section 11
+  tmpl_p: 'One-click professional document generation from sidebar <strong>Templates</strong>:',
+  tmpl_th1: 'Template', tmpl_th2: 'Content',
+  t1: '📊 Business Plan', t1d: '10 sections with TAM/SAM/SOM',
+  t2: '📝 Proposal', t2d: 'Project overview, timeline, budget',
+  t3: '📑 Report', t3d: 'Summary, analysis, conclusions',
+  t4: '📋 Meeting Notes', t4d: 'Attendees, agenda, action items',
+  t5: '👤 Resume', t5d: 'Career, education, skills',
+  t6: '📜 Contract', t6d: 'Terms, conditions, signatures',
+  tmpl_tip: 'Use the output format selector for <strong>1-page summary, slides, email</strong> and 10 other formats.',
+  // Section 12
+  exp_p: 'Export output panel results in various formats:',
+  e1: '📄 <strong>PDF</strong> — For printing reports',
+  e2: '📝 <strong>HTML</strong> — For web sharing',
+  e3: '📋 <strong>Word (.doc)</strong> — Editable documents',
+  e4: '📊 <strong>Excel (.xls)</strong> — Data analysis',
+  e5: '📁 <strong>CSV</strong> — Spreadsheet data',
+  // Section 13
+  theme_title: 'Change Theme',
+  theme_p: 'Choose from 5 themes at the bottom theme picker:',
+  th_th1: 'Theme', th_th2: 'Style',
+  th1: 'Default dark mode, purple accents', th2: 'GitHub style, blue accents',
+  th3: 'Bright white mode', th4: 'Warm amber tones', th5: 'Deep ocean blues, teal accents',
+  other_title: 'Other Settings',
+  other1: '<strong>Change Password</strong> — Click username at top → Change Password',
+  other2: '<strong>Session Info</strong> — View login time, IP, usage time',
+  // Section 14
+  tier_th1: 'Tier', tier_th2: 'AI Models', tier_th3: 'Personas', tier_th4: 'Rate Limit', tier_th5: 'Features',
+  tp: 'All 10 models', td: '9 models', tm: '5 models', ts: '2 models', tg: '1 model',
+  pp: '50', pd: '5', pm: '3', ps: '1', pg: 'None',
+  rp: 'Unlimited', rd: 'Unlimited', rm: '60/min', rs: '20/min', rg: '20/min',
+  fp: 'All features + Admin panel', fd: 'All features', fm: 'Most features', fs: 'Basic features', fg: 'Chat only',
+  // Section 15
+  faq1q: 'Q: Can I change the AI response language?',
+  faq1a: 'Yes! Ask in Korean → responds in Korean. Ask in English → responds in English. You can also explicitly request: "Answer in English".',
+  faq2q: 'Q: Are conversations saved?',
+  faq2a: 'Yes, all conversations are auto-saved to the cloud (Supabase). Reload previous chats from the left conversation list.',
+  faq3q: 'Q: Are uploaded files safe?',
+  faq3a: 'Files are used only for AI analysis and deleted from the server when the session ends. Save to Workspace for long-term storage.',
+  faq4q: 'Q: Does it work on mobile?',
+  faq4a: 'Yes! Responsive design works on mobile browsers. Chrome or Safari recommended.',
+  faq5q: 'Q: Can I see which model was selected in Auto mode?',
+  faq5a: 'The model name is shown at the top of each AI response. President can manually select models.',
+  // Section 16
+  drv_title: 'What is Driving Mode?',
+  drv_p: 'A <strong>hands-free</strong> mode for using AI while driving. Only the <strong>mic button</strong> is shown, and AI responses are <strong>automatically spoken aloud</strong>.',
+  drv_how: 'How to Use',
+  drv1: 'Click <strong>🚗 Driving Mode</strong> button at bottom of sidebar',
+  drv2: 'Only a large <strong>🎙️ mic button</strong> appears on screen',
+  drv3: 'Tap mic → <strong>speak</strong> → AI auto-responds',
+  drv4: 'After AI responds, <strong>mic auto-restarts</strong>',
+  drv_stop: 'Stop & Exit',
+  drv_th1: 'Action', drv_th2: 'Method',
+  drv_a1: '🔊 Stop AI voice', drv_m1: 'Tap mic button once → voice stops',
+  drv_a2: '🎙️ Speak again', drv_m2: 'Tap mic button twice → mic restarts',
+  drv_a3: '✕ Exit driving mode', drv_m3: 'Tap <strong>✕ Exit</strong> button (top right)',
+  drv_a4: '🗣️ Voice exit', drv_m4: 'Say "cancel driving mode" or "input mode"',
+  drv_tip: 'During driving, stopping voice + speaking again takes 2 taps for safety.'
+};
+var _koHTML = '';
+function applyManualLang(lang) {
+  MANUAL_LANG = lang;
+  var c = document.querySelector('.container');
+  if (!_koHTML) _koHTML = c.innerHTML;
+  if (lang === 'ko') { c.innerHTML = _koHTML; }
+  else {
+    // Restore Korean first to have clean DOM
+    c.innerHTML = _koHTML;
+    // Title
+    var t = document.getElementById('manualTitle');
+    if (t) t.innerHTML = EN.title;
+    // TOC
+    var tocH = c.querySelector('.toc h3');
+    if (tocH) tocH.textContent = EN.toc_title;
+    var tocLinks = c.querySelectorAll('.toc a');
+    var tocKeys = ['toc1','toc2','toc3','toc4','toc5','toc6','toc7','toc8','toc9','toc10','toc11','toc12','toc13','toc14','toc15','toc16'];
+    tocLinks.forEach(function(a,i){ if(EN[tocKeys[i]]) a.textContent = EN[tocKeys[i]]; });
+    // Section headers (h2)
+    var h2s = c.querySelectorAll('h2[id]');
+    var sKeys = ['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s13','s14','s15','s16'];
+    h2s.forEach(function(h,i){ if(EN[sKeys[i]]) h.innerHTML = '<span class="emoji-icon">' + EN[sKeys[i]].substring(0,2) + '</span>' + EN[sKeys[i]].substring(2); });
+    // Cards: map section-by-section using querySelectorAll within each section
+    var sections = c.querySelectorAll('h2[id]');
+    sections.forEach(function(sec) {
+      var id = sec.getAttribute('id');
+      var cards = [];
+      var next = sec.nextElementSibling;
+      while (next && next.tagName !== 'H2') {
+        if (next.classList && next.classList.contains('card')) cards.push(next);
+        next = next.nextElementSibling;
+      }
+      // Apply per-section translations
+      if (id==='getting-started' && cards.length>=2) {
+        cards[0].querySelector('h3').textContent = EN.login_title;
+        cards[0].querySelector('p').innerHTML = EN.login_p;
+        var lis = cards[0].querySelectorAll('li');
+        if(lis[0]) lis[0].innerHTML = EN.login_li1;
+        if(lis[1]) lis[1].innerHTML = EN.login_li2;
+        if(lis[2]) lis[2].innerHTML = EN.login_li3;
+        cards[1].querySelector('h3').textContent = EN.layout_title;
+        var lis2 = cards[1].querySelectorAll('li');
+        if(lis2[0]) lis2[0].innerHTML = EN.layout_li1;
+        if(lis2[1]) lis2[1].innerHTML = EN.layout_li2;
+        if(lis2[2]) lis2[2].innerHTML = EN.layout_li3;
+        if(lis2[3]) lis2[3].innerHTML = EN.layout_li4;
+      }
+      if (id==='chat' && cards[0]) {
+        cards[0].querySelector('p').innerHTML = EN.chat_p;
+        var lis = cards[0].querySelectorAll('li');
+        if(lis[0]) lis[0].innerHTML = EN.chat_li1;
+        if(lis[1]) lis[1].innerHTML = EN.chat_li2;
+        if(lis[2]) lis[2].innerHTML = EN.chat_li3;
+        var tip = cards[0].querySelector('.tip');
+        if(tip) tip.innerHTML = EN.chat_tip;
+      }
+      if (id==='driving') {
+        if(cards[0]) { cards[0].querySelector('h3').textContent=EN.drv_title; cards[0].querySelector('p').innerHTML=EN.drv_p; }
+        if(cards[1]) { cards[1].querySelector('h3').textContent=EN.drv_how;
+          var lis=cards[1].querySelectorAll('li');
+          if(lis[0])lis[0].innerHTML=EN.drv1; if(lis[1])lis[1].innerHTML=EN.drv2;
+          if(lis[2])lis[2].innerHTML=EN.drv3; if(lis[3])lis[3].innerHTML=EN.drv4;
+        }
+        if(cards[2]) { cards[2].querySelector('h3').textContent=EN.drv_stop;
+          var tds=cards[2].querySelectorAll('td');
+          if(tds[0])tds[0].textContent=EN.drv_a1; if(tds[1])tds[1].innerHTML=EN.drv_m1;
+          if(tds[2])tds[2].textContent=EN.drv_a2; if(tds[3])tds[3].innerHTML=EN.drv_m2;
+          if(tds[4])tds[4].textContent=EN.drv_a3; if(tds[5])tds[5].innerHTML=EN.drv_m3;
+          if(tds[6])tds[6].textContent=EN.drv_a4; if(tds[7])tds[7].innerHTML=EN.drv_m4;
+          var tip=cards[2].querySelector('.tip'); if(tip)tip.textContent=EN.drv_tip;
+        }
+      }
+    });
+  }
+  // Re-attach lang button handler
+  var btn = document.getElementById('manualLangBtn');
+  if (btn) { btn.textContent = lang === 'ko' ? '🇺🇸 EN' : '🇰🇷 한국어'; btn.onclick = function(){ applyManualLang(MANUAL_LANG==='ko'?'en':'ko'); }; }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  if (MANUAL_LANG === 'en') applyManualLang('en');
+});
+</script>
 </body>
 </html>
