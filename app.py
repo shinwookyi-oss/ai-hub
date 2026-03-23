@@ -347,21 +347,9 @@ def _seed_admin_user():
         # Auto-migrate: rename old "president" tier to "ceo"
         supabase_admin.table("users").update({"tier": "ceo"}).eq("tier", "president").execute()
         print("  🔄 Migrated president → ceo tier")
-        # Ensure shinwookyi is created/upgraded to ceo
-        res = supabase_admin.table("users").select("id").eq("tier", "ceo").limit(1).execute()
-        if not (res.data and len(res.data) > 0):
-            supabase_admin.table("users").upsert({
-                "username": "shinwookyi",
-                "password_hash": _hash_password(_raw_password),
-                "tier": "ceo",
-                "display_name": "Shin Wook Yi",
-                "is_active": True,
-            }).execute()
-            print("  ✅ Created CEO user: shinwookyi")
-        else:
-            # If shinwookyi already exists, ensure tier is ceo
-            supabase_admin.table("users").update({"tier": "ceo"}).eq("username", "shinwookyi").execute()
-            print("  ✅ Ensured shinwookyi is ceo")
+        # Always ensure shinwookyi is ceo
+        supabase_admin.table("users").update({"tier": "ceo"}).eq("username", "shinwookyi").execute()
+        print("  ✅ Ensured shinwookyi is ceo")
 
         # Seed default admin user if not shinwookyi and not already ceo
         res = supabase_admin.table("users").select("id").eq("tier", "ceo").eq("username", APP_USERNAME).limit(1).execute()
