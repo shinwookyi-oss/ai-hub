@@ -91,15 +91,15 @@ Sidebar **Strategy** section with 5 professional analysis frameworks:
 ### 🤖 Smart Model Routing
 - **Auto-routing**: AI classifies question complexity → selects optimal model
 - **Keyword analysis** + **message length** for complexity scoring
-- **Owner**: Manual model selection via sidebar dropdown (all 8 models)
-- **Per-user model overrides**: Owner can add/remove/fix models per user
+- **President**: Manual model selection via sidebar dropdown (all 10 models)
+- **Per-user model overrides**: President can add/remove/fix models per user
 - 🔒 **Fixed model**: Bypasses auto-routing, always uses assigned model
 
 | Tier | Simple Query | Complex Query |
 |------|:---:|:---:|
-| Owner | gpt-4o-mini | o3 |
-| Admin | gpt-4o-mini | gpt-4o |
-| Premium | gpt-4o-mini | claude-sonnet-4 |
+| President | gpt-4o-mini | o3 |
+| Director | gpt-4o-mini | gpt-4o |
+| Manager | gpt-4o-mini | claude-sonnet-4 |
 | Guest | gpt-4o-mini | gpt-4o-mini |
 
 ### 📊 Data Analysis Command
@@ -141,13 +141,13 @@ Users **create their own personas** by providing a name or job title. AI automat
 **Tier-Based Limits:**
 
 | Tier | Stars | Max Personas |
-|------|-------|---------||
-| Free | ⭐ | 1 |
-| Premium | ⭐⭐ | 3 |
-| Admin | ⭐⭐⭐ | 5 |
-| Owner | ⭐⭐⭐⭐ | 50 |
+|------|-------|---------|
+| Staff | ⭐ | 1 |
+| Manager | ⭐⭐ | 3 |
+| Director | ⭐⭐⭐ | 5 |
+| President | ⭐⭐⭐⭐ | 50 |
 
-**75+ Built-in Personas** also available for debate modes (Corporate, Advisory, Function, Owner groups).
+**75+ Built-in Personas** also available for debate modes (Corporate, Advisory, Function, President groups).
 
 ### 🔄 Persona Self-Evolution
 Each persona **accumulates knowledge** and evolves through conversations:
@@ -282,7 +282,7 @@ Each persona **accumulates knowledge** and evolves through conversations:
 |---------|-------------|
 | **Multi-User Auth** | Supabase `users` table with SHA-256 hashed passwords (env-var fallback) |
 | **Admin Panel** | ⚙️ button → manage users: add, delete, toggle active, change tier, reset password |
-| **Tiered Rate Limiting** | `owner/admin`: **unlimited**, `premium`: 60 req/min, `free`: 20 req/min |
+| **Tiered Rate Limiting** | `president/director`: **unlimited**, `manager`: 60 req/min, `free`: 20 req/min |
 | **Login Protection** | 20 attempts/min per IP to prevent brute force |
 | **Session Timeout** | Auto-logout after 2 hours of inactivity (configurable) |
 | **Password Change** | Self-service password change via API for Supabase users |
