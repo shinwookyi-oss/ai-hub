@@ -108,11 +108,13 @@
         /* Exit button */
         #drivingExitBtn { display: none; }
         body.speaker-mode #drivingExitBtn {
-            display: block !important; position: fixed !important;
-            top: 20px !important; right: 20px !important; z-index: 60 !important;
-            padding: 8px 16px !important; font-size: 14px !important;
-            background: var(--surface2) !important; border: 1px solid var(--border) !important;
-            border-radius: 10px !important; color: var(--text) !important; cursor: pointer !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            position: fixed !important; top: 16px !important; right: 16px !important; z-index: 60 !important;
+            padding: 10px 20px !important; font-size: 15px !important; font-weight: 600 !important;
+            background: rgba(255,255,255,0.15) !important; backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(255,255,255,0.3) !important;
+            border-radius: 25px !important; color: #fff !important; cursor: pointer !important;
+            letter-spacing: 0.5px !important;
         }
         .output-panel.mobile-show .output-area { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; min-height: 0 !important; flex: 1 !important; }
         .output-panel.mobile-show { width: 100% !important; max-width: 100% !important; }
@@ -1012,7 +1014,7 @@
                     <div id="drivingEqualizer"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>
                     <div id="drivingStatus">🎙️ 마이크를 눌러 말하세요</div>
                 </div>
-                <button id="drivingExitBtn" onclick="toggleSpeakerMode()">✕ 운전모드 종료</button>
+                <button id="drivingExitBtn" onclick="toggleSpeakerMode()">✕ 종료</button>
             </div>
         </div>
         <div class="panel-divider" id="panelDivider" title="Drag to resize · Double-click to reset"></div>
