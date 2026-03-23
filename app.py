@@ -1293,6 +1293,9 @@ def api_ask_stream():
 
                 # Inject user memory + chat context
                 sys_prompt = ""
+                ai_name = data.get("ai_name", "").strip()
+                if ai_name:
+                    sys_prompt += f"Your name is \"{ai_name}\". Please introduce yourself by this name when appropriate and remember that the user has named you \"{ai_name}\".\n"
                 if supabase_client and user_tier != "guest":
                     try:
                         mem_r = supabase_client.table("user_memory").select("content").eq(

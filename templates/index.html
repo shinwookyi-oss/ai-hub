@@ -1007,6 +1007,7 @@
                         <option value="fr-FR">🇫🇷</option>
                         <option value="de-DE">🇩🇪</option>
                     </select>
+                    <input type="text" id="aiNameInput" placeholder="AI Name" value="" onchange="saveAiName(this.value)" title="Give your AI a custom name" style="width:70px;padding:3px 6px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:10px;">
                     <button class="speaker-mode-btn" id="speakerModeBtn" onclick="toggleSpeakerMode()" title="운전모드" style="padding:3px 8px;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;cursor:pointer;">🚗</button>
                 </div>
                 <div id="inputToolsPanel" style="display:none;">
@@ -1232,6 +1233,10 @@
             persona_chain:t('ph_chain')||'Topic for chain analysis...', persona_vote:t('ph_vote')||'Proposal to vote on...',
         };
 
+        // AI Name (user-customizable)
+        var _aiName = localStorage.getItem('ai_name') || '';
+        function saveAiName(name) { _aiName = name.trim(); localStorage.setItem('ai_name', _aiName); }
+        (function(){ var inp = document.getElementById('aiNameInput'); if (inp && _aiName) inp.value = _aiName; })();
         let currentMode='chat', currentProvider='chatgpt', currentPersona='',
             uploadedFileContent='', uploadedFileName='',
             uploadedFiles=[],  // array of {name, content, size, chars}
@@ -2853,12 +2858,12 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 if(currentMode==='chat'){
                     const streamId = Date.now().toString();
                     removeLoading(loadId);
-                    addStreamingMessage(streamId, currentProvider, currentPersona ? 'Persona' : '');
+                    addStreamingMessage(streamId, _aiName || currentProvider, currentPersona ? 'Persona' : '');
                     
                     const response = await fetch('/api/ask_stream', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({prompt, provider: currentProvider, persona: currentPersona, chat_context: chatContext, model: selectedModel})
+                        body: JSON.stringify({prompt, provider: currentProvider, persona: currentPersona, chat_context: chatContext, model: selectedModel, ai_name: _aiName})
                     });
                     
                     if (!response.ok) {
