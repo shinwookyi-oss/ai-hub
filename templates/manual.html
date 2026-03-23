@@ -405,7 +405,7 @@ tr:nth-child(even) td { background:var(--surface); }
 </div>
 <script>
 // Manual i18n system
-var MANUAL_LANG = (navigator.language || 'ko').substring(0,2) === 'ko' ? 'ko' : 'en';
+var MANUAL_LANG = 'en';
 var EN = {
   // Header
   title: '⚡ AI Hub User Manual',
@@ -536,10 +536,10 @@ var EN = {
   other2: '<strong>Session Info</strong> — View login time, IP, usage time',
   // Section 14
   tier_th1: 'Tier', tier_th2: 'AI Models', tier_th3: 'Personas', tier_th4: 'Rate Limit', tier_th5: 'Features',
-  tp: 'All 10 models', td: '9 models', tm: '5 models', ts: '2 models', tg: '1 model',
-  pp: '50', pd: '5', pm: '3', ps: '1', pg: 'None',
-  rp: 'Unlimited', rd: 'Unlimited', rm: '60/min', rs: '20/min', rg: '20/min',
-  fp: 'All features + Admin panel', fd: 'All features', fm: 'Most features', fs: 'Basic features', fg: 'Chat only',
+  tp: 'All 12 models', te: '10 models', td: '10 models', tm: '5 models', ts: '2 models', tg: '1 model',
+  pp: '50', pe: '10', pd: '5', pm: '3', ps: '1', pg: 'None',
+  rp: 'Unlimited', re: 'Unlimited', rd: 'Unlimited', rm: '60/min', rs: '20/min', rg: '20/min',
+  fp: 'All features + Admin panel', fe: 'All features', fd: 'All features', fm: 'Most features', fs: 'Basic features', fg: 'Chat only',
   // Section 15
   faq1q: 'Q: Can I change the AI response language?',
   faq1a: 'Yes! Ask in Korean → responds in Korean. Ask in English → responds in English. You can also explicitly request: "Answer in English".',
@@ -646,7 +646,7 @@ function applyManualLang(lang) {
   if (btn) { btn.textContent = lang === 'ko' ? '🇺🇸 EN' : '🇰🇷 한국어'; btn.onclick = function(){ applyManualLang(MANUAL_LANG==='ko'?'en':'ko'); }; }
 }
 document.addEventListener('DOMContentLoaded', function() {
-  if (MANUAL_LANG === 'en') applyManualLang('en');
+  applyManualLang(MANUAL_LANG);
 });
 </script>
 </body>
