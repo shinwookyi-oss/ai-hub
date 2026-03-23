@@ -2793,17 +2793,40 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                         // Check for Chart.js JSON in response
                         var chartRendered = false;
                         try {
+                            // Try code-fenced JSON first
                             var chartMatch = fullText.match(/```(?:json)?\s*(\{[\s\S]*?"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"[\s\S]*?\})\s*```/);
                             if (!chartMatch) {
-                                // Try bare JSON (no code fence)
-                                chartMatch = fullText.match(/(\{[\s\S]*?"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*?"datasets"[\s\S]*\})/);
+                                // Try bare JSON: find { "type": ... } block directly
+                                chartMatch = fullText.match(/(\{\s*"type"\s*:\s*"(?:bar|line|pie|doughnut|radar|polarArea|scatter|bubble)"[\s\S]*"datasets"\s*:\s*\[[\s\S]*?\]\s*\}\s*\})/);
+                            }
+                            if (!chartMatch) {
+                                // Fallback: try to find any JSON block with chart keys by scanning { positions
+                                var braceIdx = fullText.indexOf('{"type"');
+                                if (braceIdx === -1) braceIdx = fullText.indexOf('{ "type"');
+                                if (braceIdx === -1) braceIdx = fullText.indexOf('{  "type"');
+                                if (braceIdx >= 0) {
+                                    // Find matching closing brace
+                                    var depth = 0, endIdx = -1;
+                                    for (var ci = braceIdx; ci < fullText.length; ci++) {
+                                        if (fullText[ci] === '{') depth++;
+                                        else if (fullText[ci] === '}') { depth--; if (depth === 0) { endIdx = ci; break; } }
+                                    }
+                                    if (endIdx > braceIdx) {
+                                        try {
+                                            var candidate = JSON.parse(fullText.substring(braceIdx, endIdx + 1));
+                                            if (candidate.type && candidate.data && candidate.data.datasets) {
+                                                chartMatch = [fullText.substring(braceIdx, endIdx + 1), fullText.substring(braceIdx, endIdx + 1)];
+                                            }
+                                        } catch(e2) {}
+                                    }
+                                }
                             }
                             if (chartMatch) {
-                                var chartJson = JSON.parse(chartMatch[1]);
+                                var chartJson = typeof chartMatch[1] === 'string' ? JSON.parse(chartMatch[1]) : chartMatch[1];
                                 if (chartJson.type && chartJson.data && chartJson.data.datasets) {
                                     var chartTitle = (chartJson.options && chartJson.options.plugins && chartJson.options.plugins.title && chartJson.options.plugins.title.text) || '📊 Chart';
-                                    var chartData = chartJson.data || chartJson;
-                                    chartData.type = chartJson.type || chartData.type || 'bar';
+                                    var chartData = chartJson.data;
+                                    chartData.type = chartJson.type;
                                     renderChart(chartData, chartTitle);
                                     // Show remaining text as markdown (remove chart JSON)
                                     var remainText = fullText.replace(chartMatch[0], '').trim();
@@ -2813,7 +2836,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                                     chartRendered = true;
                                 }
                             }
-                        } catch(chartErr) { console.log('Chart parse:', chartErr); }
+                        } catch(chartErr) { console.log('Chart parse error:', chartErr, chartMatch); }
                         if (!chartRendered) {
                             if (docEl) docEl.innerHTML = renderMarkdown(fullText);
                         }
