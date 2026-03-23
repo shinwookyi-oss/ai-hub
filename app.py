@@ -3921,7 +3921,7 @@ def api_change_password():
 def api_temp_password():
     if not _is_owner(session.get("username", "")):
         return jsonify({"error": "owner 전용 기능입니다."}), 403
-    if not supabase_client:
+    if not supabase_admin:
         return jsonify({"error": "DB 연결 없음"}), 400
     data = request.json or {}
     user_id = data.get("user_id", "")
@@ -3932,7 +3932,7 @@ def api_temp_password():
         return jsonify({"error": "비밀번호는 6자 이상이어야 합니다."}), 400
     try:
         new_hash = _hash_password(custom_pw)
-        supabase_client.table("users").update({"password_hash": new_hash}).eq("id", user_id).execute()
+        supabase_admin.table("users").update({"password_hash": new_hash}).eq("id", user_id).execute()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
