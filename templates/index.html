@@ -1668,7 +1668,11 @@
             const isSystem = cls.includes('system-msg') || cls.includes('error-msg') || h === 'You';
             const bodyContent = isSystem ? escapeHtml(b) : renderMarkdown(b);
             m.innerHTML=`<div class="msg-header">${h} ${bH} ${tH}</div><div class="msg-body ${cls}">${bodyContent}</div>`;
-            if (!isSystem) addCodeButtons(m.querySelector('.msg-body'));
+            if (!isSystem) {
+                const msgBody = m.querySelector('.msg-body');
+                addCodeButtons(msgBody);
+                renderChartJS(msgBody);
+            }
             chatArea.appendChild(m);chatArea.scrollTop=chatArea.scrollHeight;
             // Track last AI response for integration quick-send
             if (!isSystem && h !== 'You' && typeof intLastText !== 'undefined') intLastText = b;
@@ -1690,6 +1694,7 @@
                 if (renderMd) {
                     body.innerHTML = renderMarkdown(content);
                     addCodeButtons(body);
+                    renderChartJS(body);
                 } else {
                     body.textContent = content + ' █';
                 }
@@ -1969,6 +1974,48 @@
             document.getElementById('outputBadge').style.display = 'inline-flex';
             if (window.innerWidth <= 768) showMobilePanel('output');
         }
+        function renderChartJS(container) {
+            const blocks = container.querySelectorAll('pre code.language-json, pre code.language-chartjs');
+            blocks.forEach(function(block, idx) {
+                try {
+                    const text = block.textContent.trim();
+                    const cfg = JSON.parse(text);
+                    if (!cfg.type || !cfg.data || !Array.isArray(cfg.data.datasets)) return;
+                    // Apply dark defaults to chart options
+                    cfg.options = cfg.options || {};
+                    cfg.options.plugins = cfg.options.plugins || {};
+                    cfg.options.plugins.legend = cfg.options.plugins.legend || {};
+                    cfg.options.plugins.legend.labels = cfg.options.plugins.legend.labels || {};
+                    cfg.options.plugins.legend.labels.color = cfg.options.plugins.legend.labels.color || '#c0c0d8';
+                    if (cfg.options.scales) {
+                        ['x','y'].forEach(function(ax) {
+                            if (cfg.options.scales[ax]) {
+                                cfg.options.scales[ax].ticks = cfg.options.scales[ax].ticks || {};
+                                cfg.options.scales[ax].ticks.color = cfg.options.scales[ax].ticks.color || '#9090a8';
+                                cfg.options.scales[ax].grid = cfg.options.scales[ax].grid || {};
+                                cfg.options.scales[ax].grid.color = cfg.options.scales[ax].grid.color || 'rgba(255,255,255,0.06)';
+                            }
+                        });
+                    }
+                    cfg.options.responsive = true;
+                    cfg.options.maintainAspectRatio = false;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'chart-container';
+                    const typeLabel = cfg.type.charAt(0).toUpperCase() + cfg.type.slice(1);
+                    wrapper.innerHTML = '<div class="chart-header"><div class="chart-title"><div class="chart-icon">📊</div>' + typeLabel + ' Chart</div><span class="chart-badge">Chart.js</span></div>';
+                    const body = document.createElement('div');
+                    body.className = 'chart-body';
+                    body.style.cssText = 'position:relative;height:320px;';
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'cjs-' + Date.now() + '-' + idx;
+                    body.appendChild(canvas);
+                    wrapper.appendChild(body);
+                    const target = block.closest('pre') || block;
+                    target.replaceWith(wrapper);
+                    try { new Chart(canvas, cfg); } catch(e) {}
+                } catch(e) {}
+            });
+        }
         async function renderMermaid(container) {
             const blocks = container.querySelectorAll('pre code.language-mermaid, .mermaid:not(.mermaid-rendered)');
             for(const block of blocks) {
@@ -1995,6 +2042,7 @@
             outputArea.scrollTop = 0;
             document.getElementById('outputBadge').style.display = 'inline-flex';
             renderMermaid(outputArea);
+            renderChartJS(outputArea);
             addCodeButtons(outputArea);
         }
         function showDocMarkdown(text, query='', footer='') {
