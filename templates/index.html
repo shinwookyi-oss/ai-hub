@@ -72,6 +72,14 @@
             text-align: center; padding: 8px 20px;
         }
         body.speaker-mode #drivingStatus { display: block !important; }
+        body.speaker-mode #micBtn { position: relative; }
+        body.speaker-mode #micBtn::after {
+            content: attr(title); position: absolute; bottom: -28px;
+            left: 50%; transform: translateX(-50%); font-size: 11px;
+            color: var(--text2); white-space: nowrap; opacity: 0;
+            transition: opacity 0.3s; pointer-events: none;
+        }
+        body.speaker-mode #micBtn:hover::after { opacity: 1; }
         /* AI Speaking: mic becomes speaker with equalizer bars */
         body.speaker-mode #micBtn.ai-speaking {
             border-color: #00b894 !important;
@@ -1012,7 +1020,7 @@
                     <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input">🎙️</button>
                     <button class="send-btn" id="sendBtn" onclick="send()" data-i18n="send">Send</button>
                     <div id="drivingEqualizer"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>
-                    <div id="drivingStatus">🎙️ 마이크를 눌러 말하세요</div>
+                    <div id="drivingStatus"></div>
                 </div>
                 <button id="drivingExitBtn" onclick="toggleSpeakerMode()" data-i18n="driving_exit">✕ Exit</button>
             </div>
