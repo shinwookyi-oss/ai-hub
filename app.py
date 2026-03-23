@@ -374,13 +374,6 @@ def _seed_admin_user():
                 "is_active": True,
             }).execute()
             print("  ✅ Admin user seeded in Supabase")
-            
-        # Ensure shinwookyi is upgraded to president
-        try:
-            supabase_admin.table("users").update({"tier": "president"}).eq("username", "shinwookyi").execute()
-            print("  ✅ Ensured shinwookyi is president")
-        except Exception as e:
-            print(f"  ⚠️ Failed to force-upgrade shinwookyi: {e}")
 
         # Seed guest user (ensure password_hash matches current SALT)
         try:
@@ -406,7 +399,7 @@ def _seed_admin_user():
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get("user_tier") != "ceo":
+        if session.get("user_tier") not in ("ceo", "president"):
             return jsonify({"success": False, "error": "Owner access required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -670,7 +663,7 @@ def api_available_models():
         "models": models,
         "tier": tier,
         "fixed_model": fixed_model,
-        "can_select": tier == "ceo",  # Only ceo can manually select
+        "can_select": tier in ("ceo", "president"),  # Only ceo can manually select
     })
 
 @app.route("/api/user-models", methods=["GET"])
@@ -1291,7 +1284,7 @@ def api_ask_stream():
                 route_provider = provider
                 route_model = None
 
-                if selected_model and ":" in selected_model and user_tier == "ceo":
+                if selected_model and ":" in selected_model and user_tier in ("ceo", "president"):
                     # Owner manually selected a model
                     route_provider, route_model = selected_model.split(":", 1)
                 else:

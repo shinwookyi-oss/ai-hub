@@ -801,7 +801,7 @@
     </div>
         <div class="sidebar" id="mainSidebar">
             <button class="mode-btn" id="workspaceBtn" style="background:#1a1a3a;border-color:var(--accent);margin-bottom:6px;" onclick="openWorkspace()" data-i18n="workspace">📂 My Workspace</button>
-            {% if usertier == 'ceo' %}
+            {% if usertier == 'ceo' or usertier == 'president' %}
             <button class="mode-btn" id="autoBtn" style="background:#1a2a1a;border-color:#00d2a0;color:#00d2a0;margin-bottom:6px;" onclick="openAutomation()">⚡ Automations</button>
             {% endif %}
             <button class="mode-btn" id="ytBtn" style="background:#1a0a0a;border-color:#ff4444;color:#ff6666;margin-bottom:6px;" onclick="openYtModal()">▶ YouTube</button>
@@ -817,7 +817,7 @@
             <h3 style="cursor:pointer;font-size:11px;color:var(--text2);margin:6px 0 4px;" onclick="toggleModeGroup('modeBasic')">🎯 <span data-i18n="mode">Mode</span> <span id="modeBasicArrow" style="float:right;">▼</span></h3>
             <div id="modeBasic">
                 <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" data-i18n="chat">💬 Chat</button>
-                {% if usertier == 'ceo' %}
+                {% if usertier == 'ceo' or usertier == 'president' %}
                 <button class="mode-btn" data-mode="compare" onclick="setMode('compare')" data-i18n="compare">🔄 Compare All</button>
                 <button class="mode-btn" data-mode="debate" onclick="setMode('debate')" data-i18n="debate">⚔️ Debate</button>
                 <button class="mode-btn" data-mode="discuss" onclick="setMode('discuss')" data-i18n="discuss">🗣️ Discussion</button>
@@ -857,12 +857,12 @@
             <div class="sidebar-section" id="sectionProvider">
             <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span data-i18n="provider">Provider</span>
-                {% if usertier == 'ceo' %}
+                {% if usertier == 'ceo' or usertier == 'president' %}
                 <button onclick="openModelAdmin()" style="font-size:9px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--accent2);cursor:pointer;" title="사용자별 모델 관리">⚙ 관리</button>
                 {% endif %}
             </h3>
             <div id="modelButtonsContainer">
-            {% if usertier == 'ceo' %}
+            {% if usertier == 'ceo' or usertier == 'president' %}
             <!-- Owner: full model selection dropdown -->
             <select id="modelSelect" onchange="onModelSelect(this.value)" style="width:100%;padding:6px 8px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:4px;">
                 <option value="auto">🤖 Auto (복잡도 기반)</option>
@@ -3696,7 +3696,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
 
         // ── Admin Panel ──
         function initAdmin() {
-            if (USER_TIER === 'ceo') {
+            if (USER_TIER === 'ceo' || USER_TIER === 'president') {
                 document.getElementById('adminBtn').style.display = 'inline-block';
                 document.getElementById('styleSettingsBtn').style.display = 'inline-block';
             }
@@ -4832,7 +4832,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             });
             // Groups tab: owner only
             var grpTab = document.getElementById('autoTab-grp');
-            if (grpTab) grpTab.style.display = (USER_TIER === 'ceo') ? '' : 'none';
+            if (grpTab) grpTab.style.display = (USER_TIER === 'ceo' || USER_TIER === 'president') ? '' : 'none';
         }
         function closeAutomation() { document.getElementById('autoOverlay').style.display = 'none'; }
 
@@ -5508,7 +5508,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 }
             } catch(e) { console.error('loadModels:', e); }
         }
-        {% if usertier == 'ceo' %}
+        {% if usertier == 'ceo' or usertier == 'president' %}
         loadAvailableModels();
         {% endif %}
 
