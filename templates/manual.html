@@ -623,6 +623,139 @@ function applyManualLang(lang) {
         var tip = cards[0].querySelector('.tip');
         if(tip) tip.innerHTML = EN.chat_tip;
       }
+      // Section 3: AI Models
+      if (id==='models' && cards.length>=2) {
+        cards[0].querySelector('h3').textContent = EN.model_title;
+        var ths = cards[0].querySelectorAll('th');
+        if(ths[0]) ths[0].textContent=EN.model_th1; if(ths[1]) ths[1].textContent=EN.model_th2; if(ths[2]) ths[2].textContent=EN.model_th3;
+        var tds = cards[0].querySelectorAll('td');
+        var mDescs=[EN.m1d,EN.m2d,EN.m3d,EN.m4d,EN.m5d,EN.m6d,EN.m7d,EN.m8d,EN.m9d,EN.m10d];
+        var costs={'저렴':EN.cost_low,'보통':EN.cost_mid,'높음':EN.cost_high};
+        for(var j=0;j<tds.length;j+=3){if(mDescs[j/3])tds[j+1].textContent=mDescs[j/3];if(tds[j+2]&&costs[tds[j+2].textContent])tds[j+2].textContent=costs[tds[j+2].textContent];}
+        cards[1].querySelector('h3').innerHTML = EN.auto_title;
+        cards[1].querySelector('p').innerHTML = EN.auto_p;
+        var lis=cards[1].querySelectorAll('li');
+        if(lis[0])lis[0].innerHTML=EN.auto_li1; if(lis[1])lis[1].innerHTML=EN.auto_li2;
+        var tip=cards[1].querySelector('.tip'); if(tip)tip.textContent=EN.auto_tip;
+      }
+      // Section 4: Analysis Modes
+      if (id==='modes') {
+        var mp=sec.nextElementSibling; if(mp&&mp.tagName==='P') mp.textContent='Select your analysis approach in the sidebar Mode section:';
+        if(cards[0]) {
+          var ths=cards[0].querySelectorAll('th');
+          if(ths[0])ths[0].textContent=EN.mode_th1; if(ths[1])ths[1].textContent=EN.mode_th2; if(ths[2])ths[2].textContent=EN.mode_th3;
+          var tds=cards[0].querySelectorAll('td');
+          var mds=[EN.md1,EN.md2,EN.md3,EN.md4,EN.md5,EN.md6,EN.md7,EN.md8,EN.md9,EN.md10,EN.md11];
+          var mus=[EN.mu1,EN.mu2,EN.mu3,EN.mu4,EN.mu5,EN.mu6,EN.mu7,EN.mu8,EN.mu9,EN.mu10,EN.mu11];
+          for(var j=0;j<tds.length;j+=3){var r=j/3;if(mds[r])tds[j+1].textContent=mds[r];if(mus[r])tds[j+2].textContent=mus[r];}
+        }
+      }
+      // Section 5: Personas
+      if (id==='personas' && cards.length>=2) {
+        cards[0].querySelector('h3').textContent=EN.persona_title;
+        cards[0].querySelector('p').innerHTML=EN.persona_p;
+        var lis=cards[0].querySelectorAll('li');
+        if(lis[0])lis[0].innerHTML=EN.persona_li1; if(lis[1])lis[1].innerHTML=EN.persona_li2;
+        cards[1].querySelector('h3').textContent=EN.persona_how;
+        var ols=cards[1].querySelectorAll('li');
+        if(ols[0])ols[0].innerHTML=EN.persona_h1; if(ols[1])ols[1].innerHTML=EN.persona_h2; if(ols[2])ols[2].innerHTML=EN.persona_h3;
+        var tip=cards[1].querySelector('.tip'); if(tip)tip.innerHTML=EN.persona_tip;
+      }
+      // Section 6: Commands
+      if (id==='commands' && cards[0]) {
+        var ths=cards[0].querySelectorAll('th');
+        if(ths[0])ths[0].textContent=EN.cmd_th1; if(ths[1])ths[1].textContent=EN.cmd_th2;
+        var tds=cards[0].querySelectorAll('td');
+        if(tds[1])tds[1].textContent=EN.cmd1; if(tds[3])tds[3].textContent=EN.cmd2;
+        if(tds[5])tds[5].textContent=EN.cmd3; if(tds[7])tds[7].textContent=EN.cmd4;
+        var tip=cards[0].querySelector('.tip'); if(tip)tip.innerHTML=EN.cmd_tip;
+      }
+      // Section 7: Workspace
+      if (id==='workspace' && cards[0]) {
+        cards[0].querySelector('p').innerHTML=EN.ws_p;
+        var lis=cards[0].querySelectorAll('li');
+        if(lis[0])lis[0].innerHTML=EN.ws1; if(lis[1])lis[1].innerHTML=EN.ws2;
+        if(lis[2])lis[2].innerHTML=EN.ws3; if(lis[3])lis[3].innerHTML=EN.ws4;
+        if(lis[4])lis[4].innerHTML=EN.ws5;
+      }
+      // Section 8: Memory
+      if (id==='memory' && cards[0]) {
+        cards[0].querySelector('p').innerHTML=EN.mem_p;
+        var lis=cards[0].querySelectorAll('ul li');
+        if(lis[0])lis[0].innerHTML=EN.mem_ex1; if(lis[1])lis[1].innerHTML=EN.mem_ex2;
+        var h3s=cards[0].querySelectorAll('h3'); if(h3s[0])h3s[0].textContent=EN.mem_manage;
+        var ps=cards[0].querySelectorAll('p'); if(ps[1])ps[1].innerHTML=EN.mem_mp;
+        if(lis[2])lis[2].textContent=EN.mem_m1; if(lis[3])lis[3].textContent=EN.mem_m2; if(lis[4])lis[4].textContent=EN.mem_m3;
+        var warn=cards[0].querySelector('.warn'); if(warn)warn.textContent=EN.mem_warn;
+      }
+      // Section 9: Web Search
+      if (id==='websearch' && cards[0]) {
+        cards[0].querySelector('p').innerHTML=EN.ws_sp;
+        var h3s=cards[0].querySelectorAll('h3');
+        if(h3s[0])h3s[0].textContent=EN.ws_how;
+        var lis=cards[0].querySelectorAll('ul li');
+        if(lis[0])lis[0].innerHTML=EN.ws_h1; if(lis[1])lis[1].innerHTML=EN.ws_h2;
+        if(h3s[1])h3s[1].textContent=EN.ws_ex;
+      }
+      // Section 10: File Upload
+      if (id==='files' && cards[0]) {
+        var h3s=cards[0].querySelectorAll('h3');
+        if(h3s[0])h3s[0].textContent=EN.file_fmt;
+        var ps=cards[0].querySelectorAll('p'); if(ps[0])ps[0].textContent=EN.file_fp;
+        if(h3s[1])h3s[1].textContent=EN.file_how;
+        var lis=cards[0].querySelectorAll('li');
+        if(lis[0])lis[0].innerHTML=EN.file_h1; if(lis[1])lis[1].innerHTML=EN.file_h2; if(lis[2])lis[2].innerHTML=EN.file_h3;
+        var tip=cards[0].querySelector('.tip'); if(tip)tip.innerHTML=EN.file_tip;
+      }
+      // Section 11: Templates
+      if (id==='templates' && cards[0]) {
+        cards[0].querySelector('p').innerHTML=EN.tmpl_p;
+        var ths=cards[0].querySelectorAll('th');
+        if(ths[0])ths[0].textContent=EN.tmpl_th1; if(ths[1])ths[1].textContent=EN.tmpl_th2;
+        var tds=cards[0].querySelectorAll('td');
+        if(tds[0])tds[0].textContent=EN.t1; if(tds[1])tds[1].textContent=EN.t1d;
+        if(tds[2])tds[2].textContent=EN.t2; if(tds[3])tds[3].textContent=EN.t2d;
+        if(tds[4])tds[4].textContent=EN.t3; if(tds[5])tds[5].textContent=EN.t3d;
+        if(tds[6])tds[6].textContent=EN.t4; if(tds[7])tds[7].textContent=EN.t4d;
+        if(tds[8])tds[8].textContent=EN.t5; if(tds[9])tds[9].textContent=EN.t5d;
+        if(tds[10])tds[10].textContent=EN.t6; if(tds[11])tds[11].textContent=EN.t6d;
+        var tip=cards[0].querySelector('.tip'); if(tip)tip.innerHTML=EN.tmpl_tip;
+      }
+      // Section 12: Export
+      if (id==='export' && cards[0]) {
+        cards[0].querySelector('p').innerHTML=EN.exp_p;
+        var lis=cards[0].querySelectorAll('li');
+        if(lis[0])lis[0].innerHTML=EN.e1; if(lis[1])lis[1].innerHTML=EN.e2;
+        if(lis[2])lis[2].innerHTML=EN.e3; if(lis[3])lis[3].innerHTML=EN.e4; if(lis[4])lis[4].innerHTML=EN.e5;
+      }
+      // Section 13: Settings
+      if (id==='settings' && cards[0]) {
+        var h3s=cards[0].querySelectorAll('h3');
+        if(h3s[0])h3s[0].textContent=EN.theme_title;
+        var ps=cards[0].querySelectorAll('p'); if(ps[0])ps[0].textContent=EN.theme_p;
+        var ths=cards[0].querySelectorAll('th');
+        if(ths[0])ths[0].textContent=EN.th_th1; if(ths[1])ths[1].textContent=EN.th_th2;
+        var tds=cards[0].querySelectorAll('td');
+        if(tds[1])tds[1].textContent=EN.th1; if(tds[3])tds[3].textContent=EN.th2;
+        if(tds[5])tds[5].textContent=EN.th3; if(tds[7])tds[7].textContent=EN.th4; if(tds[9])tds[9].textContent=EN.th5;
+        if(h3s[1])h3s[1].textContent=EN.other_title;
+        var lis=cards[0].querySelectorAll('ul li');
+        if(lis[0])lis[0].innerHTML=EN.other1; if(lis[1])lis[1].innerHTML=EN.other2;
+      }
+      // Section 14: Tiers
+      if (id==='tiers' && cards[0]) {
+        var ths=cards[0].querySelectorAll('th');
+        if(ths[0])ths[0].textContent=EN.tier_th1; if(ths[1])ths[1].textContent=EN.tier_th2;
+        if(ths[2])ths[2].textContent=EN.tier_th3; if(ths[3])ths[3].textContent=EN.tier_th4; if(ths[4])ths[4].textContent=EN.tier_th5;
+        var rows=cards[0].querySelectorAll('tr');
+        var tKeys=[['tp','pp','rp','fp'],['te','pe','re','fe'],['td','pd','rd','fd'],['tm','pm','rm','fm'],['ts','ps','rs','fs'],['tg','pg','rg','fg']];
+        for(var r=1;r<rows.length&&r-1<tKeys.length;r++){var tds=rows[r].querySelectorAll('td');if(tds[1])tds[1].textContent=EN[tKeys[r-1][0]];if(tds[2])tds[2].textContent=EN[tKeys[r-1][1]];if(tds[3])tds[3].textContent=EN[tKeys[r-1][2]];if(tds[4])tds[4].textContent=EN[tKeys[r-1][3]];}
+      }
+      // Section 15: FAQ
+      if (id==='faq') {
+        var faqKeys=[['faq1q','faq1a'],['faq2q','faq2a'],['faq3q','faq3a'],['faq4q','faq4a'],['faq5q','faq5a']];
+        cards.forEach(function(c,i){if(faqKeys[i]){var h=c.querySelector('h3');if(h)h.textContent=EN[faqKeys[i][0]];var p=c.querySelector('p');if(p)p.textContent=EN[faqKeys[i][1]];}});
+      }
       if (id==='driving') {
         if(cards[0]) { cards[0].querySelector('h3').textContent=EN.drv_title; cards[0].querySelector('p').innerHTML=EN.drv_p; }
         if(cards[1]) { cards[1].querySelector('h3').textContent=EN.drv_how;
