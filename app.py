@@ -188,8 +188,17 @@ supabase_admin = None  # service_role client for admin ops (bypasses RLS)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+_supabase_initialized = False
 
-if SUPABASE_URL and SUPABASE_KEY:
+def _init_supabase():
+    """Lazy Supabase init – called on first request, not at import time."""
+    global supabase_client, supabase_admin, _supabase_initialized
+    if _supabase_initialized:
+        return
+    _supabase_initialized = True
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        print("  ⚠️ Supabase not configured (no SUPABASE_URL/KEY)")
+        return
     try:
         from supabase import create_client
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -198,13 +207,16 @@ if SUPABASE_URL and SUPABASE_KEY:
             supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
             print("  ✅ Supabase admin (service_role) connected")
         else:
-            supabase_admin = supabase_client  # fallback
+            supabase_admin = supabase_client
             print("  ⚠️ No SUPABASE_SERVICE_KEY, admin ops use anon key")
     except Exception as e:
         print(f"  ⚠️ Supabase init failed: {e}")
-    # Storage bucket init deferred to first use (avoid blocking deploy)
-else:
-    print("  ⚠️ Supabase not configured (no SUPABASE_URL/KEY)")
+
+@app.before_request
+def _ensure_supabase():
+    _init_supabase()
+
+print("  ℹ️ Supabase init deferred to first request")
 
 
 # ──────────────────────────── Authentication ────────────────────────────
