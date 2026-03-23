@@ -4250,6 +4250,9 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         document.getElementById('micBtn').addEventListener('touchstart', warmupTTS, {once: true});
         document.getElementById('micBtn').addEventListener('click', warmupTTS, {once: true});
         document.getElementById('sendBtn').addEventListener('click', warmupTTS, {once: true});
+        // Also warmup on driving mode button
+        var _smb = document.getElementById('speakerModeBtn');
+        if (_smb) { _smb.addEventListener('touchstart', warmupTTS, {once: true}); _smb.addEventListener('click', warmupTTS, {once: true}); }
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SR();
@@ -4337,6 +4340,8 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
         // Fast TTS for driving mode (browser native, no API call)
         function speakFast(text) {
             if (!window.speechSynthesis) { console.log('TTS: speechSynthesis not available'); return; }
+            // Force warmup on mobile (in case it wasn't unlocked yet)
+            warmupTTS();
             window.speechSynthesis.cancel();
             var cleaned = text.replace(/[#*`_~>|\\-]/g, '').replace(/\n+/g, '. ').substring(0, 3000);
             console.log('TTS: speaking', cleaned.substring(0, 50) + '...');
@@ -4346,6 +4351,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 u.lang = _detectTextLang(cleaned);
                 u.rate = 1.1;
                 u.pitch = 1.0;
+                u.volume = 1.0;
                 window._isSpeaking = true;
                 var mic = document.getElementById('micBtn');
                 var ds = document.getElementById('drivingStatus');
@@ -4353,7 +4359,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                 // Swap to speaker mode visual
                 if (mic) { mic.textContent = '🔊'; mic.classList.add('ai-speaking'); }
                 if (row) row.classList.add('ai-speaking-active');
-                if (ds) ds.innerHTML = '🔊 AI가 말하고 있습니다...';
+                if (ds) ds.innerHTML = '🔊 AI is speaking...';
                 function _resetSpeakerVisual() {
                     window._isSpeaking = false;
                     if (window._iosResumeTimer) { clearInterval(window._iosResumeTimer); window._iosResumeTimer = null; }
@@ -4361,17 +4367,28 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                     if (row) row.classList.remove('ai-speaking-active');
                     if (ds && window._speakerMode) ds.innerHTML = t('driving_mic');
                 }
+                u.onstart = function() { console.log('TTS: started speaking'); };
                 u.onend = function() { console.log('TTS: finished'); _resetSpeakerVisual(); _drivingModeAutoMic(); };
-                u.onerror = function(e) { console.log('TTS error:', e); _resetSpeakerVisual(); };
+                u.onerror = function(e) { console.log('TTS error:', e.error); _resetSpeakerVisual(); _drivingModeAutoMic(); };
                 window.speechSynthesis.speak(u);
-                // iOS Safari workaround: resume() every 10s to prevent auto-pause
-                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                // iOS/Mobile workaround: resume() every 5s to prevent auto-pause
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                     window._iosResumeTimer = setInterval(function() {
                         if (window.speechSynthesis.speaking) window.speechSynthesis.resume();
                         else { clearInterval(window._iosResumeTimer); window._iosResumeTimer = null; }
-                    }, 10000);
+                    }, 5000);
                 }
-            }, 100);
+                // Android fallback: check if speech actually started after 1s
+                if (/Android/i.test(navigator.userAgent)) {
+                    setTimeout(function() {
+                        if (window._isSpeaking && !window.speechSynthesis.speaking) {
+                            console.log('TTS: Android retry - speech did not start');
+                            window.speechSynthesis.cancel();
+                            setTimeout(function() { window.speechSynthesis.speak(u); }, 200);
+                        }
+                    }, 1000);
+                }
+            }, 150);
         }
 
         // ── Driving Mode (운전모드) ──
@@ -4383,6 +4400,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
             const btn = document.getElementById('speakerModeBtn');
             const body = document.body;
             if (window._drivingMode) {
+                warmupTTS(); // Ensure TTS is unlocked on mobile
                 btn.classList.add('active');
                 body.classList.add('speaker-mode');
                 addMessage('System', '🚗 운전모드 ON — 마이크를 눌러 말하세요. AI 응답 후 자동으로 마이크가 다시 열립니다. "운전모드 취소" 또는 "입력모드"로 해제합니다.', 'system-msg');
