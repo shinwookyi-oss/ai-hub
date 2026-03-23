@@ -202,17 +202,7 @@ if SUPABASE_URL and SUPABASE_KEY:
             print("  ⚠️ No SUPABASE_SERVICE_KEY, admin ops use anon key")
     except Exception as e:
         print(f"  ⚠️ Supabase init failed: {e}")
-    # Initialize storage bucket
-    try:
-        sb = supabase_admin or supabase_client
-        sb.storage.get_bucket("user-files")
-        print("  ✅ Supabase Storage bucket 'user-files' ready")
-    except Exception:
-        try:
-            sb.storage.create_bucket("user-files", options={"public": False})
-            print("  ✅ Supabase Storage bucket 'user-files' created")
-        except Exception as be:
-            print(f"  ⚠️ Storage bucket init: {be}")
+    # Storage bucket init deferred to first use (avoid blocking deploy)
 else:
     print("  ⚠️ Supabase not configured (no SUPABASE_URL/KEY)")
 
@@ -1728,6 +1718,16 @@ def api_upload():
         try:
             sb = supabase_admin or supabase_client
             if sb:
+                # Lazy bucket init on first upload
+                if not getattr(app, '_storage_bucket_ready', False):
+                    try:
+                        sb.storage.get_bucket("user-files")
+                    except Exception:
+                        try:
+                            sb.storage.create_bucket("user-files", options={"public": False})
+                        except Exception:
+                            pass
+                    app._storage_bucket_ready = True
                 import time as _time
                 username = session.get("username", "anonymous")
                 ts = int(_time.time())
