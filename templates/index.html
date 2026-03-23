@@ -4284,30 +4284,42 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
 
         // Fast TTS for driving mode (browser native, no API call)
         function speakFast(text) {
-            if (!window.speechSynthesis) return;
+            if (!window.speechSynthesis) { console.log('TTS: speechSynthesis not available'); return; }
             window.speechSynthesis.cancel();
             var cleaned = text.replace(/[#*`_~>|\\-]/g, '').replace(/\n+/g, '. ').substring(0, 3000);
-            var u = new SpeechSynthesisUtterance(cleaned);
-            u.lang = _detectTextLang(cleaned);
-            u.rate = 1.1;
-            u.pitch = 1.0;
-            window._isSpeaking = true;
-            var mic = document.getElementById('micBtn');
-            var ds = document.getElementById('drivingStatus');
-            var row = document.getElementById('inputRow');
-            // Swap to speaker mode visual
-            if (mic) { mic.textContent = '🔊'; mic.classList.add('ai-speaking'); }
-            if (row) row.classList.add('ai-speaking-active');
-            if (ds) ds.innerHTML = '🔊 AI가 말하고 있습니다...';
-            function _resetSpeakerVisual() {
-                window._isSpeaking = false;
-                if (mic) { mic.textContent = String.fromCodePoint(127897, 65039); mic.classList.remove('ai-speaking'); }
-                if (row) row.classList.remove('ai-speaking-active');
-                if (ds && window._speakerMode) ds.innerHTML = t('driving_mic');
-            }
-            u.onend = function() { _resetSpeakerVisual(); _drivingModeAutoMic(); };
-            u.onerror = function() { _resetSpeakerVisual(); };
-            window.speechSynthesis.speak(u);
+            console.log('TTS: speaking', cleaned.substring(0, 50) + '...');
+            // Small delay after cancel() — iOS Safari needs this
+            setTimeout(function() {
+                var u = new SpeechSynthesisUtterance(cleaned);
+                u.lang = _detectTextLang(cleaned);
+                u.rate = 1.1;
+                u.pitch = 1.0;
+                window._isSpeaking = true;
+                var mic = document.getElementById('micBtn');
+                var ds = document.getElementById('drivingStatus');
+                var row = document.getElementById('inputRow');
+                // Swap to speaker mode visual
+                if (mic) { mic.textContent = '🔊'; mic.classList.add('ai-speaking'); }
+                if (row) row.classList.add('ai-speaking-active');
+                if (ds) ds.innerHTML = '🔊 AI가 말하고 있습니다...';
+                function _resetSpeakerVisual() {
+                    window._isSpeaking = false;
+                    if (window._iosResumeTimer) { clearInterval(window._iosResumeTimer); window._iosResumeTimer = null; }
+                    if (mic) { mic.textContent = String.fromCodePoint(127897, 65039); mic.classList.remove('ai-speaking'); }
+                    if (row) row.classList.remove('ai-speaking-active');
+                    if (ds && window._speakerMode) ds.innerHTML = t('driving_mic');
+                }
+                u.onend = function() { console.log('TTS: finished'); _resetSpeakerVisual(); _drivingModeAutoMic(); };
+                u.onerror = function(e) { console.log('TTS error:', e); _resetSpeakerVisual(); };
+                window.speechSynthesis.speak(u);
+                // iOS Safari workaround: resume() every 10s to prevent auto-pause
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    window._iosResumeTimer = setInterval(function() {
+                        if (window.speechSynthesis.speaking) window.speechSynthesis.resume();
+                        else { clearInterval(window._iosResumeTimer); window._iosResumeTimer = null; }
+                    }, 10000);
+                }
+            }, 100);
         }
 
         // ── Driving Mode (운전모드) ──
