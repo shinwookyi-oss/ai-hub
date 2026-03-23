@@ -429,6 +429,13 @@ def health():
 def manual_page():
     return render_template("manual.html")
 
+@app.route("/admin-manual")
+@login_required
+def admin_manual_page():
+    if not _is_owner(session.get("username", "")):
+        return redirect("/")
+    return render_template("admin_manual.html")
+
 @app.route("/")
 @login_required
 def index():
