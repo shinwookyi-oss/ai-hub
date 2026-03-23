@@ -48,12 +48,12 @@ MODEL_CATALOG = [
     {"id": "chatgpt:gpt-4o-mini", "provider": "chatgpt", "model": "gpt-4o-mini", "label": "GPT-4o Mini", "cost": "low"},
     {"id": "chatgpt:gpt-4o", "provider": "chatgpt", "model": "gpt-4o", "label": "GPT-4o", "cost": "medium"},
     {"id": "chatgpt:gpt-5.2", "provider": "chatgpt", "model": "gpt-5.2", "label": "GPT-5.2", "cost": "medium"},
-    {"id": "chatgpt:gpt-5.2-pro", "provider": "chatgpt", "model": "gpt-5.2-pro", "label": "GPT-5.2 Pro", "cost": "high"},
+    {"id": "chatgpt:gpt-5.4", "provider": "chatgpt", "model": "gpt-5.4", "label": "GPT-5.4", "cost": "high"},
     {"id": "chatgpt:o3", "provider": "chatgpt", "model": "o3", "label": "GPT o3", "cost": "high"},
     {"id": "gemini:gemini-2.5-flash", "provider": "gemini", "model": "gemini-2.5-flash", "label": "Gemini Flash", "cost": "low"},
-    {"id": "gemini:gemini-2.5-pro", "provider": "gemini", "model": "gemini-2.5-pro", "label": "Gemini Pro", "cost": "medium"},
-    {"id": "claude:claude-sonnet-4-20250514", "provider": "claude", "model": "claude-sonnet-4-20250514", "label": "Claude Sonnet 4", "cost": "medium"},
-    {"id": "grok:grok-3-mini-fast", "provider": "grok", "model": "grok-3-mini-fast", "label": "Grok Mini", "cost": "low"},
+    {"id": "gemini:gemini-3.1-pro", "provider": "gemini", "model": "gemini-3.1-pro", "label": "Gemini 3.1 Pro", "cost": "medium"},
+    {"id": "claude:claude-sonnet-4-6-20260217", "provider": "claude", "model": "claude-sonnet-4-6-20260217", "label": "Claude Sonnet 4.6", "cost": "medium"},
+    {"id": "grok:grok-4.20", "provider": "grok", "model": "grok-4.20", "label": "Grok 4.20", "cost": "medium"},
     {"id": "azure:gpt-4o-mini", "provider": "azure", "model": "gpt-4o-mini", "label": "Azure GPT-4o Mini", "cost": "low"},
     {"id": "deepseek:deepseek-chat", "provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek V3", "cost": "low"},
     {"id": "deepseek:deepseek-reasoner", "provider": "deepseek", "model": "deepseek-reasoner", "label": "DeepSeek R1", "cost": "medium"},
@@ -61,9 +61,9 @@ MODEL_CATALOG = [
 
 # Tier → default model IDs (what auto-routing selects from)
 TIER_MODELS = {
-    "president": [m["id"] for m in MODEL_CATALOG],  # All models
-    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
-    "manager": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "deepseek:deepseek-chat"],
+    "president": [m["id"] for m in MODEL_CATALOG],  # All 12 models
+    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "gemini:gemini-3.1-pro", "claude:claude-sonnet-4-6-20260217", "grok:grok-4.20", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
+    "manager": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-5.2", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-6-20260217", "deepseek:deepseek-chat"],
     "staff": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
     "guest": ["chatgpt:gpt-4o-mini"],
 }
@@ -90,7 +90,7 @@ def auto_route_model(prompt: str, tier: str) -> tuple:
         return "chatgpt", "gpt-4o-mini"
     elif tier == "president":
         if is_complex:
-            return "chatgpt", "gpt-5.2-pro"
+            return "chatgpt", "gpt-5.4"
         elif is_simple:
             return "chatgpt", "gpt-4o-mini"
         else:
@@ -99,13 +99,13 @@ def auto_route_model(prompt: str, tier: str) -> tuple:
         if is_complex:
             if "chatgpt:gpt-5.2" in allowed:
                 return "chatgpt", "gpt-5.2"
-            return "gemini", "gemini-2.5-pro"
+            return "gemini", "gemini-3.1-pro"
         else:
             return "chatgpt", "gpt-4o-mini"
     elif tier == "manager":
         if is_complex:
-            if "claude:claude-sonnet-4-20250514" in allowed:
-                return "claude", "claude-sonnet-4-20250514"
+            if "claude:claude-sonnet-4-6-20260217" in allowed:
+                return "claude", "claude-sonnet-4-6-20260217"
             return "gemini", "gemini-2.5-flash"
         else:
             return "chatgpt", "gpt-4o-mini"
