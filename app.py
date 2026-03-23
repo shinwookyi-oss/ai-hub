@@ -53,13 +53,15 @@ MODEL_CATALOG = [
     {"id": "claude:claude-sonnet-4-20250514", "provider": "claude", "model": "claude-sonnet-4-20250514", "label": "Claude Sonnet 4", "cost": "medium"},
     {"id": "grok:grok-3-mini-fast", "provider": "grok", "model": "grok-3-mini-fast", "label": "Grok Mini", "cost": "low"},
     {"id": "azure:gpt-4o-mini", "provider": "azure", "model": "gpt-4o-mini", "label": "Azure GPT-4o Mini", "cost": "low"},
+    {"id": "deepseek:deepseek-chat", "provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek V3", "cost": "low"},
+    {"id": "deepseek:deepseek-reasoner", "provider": "deepseek", "model": "deepseek-reasoner", "label": "DeepSeek R1", "cost": "medium"},
 ]
 
 # Tier → default model IDs (what auto-routing selects from)
 TIER_MODELS = {
     "president": [m["id"] for m in MODEL_CATALOG],  # All models
-    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini"],
-    "manager": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast"],
+    "director": ["chatgpt:gpt-4o-mini", "chatgpt:gpt-4o", "gemini:gemini-2.5-flash", "gemini:gemini-2.5-pro", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "azure:gpt-4o-mini", "deepseek:deepseek-chat", "deepseek:deepseek-reasoner"],
+    "manager": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash", "claude:claude-sonnet-4-20250514", "grok:grok-3-mini-fast", "deepseek:deepseek-chat"],
     "staff": ["chatgpt:gpt-4o-mini", "gemini:gemini-2.5-flash"],
     "guest": ["chatgpt:gpt-4o-mini"],
 }

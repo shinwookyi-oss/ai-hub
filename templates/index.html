@@ -532,7 +532,7 @@
                     <div style="flex:1;"><label class="auto-label">Provider</label>
                         <select id="schedProvider" class="auto-input">
                             <option value="chatgpt">ChatGPT</option><option value="gemini">Gemini</option>
-                            <option value="claude">Claude</option><option value="grok">Grok</option>
+                            <option value="claude">Claude</option><option value="grok">Grok</option><option value="deepseek">DeepSeek</option>
                         </select>
                     </div>
                     <div style="flex:1;"><label class="auto-label">결과 저장 폴더 (선택)</label>
@@ -593,7 +593,7 @@
                     <div style="flex:1;"><label class="auto-label">Provider</label>
                         <select id="whProvider" class="auto-input">
                             <option value="chatgpt">ChatGPT</option><option value="gemini">Gemini</option>
-                            <option value="claude">Claude</option><option value="grok">Grok</option>
+                            <option value="claude">Claude</option><option value="grok">Grok</option><option value="deepseek">DeepSeek</option>
                         </select>
                     </div>
                     <div style="flex:1;"><label class="auto-label">결과 저장 폴더 (선택)</label>
@@ -4897,6 +4897,7 @@ ${uploadedFileContent ? '\n업로드된 파일 데이터를 기반으로 분석�
                             <option value="gemini"${s.provider==='gemini'?' selected':''}>Gemini</option>
                             <option value="claude"${s.provider==='claude'?' selected':''}>Claude</option>
                             <option value="grok"${s.provider==='grok'?' selected':''}>Grok</option>
+                            <option value="deepseek"${s.provider==='deepseek'?' selected':''}>DeepSeek</option>
                         </select>
                         <button class="auto-icon-btn danger" onclick="wfRemoveStep(${i})" title="삭제">×</button>
                     </div>

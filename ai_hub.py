@@ -39,7 +39,7 @@ class AIResponse:
 class AIHub:
     """Unified AI Hub - All AIs in one interface"""
 
-    PROVIDERS = ["chatgpt", "gemini", "azure", "claude", "grok"]
+    PROVIDERS = ["chatgpt", "gemini", "azure", "claude", "grok", "deepseek"]
 
     def __init__(
         self,
@@ -49,12 +49,14 @@ class AIHub:
         azure_endpoint: Optional[str] = None,
         claude_api_key: Optional[str] = None,
         grok_api_key: Optional[str] = None,
+        deepseek_api_key: Optional[str] = None,
         chatgpt_model: str = "gpt-4o-mini",
         gemini_model: str = "gemini-2.5-flash",
         azure_model: str = "gpt-4o-mini",
         azure_api_version: str = "2024-10-21",
         claude_model: str = "claude-sonnet-4-20250514",
         grok_model: str = "grok-3-mini-fast",
+        deepseek_model: str = "deepseek-chat",
     ):
         # API 키 로드 (인자 > 환경변수)
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -63,6 +65,7 @@ class AIHub:
         self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         self.claude_api_key = claude_api_key or os.getenv("CLAUDE_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
         self.grok_api_key = grok_api_key or os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")
+        self.deepseek_api_key = deepseek_api_key or os.getenv("DEEPSEEK_API_KEY")
         self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
 
         # 모델 설정
@@ -72,6 +75,7 @@ class AIHub:
         self.azure_api_version = azure_api_version
         self.claude_model = claude_model
         self.grok_model = grok_model
+        self.deepseek_model = deepseek_model
 
         # Chat history
         self._history: dict[str, list] = {p: [] for p in self.PROVIDERS}
@@ -83,6 +87,7 @@ class AIHub:
         self._gemini_model_obj = None
         self._claude_client = None
         self._grok_client = None
+        self._deepseek_client = None
         self._perplexity_client = None
         self._chroma_client = None
         self._embedding_function = None
@@ -102,6 +107,8 @@ class AIHub:
             providers.append("claude")
         if self.grok_api_key:
             providers.append("grok")
+        if self.deepseek_api_key:
+            providers.append("deepseek")
         return providers
 
     def status(self) -> dict:
@@ -112,6 +119,7 @@ class AIHub:
             "azure": "Ready" if (self.azure_api_key and self.azure_endpoint) else "No Key/Endpoint",
             "claude": "Ready" if self.claude_api_key else "No API Key",
             "grok": "Ready" if self.grok_api_key else "No API Key",
+            "deepseek": "Ready" if self.deepseek_api_key else "No API Key",
         }
 
     # ──────────────────────────── Memory Management ────────────────────────────
@@ -410,6 +418,16 @@ class AIHub:
             )
         return self._grok_client
 
+    def _get_deepseek_client(self):
+        if self._deepseek_client is None:
+            from openai import OpenAI
+            self._deepseek_client = OpenAI(
+                api_key=self.deepseek_api_key,
+                base_url="https://api.deepseek.com",
+                timeout=60.0,
+            )
+        return self._deepseek_client
+
     def _ask_claude(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
         """Ask Claude (Anthropic)"""
         import time
@@ -468,6 +486,38 @@ class AIHub:
         except Exception as e:
             return AIResponse(
                 provider="Grok", model=model or self.grok_model,
+                content="", success=False, error=str(e),
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+
+    def _ask_deepseek(self, prompt: str, system_prompt: str = "", model: str = None) -> AIResponse:
+        """Ask DeepSeek"""
+        import time
+        start = time.time()
+        try:
+            client = self._get_deepseek_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["deepseek"])
+            messages.append({"role": "user", "content": prompt})
+            response = client.chat.completions.create(
+                model=model or self.deepseek_model,
+                messages=messages,
+                max_tokens=8192,
+            )
+            content = response.choices[0].message.content
+            self._add_to_history("deepseek", "user", prompt)
+            self._add_to_history("deepseek", "assistant", content)
+            return AIResponse(
+                provider="DeepSeek",
+                model=model or self.deepseek_model,
+                content=content,
+                elapsed_seconds=round(time.time() - start, 2),
+            )
+        except Exception as e:
+            return AIResponse(
+                provider="DeepSeek", model=model or self.deepseek_model,
                 content="", success=False, error=str(e),
                 elapsed_seconds=round(time.time() - start, 2),
             )
@@ -590,6 +640,32 @@ class AIHub:
         except Exception as e:
             yield f"\n[Error: {str(e)}]"
 
+    def _ask_deepseek_stream(self, prompt: str, system_prompt: str = "", model: str = None):
+        try:
+            client = self._get_deepseek_client()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.extend(self._history["deepseek"])
+            messages.append({"role": "user", "content": prompt})
+
+            response = client.chat.completions.create(
+                model=model or self.deepseek_model,
+                messages=messages,
+                stream=True,
+                max_tokens=8192,
+            )
+            full_content = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    text = chunk.choices[0].delta.content
+                    full_content += text
+                    yield text
+            self._add_to_history("deepseek", "user", prompt)
+            self._add_to_history("deepseek", "assistant", full_content)
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
     # ──────────────────────────── Unified Interface ────────────────────────────
 
     # Language instruction always prepended
@@ -664,6 +740,8 @@ class AIHub:
             return self._ask_claude(prompt, lang_sys, model=model)
         elif provider == "grok":
             return self._ask_grok(prompt, lang_sys, model=model)
+        elif provider == "deepseek":
+            return self._ask_deepseek(prompt, lang_sys, model=model)
         else:
             return AIResponse(
                 provider=provider, model="unknown",
@@ -688,6 +766,8 @@ class AIHub:
             return self._ask_claude_stream(prompt, lang_sys, model=model)
         elif provider == "grok":
             return self._ask_grok_stream(prompt, lang_sys, model=model)
+        elif provider == "deepseek":
+            return self._ask_deepseek_stream(prompt, lang_sys, model=model)
         else:
             def err_gen():
                 yield f"Unknown provider: {provider}. Available: {self.PROVIDERS}"
