@@ -127,6 +127,17 @@
         .output-panel.mobile-show .output-area { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; min-height: 0 !important; flex: 1 !important; }
         .output-panel.mobile-show { width: 100% !important; max-width: 100% !important; }
     }
+    /* Global: hide driving exit button unless in driving mode */
+    #drivingExitBtn { display: none; }
+    body.speaker-mode #drivingExitBtn {
+        display: flex; align-items: center; justify-content: center;
+        position: fixed; top: 16px; right: 16px; z-index: 60;
+        padding: 10px 20px; font-size: 15px; font-weight: 600;
+        background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 25px; color: #fff; cursor: pointer;
+        letter-spacing: 0.5px;
+    }
     </style>
 </head>
 <body>
